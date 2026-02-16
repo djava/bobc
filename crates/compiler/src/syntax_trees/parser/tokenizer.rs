@@ -37,8 +37,11 @@ pub enum Token<'a> {
     IntType,
     BoolType,
     TupleType,
+    CallableType,
+    NoneType,
     RightArrow,
     Return,
+    Lambda,
 }
 
 parser! {
@@ -70,7 +73,10 @@ parser! {
         rule int_type() -> Token<'input> = "int" &__ { Token::IntType }
         rule bool_type() -> Token<'input> = "bool" &__ { Token::BoolType }
         rule tuple_type() -> Token<'input> = "tuple" &__ { Token::TupleType }
+        rule callable_type() -> Token<'input> = "callable" &__ { Token::CallableType }
+        rule none_type() -> Token<'input> = "none" &__ { Token::NoneType }
         rule _return() -> Token<'input> = "return" &__ { Token::Return }
+        rule lambda() -> Token<'input> = "lambda" &__ { Token::Lambda }
 
         rule double_equals() -> Token<'input> = "==" { Token::DoubleEquals }
         rule not_equals() -> Token<'input> = "!=" { Token::NotEquals }
@@ -101,7 +107,8 @@ parser! {
         rule word_token() -> Token<'input>
             = t:(bool() / and_word() / or_word() / not_word() /_if() /
                  _else() / _while() / is() / int() / _fn() / int_type() /
-                 bool_type() / tuple_type() / _return() / identifier()) &__ {t}
+                 bool_type() / tuple_type() / _return() / callable_type() /
+                 lambda() / none_type() / identifier()) &__ {t}
 
         /// A punctuation token does not require trailing whitespace
         rule punctuation_token() -> Token<'input>

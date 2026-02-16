@@ -1,6 +1,6 @@
 use super::parse_tree as pt;
 use crate::syntax_trees::{ast, shared::*};
-use crate::utils::{local, global};
+use crate::utils::{global, local};
 use std::iter::Peekable;
 use std::vec::IntoIter;
 
@@ -61,7 +61,28 @@ fn to_ast_expr(pte: pt::Expr, func_id: &Identifier) -> ast::Expr {
 
             ast::Expr::Tuple(ast_elems)
         }
-        pt::Expr::Subscript(expr, idx) => ast::Expr::Subscript(Box::new(to_ast_expr(*expr, func_id)), idx),
+        pt::Expr::Subscript(expr, idx) => {
+            ast::Expr::Subscript(Box::new(to_ast_expr(*expr, func_id)), idx)
+        }
+        pt::Expr::Lambda(args, body) => {
+            let lambda_id = Identifier::new_ephemeral();
+
+            let ast_params = args
+                .into_iter()
+                .map(|a| (local!(a, lambda_id.clone()), ValueType::Indeterminate))
+                .collect();
+            let ast_body = to_ast_statements(body, &lambda_id);
+
+            let func = ast::Function {
+                name: lambda_id.clone(),
+                body: ast_body,
+                types: TypeEnv::new(),
+                params: ast_params,
+                return_type: ValueType::Indeterminate,
+            };
+
+            ast::Expr::Lambda(func)
+        }
     }
 }
 
@@ -92,8 +113,10 @@ pub fn to_ast_statement<'a>(
                 if let Some(pt::Statement::ElseIf(sub_cond, sub_body)) =
                     iter.next_if(|v| matches!(v, pt::Statement::ElseIf(_, _)))
                 {
-                    stacked_ast_neg_bodies
-                        .push((Some(to_ast_expr(sub_cond, func_name)), to_ast_statements(sub_body, func_name)));
+                    stacked_ast_neg_bodies.push((
+                        Some(to_ast_expr(sub_cond, func_name)),
+                        to_ast_statements(sub_body, func_name),
+                    ));
                 } else if let Some(pt::Statement::Else(sub_body)) =
                     iter.next_if(|v| matches!(v, pt::Statement::Else(_)))
                 {

@@ -110,6 +110,7 @@ fn interpret_expr(
         Tuple(_exprs) => todo!(),
         Subscript(_expr, _value) => todo!(),
         Allocate(_, _value_type) => todo!(),
+        Lambda(_) => todo!(),
     }
 }
 

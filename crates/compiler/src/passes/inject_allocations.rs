@@ -65,22 +65,20 @@ fn replace_tuples_in_expr(expr: &mut Expr, type_env: &mut TypeEnv) {
             }
             replace_tuples_in_expr(expr, type_env);
         }
-
         Expr::Tuple(elems) => {
             let tup_type = ValueType::TupleType(
                 elems
-                    .iter()
+                    .iter_mut()
                     .map(|e| e.type_check(type_env))
                     .collect(),
             );
             *expr = get_initialize_tuple_expr(elems, tup_type);
         }
-
         Expr::Subscript(expr, _) => {
             replace_tuples_in_expr(expr, type_env);
         }
-
         Expr::Constant(_) | Expr::Id(_) | Expr::Allocate(_, _) | Expr::GlobalSymbol(_) => {}
+        Expr::Lambda(_) => panic!("Should've been removed already"),
     }
 }
 

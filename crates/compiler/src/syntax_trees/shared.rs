@@ -40,6 +40,7 @@ pub enum ValueType {
     TupleType(Vec<ValueType>),
     PointerType(Box<ValueType>),
     NoneType,
+    Indeterminate
 }
 
 impl From<&Value> for ValueType {

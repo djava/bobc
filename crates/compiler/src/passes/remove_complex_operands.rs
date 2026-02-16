@@ -361,6 +361,7 @@ fn rco_expr(e: &Expr, needs_atomicity: bool) -> ExprTransformation {
         Expr::Allocate(_, _) => {
             panic!("This pass should've happened before any Allocate's were injected")
         }
+        Expr::Lambda(_) => panic!("Should've been removed already"),
     }
 }
 
@@ -434,6 +435,11 @@ mod tests {
             Expr::StatementBlock(stmts, expr) => {
                 stmts.iter().for_each(check_statement_invariants);
                 check_expr_invariants(expr);
+            }
+            Expr::Lambda(func) => {
+                for s in &func.body {
+                    check_statement_invariants(s);
+                }
             }
             Expr::Constant(_) | Expr::Id(_) | Expr::GlobalSymbol(_) | Expr::Allocate(_, _) => {}
         }

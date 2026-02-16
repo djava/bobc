@@ -167,6 +167,7 @@ fn replace_excess_use_for_expr(
             replace_excess_use_for_expr(expr, excess_names, tuple_id);
         }
 
+        Expr::Lambda(_) => todo!(),
         Expr::Allocate(_, _) | Expr::Constant(_) | Expr::GlobalSymbol(_) => {}
     }
 }
@@ -238,6 +239,8 @@ fn replace_excess_calls_for_expr(e: &mut Expr) {
         Expr::Subscript(expr, _) => {
             replace_excess_calls_for_expr(expr);
         }
+
+        Expr::Lambda(_) => todo!(),
 
         Expr::Id(_) | Expr::Allocate(_, _) | Expr::Constant(_) | Expr::GlobalSymbol(_) => {}
     }

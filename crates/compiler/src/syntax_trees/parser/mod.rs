@@ -3757,4 +3757,369 @@ x[0] = 42
         };
         tc.run();
     }
+
+    #[test]
+    fn test_lambda_simple() {
+        // lambda x: x + 1
+        let input_str = r"fn main() -> int { lambda x: x + 1 }";
+
+        let tokens = tokenize(input_str).unwrap();
+        assert_eq!(tokens, vec![
+            Token::Fn, Token::Identifier("main"),
+            Token::OpenParen, Token::CloseParen,
+            Token::RightArrow, Token::IntType,
+            Token::OpenCurly,
+            Token::Lambda,
+            Token::Identifier("x"), Token::Colon,
+            Token::Identifier("x"), Token::Plus, Token::Int(1),
+            Token::CloseCurly,
+        ]);
+
+        let parse_tree = parse_tree::parse_tokens(&tokens).unwrap();
+        assert_eq!(parse_tree, pt::Module {
+            functions: vec![pt::Function {
+                name: "main",
+                params: vec![],
+                return_type: ValueType::IntType,
+                statements: vec![pt::Statement::Expr(pt::Expr::Lambda(
+                    vec!["x"],
+                    vec![pt::Statement::Return(Some(pt::Expr::Binary(
+                        Box::new(pt::Expr::Id("x")),
+                        pt::Operator::Plus,
+                        Box::new(pt::Expr::Int(1)),
+                    )))],
+                ))],
+            }],
+        });
+
+        let ast = to_ast::to_ast(parse_tree);
+        // Check the main function has one statement with a Lambda expr
+        assert_eq!(ast.functions.len(), 1);
+        let main_body = &ast.functions[0].body;
+        assert_eq!(main_body.len(), 1);
+        match &main_body[0] {
+            ast::Statement::Expr(ast::Expr::Lambda(func)) => {
+                assert_eq!(func.params.len(), 1);
+                assert_eq!(func.return_type, ValueType::Indeterminate);
+                assert_eq!(func.body.len(), 1);
+            }
+            other => panic!("expected Lambda, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_lambda_multi_args() {
+        // lambda x, y: x + y
+        let input_str = r"fn main() -> int { lambda x, y: x + y }";
+
+        let tokens = tokenize(input_str).unwrap();
+        assert_eq!(tokens, vec![
+            Token::Fn, Token::Identifier("main"),
+            Token::OpenParen, Token::CloseParen,
+            Token::RightArrow, Token::IntType,
+            Token::OpenCurly,
+            Token::Lambda,
+            Token::Identifier("x"), Token::Comma,
+            Token::Identifier("y"), Token::Colon,
+            Token::Identifier("x"), Token::Plus, Token::Identifier("y"),
+            Token::CloseCurly,
+        ]);
+
+        let parse_tree = parse_tree::parse_tokens(&tokens).unwrap();
+        assert_eq!(parse_tree, pt::Module {
+            functions: vec![pt::Function {
+                name: "main",
+                params: vec![],
+                return_type: ValueType::IntType,
+                statements: vec![pt::Statement::Expr(pt::Expr::Lambda(
+                    vec!["x", "y"],
+                    vec![pt::Statement::Return(Some(pt::Expr::Binary(
+                        Box::new(pt::Expr::Id("x")),
+                        pt::Operator::Plus,
+                        Box::new(pt::Expr::Id("y")),
+                    )))],
+                ))],
+            }],
+        });
+
+        let ast = to_ast::to_ast(parse_tree);
+        assert_eq!(ast.functions.len(), 1);
+        match &ast.functions[0].body[0] {
+            ast::Statement::Expr(ast::Expr::Lambda(func)) => {
+                assert_eq!(func.params.len(), 2);
+                assert_eq!(func.return_type, ValueType::Indeterminate);
+            }
+            other => panic!("expected Lambda, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_lambda_no_args() {
+        // lambda: 42
+        let input_str = r"fn main() -> int { lambda: 42 }";
+
+        let tokens = tokenize(input_str).unwrap();
+        assert_eq!(tokens, vec![
+            Token::Fn, Token::Identifier("main"),
+            Token::OpenParen, Token::CloseParen,
+            Token::RightArrow, Token::IntType,
+            Token::OpenCurly,
+            Token::Lambda, Token::Colon,
+            Token::Int(42),
+            Token::CloseCurly,
+        ]);
+
+        let parse_tree = parse_tree::parse_tokens(&tokens).unwrap();
+        assert_eq!(parse_tree, pt::Module {
+            functions: vec![pt::Function {
+                name: "main",
+                params: vec![],
+                return_type: ValueType::IntType,
+                statements: vec![pt::Statement::Expr(pt::Expr::Lambda(
+                    vec![],
+                    vec![pt::Statement::Return(Some(pt::Expr::Int(42)))],
+                ))],
+            }],
+        });
+
+        let ast = to_ast::to_ast(parse_tree);
+        match &ast.functions[0].body[0] {
+            ast::Statement::Expr(ast::Expr::Lambda(func)) => {
+                assert_eq!(func.params.len(), 0);
+                assert_eq!(func.body.len(), 1);
+            }
+            other => panic!("expected Lambda, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_lambda_called() {
+        // (lambda x: x)(5)
+        let input_str = r"fn main() -> int { (lambda x: x)(5) }";
+
+        let tokens = tokenize(input_str).unwrap();
+        assert_eq!(tokens, vec![
+            Token::Fn, Token::Identifier("main"),
+            Token::OpenParen, Token::CloseParen,
+            Token::RightArrow, Token::IntType,
+            Token::OpenCurly,
+            Token::OpenParen,
+            Token::Lambda,
+            Token::Identifier("x"), Token::Colon,
+            Token::Identifier("x"),
+            Token::CloseParen,
+            Token::OpenParen, Token::Int(5), Token::CloseParen,
+            Token::CloseCurly,
+        ]);
+
+        let parse_tree = parse_tree::parse_tokens(&tokens).unwrap();
+        // Should parse as Call(Lambda(...), [Int(5)])
+        match &parse_tree.functions[0].statements[0] {
+            pt::Statement::Expr(pt::Expr::Call(callee, args)) => {
+                match callee.as_ref() {
+                    pt::Expr::Parens(inner) => match inner.as_ref() {
+                        pt::Expr::Lambda(params, _body) => {
+                            assert_eq!(*params, vec!["x"]);
+                        }
+                        other => panic!("expected Lambda inside Parens, got {:?}", other),
+                    },
+                    other => panic!("expected Parens as callee, got {:?}", other),
+                }
+                assert_eq!(args.len(), 1);
+            }
+            other => panic!("expected Call expression, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_lambda_as_function_arg() {
+        // foo(lambda x: x + 1)
+        let input_str = r"fn main() -> int { foo(lambda x: x + 1) }";
+
+        let tokens = tokenize(input_str).unwrap();
+        assert_eq!(tokens, vec![
+            Token::Fn, Token::Identifier("main"),
+            Token::OpenParen, Token::CloseParen,
+            Token::RightArrow, Token::IntType,
+            Token::OpenCurly,
+            Token::Identifier("foo"), Token::OpenParen,
+            Token::Lambda,
+            Token::Identifier("x"), Token::Colon,
+            Token::Identifier("x"), Token::Plus, Token::Int(1),
+            Token::CloseParen,
+            Token::CloseCurly,
+        ]);
+
+        let parse_tree = parse_tree::parse_tokens(&tokens).unwrap();
+        match &parse_tree.functions[0].statements[0] {
+            pt::Statement::Expr(pt::Expr::Call(callee, args)) => {
+                match callee.as_ref() {
+                    pt::Expr::Id("foo") => {}
+                    other => panic!("expected Id(\"foo\") as callee, got {:?}", other),
+                }
+                assert_eq!(args.len(), 1);
+                match &args[0] {
+                    pt::Expr::Lambda(params, body) => {
+                        assert_eq!(*params, vec!["x"]);
+                        assert_eq!(body.len(), 1);
+                    }
+                    other => panic!("expected Lambda arg, got {:?}", other),
+                }
+            }
+            other => panic!("expected Call expression, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_lambda_assigned_to_var() {
+        // f = lambda x: x
+        let input_str = r"fn main() -> int { f = lambda x: x }";
+
+        let tokens = tokenize(input_str).unwrap();
+        assert_eq!(tokens, vec![
+            Token::Fn, Token::Identifier("main"),
+            Token::OpenParen, Token::CloseParen,
+            Token::RightArrow, Token::IntType,
+            Token::OpenCurly,
+            Token::Identifier("f"), Token::Equals,
+            Token::Lambda,
+            Token::Identifier("x"), Token::Colon,
+            Token::Identifier("x"),
+            Token::CloseCurly,
+        ]);
+
+        let parse_tree = parse_tree::parse_tokens(&tokens).unwrap();
+        match &parse_tree.functions[0].statements[0] {
+            pt::Statement::Assign("f", pt::Expr::Lambda(params, body)) => {
+                assert_eq!(*params, vec!["x"]);
+                assert_eq!(body.len(), 1);
+            }
+            other => panic!("expected Assign with Lambda, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_lambda_in_tuple() {
+        // (lambda x: x, lambda y: y)
+        let input_str = r"fn main() -> int { (lambda x: x, lambda y: y) }";
+
+        let tokens = tokenize(input_str).unwrap();
+        assert_eq!(tokens, vec![
+            Token::Fn, Token::Identifier("main"),
+            Token::OpenParen, Token::CloseParen,
+            Token::RightArrow, Token::IntType,
+            Token::OpenCurly,
+            Token::OpenParen,
+            Token::Lambda,
+            Token::Identifier("x"), Token::Colon,
+            Token::Identifier("x"),
+            Token::Comma,
+            Token::Lambda,
+            Token::Identifier("y"), Token::Colon,
+            Token::Identifier("y"),
+            Token::CloseParen,
+            Token::CloseCurly,
+        ]);
+
+        let parse_tree = parse_tree::parse_tokens(&tokens).unwrap();
+        match &parse_tree.functions[0].statements[0] {
+            pt::Statement::Expr(pt::Expr::Tuple(elems)) => {
+                assert_eq!(elems.len(), 2);
+                match &elems[0] {
+                    pt::Expr::Lambda(params, _) => assert_eq!(*params, vec!["x"]),
+                    other => panic!("expected Lambda[0], got {:?}", other),
+                }
+                match &elems[1] {
+                    pt::Expr::Lambda(params, _) => assert_eq!(*params, vec!["y"]),
+                    other => panic!("expected Lambda[1], got {:?}", other),
+                }
+            }
+            other => panic!("expected Tuple expression, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_lambda_in_ternary() {
+        // true ? lambda x: x : lambda y: y
+        let input_str = r"fn main() -> int { true ? lambda x: x : lambda y: y }";
+
+        let tokens = tokenize(input_str).unwrap();
+        assert_eq!(tokens, vec![
+            Token::Fn, Token::Identifier("main"),
+            Token::OpenParen, Token::CloseParen,
+            Token::RightArrow, Token::IntType,
+            Token::OpenCurly,
+            Token::Bool(true), Token::QuestionMark,
+            Token::Lambda,
+            Token::Identifier("x"), Token::Colon,
+            Token::Identifier("x"),
+            Token::Colon,
+            Token::Lambda,
+            Token::Identifier("y"), Token::Colon,
+            Token::Identifier("y"),
+            Token::CloseCurly,
+        ]);
+
+        let parse_tree = parse_tree::parse_tokens(&tokens).unwrap();
+        match &parse_tree.functions[0].statements[0] {
+            pt::Statement::Expr(pt::Expr::Ternary(cond, pos, neg)) => {
+                match cond.as_ref() {
+                    pt::Expr::Bool(true) => {}
+                    other => panic!("expected Bool(true) cond, got {:?}", other),
+                }
+                match pos.as_ref() {
+                    pt::Expr::Lambda(params, _) => assert_eq!(*params, vec!["x"]),
+                    other => panic!("expected Lambda in pos branch, got {:?}", other),
+                }
+                match neg.as_ref() {
+                    pt::Expr::Lambda(params, _) => assert_eq!(*params, vec!["y"]),
+                    other => panic!("expected Lambda in neg branch, got {:?}", other),
+                }
+            }
+            other => panic!("expected Ternary expression, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_lambda_with_multiple_args_passed_to_function() {
+        // apply(lambda x, y: x + y, 1, 2)
+        let input_str = r"fn main() -> int { apply(lambda x, y: x + y, 1, 2) }";
+
+        let tokens = tokenize(input_str).unwrap();
+        assert_eq!(tokens, vec![
+            Token::Fn, Token::Identifier("main"),
+            Token::OpenParen, Token::CloseParen,
+            Token::RightArrow, Token::IntType,
+            Token::OpenCurly,
+            Token::Identifier("apply"), Token::OpenParen,
+            Token::Lambda,
+            Token::Identifier("x"), Token::Comma,
+            Token::Identifier("y"), Token::Colon,
+            Token::Identifier("x"), Token::Plus, Token::Identifier("y"),
+            Token::Comma,
+            Token::Int(1), Token::Comma, Token::Int(2),
+            Token::CloseParen,
+            Token::CloseCurly,
+        ]);
+
+        let parse_tree = parse_tree::parse_tokens(&tokens).unwrap();
+        match &parse_tree.functions[0].statements[0] {
+            pt::Statement::Expr(pt::Expr::Call(callee, args)) => {
+                match callee.as_ref() {
+                    pt::Expr::Id("apply") => {}
+                    other => panic!("expected Id(\"apply\"), got {:?}", other),
+                }
+                assert_eq!(args.len(), 3, "expected 3 args: lambda, 1, 2");
+                match &args[0] {
+                    pt::Expr::Lambda(params, _) => {
+                        assert_eq!(*params, vec!["x", "y"]);
+                    }
+                    other => panic!("expected Lambda as first arg, got {:?}", other),
+                }
+                assert_eq!(args[1], pt::Expr::Int(1));
+                assert_eq!(args[2], pt::Expr::Int(2));
+            }
+            other => panic!("expected Call expression, got {:?}", other),
+        }
+    }
 }

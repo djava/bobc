@@ -5,7 +5,7 @@ use crate::{
 };
 
 impl ast::Expr {
-    pub fn type_check(&self, env: &mut TypeEnv) -> ValueType {
+    pub fn type_check(&mut self, env: &mut TypeEnv) -> ValueType {
         use ast::Expr::*;
 
         match self {
@@ -36,7 +36,7 @@ impl ast::Expr {
                 .get(id)
                 .expect(format!("Unknown Identifier: {id:?}").as_str())
                 .clone(),
-            Constant(v) => ValueType::from(v),
+            Constant(v) => ValueType::from(&*v),
             Call(func, args) => {
                 let func_type = func.type_check(env);
                 if let ValueType::FunctionType(arg_types, ret_type) = func_type {
@@ -56,7 +56,7 @@ impl ast::Expr {
                         // can't use len indirectly now :(
                         assert!(matches!(args[0].type_check(env), ValueType::TupleType(_)));
                     } else {
-                        for (a, typ) in args.iter().zip(arg_types) {
+                        for (a, typ) in args.iter_mut().zip(arg_types) {
                             assert_eq!(
                                 a.type_check(env),
                                 typ,
@@ -91,7 +91,7 @@ impl ast::Expr {
                 expr.type_check(env)
             }
             Tuple(elements) => {
-                let element_types: Vec<_> = elements.iter().map(|e| e.type_check(env)).collect();
+                let element_types: Vec<_> = elements.iter_mut().map(|e| e.type_check(env)).collect();
 
                 ValueType::TupleType(element_types)
             }
@@ -111,12 +111,19 @@ impl ast::Expr {
                 .get(id)
                 .expect(format!("Unknown global symbol: {id:?}").as_str())
                 .clone(),
+            Lambda(func) => {
+                for (k, v) in env {
+                    func.types.insert(k.clone(), v.clone());
+                }
+
+                ValueType::FunctionType(func.params.values().cloned().collect(), Box::new(func.return_type.clone()))
+            }
         }
     }
 }
 
 impl ast::Statement {
-    pub fn type_check(&self, env: &mut TypeEnv) {
+    pub fn type_check(&mut self, env: &mut TypeEnv) {
         use ast::Statement::*;
 
         match self {
@@ -146,7 +153,7 @@ impl ast::Statement {
                 let cond_type = cond.type_check(env);
                 assert!([ValueType::BoolType, ValueType::IntType].contains(&cond_type));
 
-                for s in pos.iter().chain(neg) {
+                for s in pos.iter_mut().chain(neg) {
                     s.type_check(env);
                 }
             }
@@ -179,7 +186,7 @@ impl ast::Program {
                 f.types.insert(n.clone(), t.clone());
             }
 
-            for s in &f.body {
+            for s in f.body.iter_mut() {
                 s.type_check(&mut f.types);
             }
         }

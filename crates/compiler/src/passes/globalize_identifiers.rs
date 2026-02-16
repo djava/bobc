@@ -57,7 +57,6 @@ fn globalize_for_expr(e: &mut Expr, global_types: &TypeEnv) {
                 *e = Expr::GlobalSymbol(id.clone());
             }
         }
-
         Expr::Call(func, args) => {
             for a in args.iter_mut() {
                 globalize_for_expr(a, global_types);
@@ -91,8 +90,9 @@ fn globalize_for_expr(e: &mut Expr, global_types: &TypeEnv) {
         Expr::Subscript(expr, _) => {
             globalize_for_expr(expr, global_types);
         }
-
         Expr::Allocate(_, _) | Expr::Constant(_) | Expr::GlobalSymbol(_) => {}
+
+        Expr::Lambda(_) => panic!("Should've been removed already"),
     }
 }
 

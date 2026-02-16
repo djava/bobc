@@ -31,7 +31,8 @@ pub enum Expr<'a> {
     Call(Box<Expr<'a>>, Vec<Expr<'a>>),
     Ternary(Box<Expr<'a>>, Box<Expr<'a>>, Box<Expr<'a>>),
     Tuple(Vec<Expr<'a>>),
-    Subscript(Box<Expr<'a>>, i64)
+    Subscript(Box<Expr<'a>>, i64),
+    Lambda(Vec<&'a str>, Vec<Statement<'a>>)
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -95,24 +96,45 @@ parser! {
         rule primitive_type() -> ValueType = int_type() / bool_type()
 
         rule tuple_type() -> ValueType =
-            [Token::TupleType] [Token::Less] types:((primitive_type() / tuple_type()) ++ [Token::Comma]) [Token::Greater] 
+            [Token::TupleType] [Token::Less] types:(_type() ++ [Token::Comma]) [Token::Greater] 
             { ValueType::TupleType(types) }
 
-        rule _type() -> ValueType = tuple_type() / primitive_type()
+        rule callable_type() -> ValueType =
+            [Token::CallableType] [Token::Less]
+                [Token::OpenBracket] args:(_type() ** [Token::Comma]) [Token::OpenBracket]
+                [Token::Comma]
+                ret:_type()
+            [Token::Greater]
+            { ValueType::FunctionType(args, Box::new(ret))}
+
+        rule none_type() -> ValueType = [Token::NoneType] { ValueType::NoneType }
+
+        rule _type() -> ValueType = tuple_type() / primitive_type() / callable_type() / none_type()
 
         // Trailing comma is mandatory for one elem but optional for multiple
         rule tuple_elements() -> Vec<Expr<'t>> =
-            elems:((s:(expr() **<2,50> [Token::Comma]) [Token::Comma]? { s }) / (e:expr() [Token::Comma] { vec![e] }))  { elems }
+            elems:((s:(expr() **<2,50> [Token::Comma]) [Token::Comma]? { s }) / (e:expr() [Token::Comma] { vec![e] })) 
+            { elems }
 
         rule tuple() -> Expr<'t> =
             [Token::OpenParen] args:tuple_elements() [Token::CloseParen] { Expr::Tuple(args) }
 
+        rule lambda_oneliner_body() -> Vec<Statement<'t>> = e:expr() {
+            vec![Statement::Return(Some(e))]
+        }
+
+        rule lambda() -> Expr<'t> =
+            [Token::Lambda] args:(([Token::Identifier(id)] { id }) ** [Token::Comma])
+            [Token::Colon]
+            body:(lambda_oneliner_body() / statement_body())
+            { Expr::Lambda(args, body) }
+
         rule expr() -> Expr<'t> =
-            // Lowest-precendence, right-associative ternary expression
             cond:precedence_expr() [Token::QuestionMark] pos:expr() [Token::Colon] neg:expr() {
                 Expr::Ternary(Box::new(cond), Box::new(pos), Box::new(neg))
             }
             / tuple()
+            / lambda()
             / precedence_expr()
 
         rule precedence_expr() -> Expr<'t> = precedence!{

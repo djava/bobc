@@ -219,6 +219,7 @@ fn partial_eval_expr(e: &mut Expr) {
         Allocate(_, _) => {
             panic!("This pass should've happened before any Allocate calls are injected")
         }
+        Expr::Lambda(_) => panic!("Should've been removed already"),
     }
 }
 
@@ -382,7 +383,12 @@ mod tests {
                 stmts.iter().for_each(check_statement_invariants);
                 check_expr_invariants(expr);
             }
-            Expr::Constant(_) | Expr::Id(_) | Expr::GlobalSymbol(_) | Expr::Allocate(_, _) => {}
+            Expr::Lambda(func) => {
+                for s in &func.body {
+                    check_statement_invariants(&s);
+                }
+            },
+            Expr::Constant(_) | Expr::Id(_) | Expr::GlobalSymbol(_) | Expr::Allocate(_, _) => {},
         }
     }
 

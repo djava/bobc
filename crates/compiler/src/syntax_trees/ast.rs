@@ -14,7 +14,8 @@ pub enum Expr {
     Tuple(Vec<Expr>),
     Subscript(Box<Expr>, i64),
     Allocate(usize, ValueType),
-    GlobalSymbol(Identifier)
+    GlobalSymbol(Identifier),
+    Lambda(Function)
 }
 
 #[derive(Debug, Clone, PartialEq)]

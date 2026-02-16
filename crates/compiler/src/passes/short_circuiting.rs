@@ -58,6 +58,7 @@ fn shortcircuit_expr(e: &mut Expr) {
         }
         Expr::Allocate(_, _) => {}
         Expr::GlobalSymbol(_) => {}
+        Expr::Lambda(_) => panic!("Should've been removed already"),
     }
 
     // Apply transformation, only applies to expressions with And/Or
