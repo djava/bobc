@@ -173,12 +173,18 @@ impl Display for Arg {
             Arg::ByteReg(reg) => reg.fmt(f),
             Arg::Deref(reg, offset) => write!(f, "{offset}({reg})"),
             Arg::Variable(id) => match id {
-                Identifier::Named(name) => write!(f, "@{name}"),
+                Identifier::Global(name) => write!(f, "@{name}"),
                 Identifier::Ephemeral(id) => write!(f, "@EE#{id}"),
+                Identifier::Local(id, func) => match &**func {
+                    Identifier::Ephemeral(func_num) => write!(f, "@EE#{func_num}::{id}"),
+                    Identifier::Global(func_name) => write!(f, "@{func_name}::{id}"),
+                    Identifier::Local(func_name, func_owner) => write!(f, "@{{{func_owner:?}::{func_name}}}::{id}"),
+                }
             },
             Arg::Global(id) => match id {
-                Identifier::Named(name) => write!(f, "{name}(%rip)"),
+                Identifier::Global(name) => write!(f, "{name}(%rip)"),
                 Identifier::Ephemeral(id) => write!(f, "__EE_{id}(%rip)"),
+                Identifier::Local(..) => panic!("A local cannot be a global")
             },
         }
     }
@@ -199,8 +205,9 @@ impl Display for Comparison {
 
 fn fmt_label(label: &Identifier) -> String {
     match label {
-        Identifier::Named(name) => name.to_string(),
+        Identifier::Global(name) => name.to_string(),
         Identifier::Ephemeral(id) => format!(".EE_{id}"),
+        Identifier::Local(id, owner) => format!("{}{id}", fmt_label(owner)),
     }
 }
 

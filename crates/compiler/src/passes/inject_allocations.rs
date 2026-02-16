@@ -1,4 +1,4 @@
-use crate::{constants::*, passes::ASTPass, syntax_trees::{ast::*, shared::*}, utils::id};
+use crate::{constants::*, passes::ASTPass, syntax_trees::{ast::*, shared::*}, utils::global};
 
 pub struct InjectAllocations;
 
@@ -85,11 +85,11 @@ fn replace_tuples_in_expr(expr: &mut Expr, type_env: &mut TypeEnv) {
 }
 
 fn get_initialize_tuple_expr(elems: &mut Vec<Expr>, tup_type: ValueType) -> Expr {
-    let free_ptr = Expr::GlobalSymbol(id!(GC_FREE_PTR));
-    let fromspace_end = Expr::GlobalSymbol(id!(GC_FROMSPACE_END));
+    let free_ptr = Expr::GlobalSymbol(global!(GC_FREE_PTR));
+    let fromspace_end = Expr::GlobalSymbol(global!(GC_FROMSPACE_END));
     let collect = |n| {
         Expr::Call(
-            Box::new(Expr::GlobalSymbol(id!(GC_COLLECT))),
+            Box::new(Expr::GlobalSymbol(global!(GC_COLLECT))),
             vec![Expr::Constant(Value::I64(n))],
         )
     };

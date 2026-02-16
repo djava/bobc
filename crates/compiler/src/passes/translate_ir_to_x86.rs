@@ -8,7 +8,7 @@ use crate::{
         shared::*,
         x86::{self, Instr, Register, X86Program},
     },
-    utils::id,
+    utils::global,
 };
 
 pub struct TranslateIRtoX86;
@@ -100,7 +100,7 @@ fn translate_statement(s: ir::Statement, exit_block: &Identifier) -> Vec<Instr> 
             if SPECIAL_FUNCTIONS
                 .iter()
                 .map(|(name, _, _)| name)
-                .find(|n| &ir::Atom::GlobalSymbol(id!(**n)) == &func)
+                .find(|n| &ir::Atom::GlobalSymbol(global!(**n)) == &func)
                 .is_some()
             {
                 return translate_call(None, func, args);
@@ -198,12 +198,12 @@ fn translate_allocation(dest: AssignDest, bytes: usize, value_type: ValueType) -
     // Bump allocator pointer, write tag. pointer is in r11
     let mut ret = vec![
         Instr::movq(
-            x86::Arg::Global(id!(GC_FREE_PTR)),
+            x86::Arg::Global(global!(GC_FREE_PTR)),
             x86::Arg::Reg(Register::r11),
         ),
         Instr::addq(
             x86::Arg::Immediate(bytes as i64),
-            x86::Arg::Global(id!(GC_FREE_PTR)),
+            x86::Arg::Global(global!(GC_FREE_PTR)),
         ),
         Instr::movq(x86::Arg::Immediate(tag), x86::Arg::Deref(Register::r11, 0)),
     ];
@@ -529,7 +529,7 @@ const SPECIAL_FUNCTIONS: [(
         vec![
             Instr::movq(x86::Arg::Reg(Register::r15), x86::Arg::Reg(Register::rdi)),
             Instr::movq(atom_to_arg(args.remove(0)), x86::Arg::Reg(Register::rsi)),
-            Instr::callq(x86::Arg::Global(id!(GC_COLLECT)), 2),
+            Instr::callq(x86::Arg::Global(global!(GC_COLLECT)), 2),
         ]
     }),
     (FN_LEN, 1, |mut args, dest_opt| {
@@ -564,7 +564,7 @@ fn translate_call(dest_opt: Option<AssignDest>, func: ir::Atom, args: Vec<ir::At
     }
 
     for (name, num_args, instr_fn) in SPECIAL_FUNCTIONS {
-        if func == ir::Atom::Variable(id!(name)) {
+        if func == ir::Atom::Variable(global!(name)) {
             if args.len() != num_args {
                 panic!(
                     "Wrong number of args to special function `{name}` (Expected {num_args}, Got {}",

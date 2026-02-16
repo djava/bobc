@@ -1,4 +1,4 @@
-use crate::{constants::*, passes::X86Pass, syntax_trees::x86::*, utils::id};
+use crate::{constants::*, passes::X86Pass, syntax_trees::x86::*, utils::global};
 
 pub struct PreludeConclusion;
 
@@ -18,8 +18,8 @@ impl X86Pass for PreludeConclusion {
 
 fn add_prelude_conclusion(f: &mut Function) {
     f.header.push(Directive::Align(WORD_SIZE as u8));
-    if f.name == id!(LABEL_MAIN) {
-        f.header.push(Directive::Globl(id!(LABEL_MAIN)));
+    if f.name == global!(LABEL_MAIN) {
+        f.header.push(Directive::Globl(global!(LABEL_MAIN)));
     }
 
     let entry_block = Block {
@@ -84,14 +84,14 @@ fn generate_prelude(f: &mut Function) -> Vec<Instr> {
         ));
     }
 
-    if f.name == id!(LABEL_MAIN) {
+    if f.name == global!(LABEL_MAIN) {
         // In main, we also have to initialize GC Stack/Heap
         prelude_instrs.extend([
             Instr::movq(Arg::Immediate(GC_STACK_SIZE), Arg::Reg(Register::rdi)),
             Instr::movq(Arg::Immediate(GC_HEAP_SIZE), Arg::Reg(Register::rsi)),
-            Instr::callq(Arg::Global(id!(GC_INITIALIZE)), 2),
+            Instr::callq(Arg::Global(global!(GC_INITIALIZE)), 2),
             Instr::movq(
-                Arg::Global(id!(GC_ROOTSTACK_BEGIN)),
+                Arg::Global(global!(GC_ROOTSTACK_BEGIN)),
                 Arg::Reg(Register::r15),
             ),
         ]);

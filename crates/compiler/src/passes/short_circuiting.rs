@@ -84,7 +84,7 @@ mod tests {
     use std::collections::VecDeque;
 
     use indexmap::IndexMap;
-    use crate::utils::t_id;
+    use crate::utils::t_global;
     use test_support::{
         compiler::{
             constants::LABEL_MAIN,
@@ -169,7 +169,7 @@ mod tests {
     #[test]
     fn test_simple() {
         let tc = TestCase {
-            ast: Program { functions: vec![Function { name: t_id!(LABEL_MAIN),
+            ast: Program { functions: vec![Function { name: t_global!(LABEL_MAIN),
                 body: vec![Statement::Expr(Expr::BinaryOp(
                     Box::new(Expr::Constant(Value::Bool(true))),
                     BinaryOperator::And,
@@ -189,7 +189,7 @@ mod tests {
     #[test]
     fn test_nested() {
         let tc = TestCase {
-            ast: Program { functions: vec![Function { name: t_id!(LABEL_MAIN),
+            ast: Program { functions: vec![Function { name: t_global!(LABEL_MAIN),
                 body: vec![Statement::Expr(Expr::BinaryOp(
                     Box::new(Expr::Constant(Value::Bool(true))),
                     BinaryOperator::And,
@@ -225,7 +225,7 @@ mod tests {
     #[test]
     fn test_comparisons_and() {
         let tc = TestCase {
-            ast: Program { functions: vec![Function { name: t_id!(LABEL_MAIN),
+            ast: Program { functions: vec![Function { name: t_global!(LABEL_MAIN),
                 body: vec![
                     Statement::Expr(Expr::BinaryOp(
                         Box::new(Expr::Constant(Value::Bool(true))),
@@ -233,7 +233,7 @@ mod tests {
                         Box::new(Expr::BinaryOp(
                             Box::new(Expr::Constant(Value::I64(1))),
                             BinaryOperator::Equals,
-                            Box::new(Expr::Call(Box::new(Expr::GlobalSymbol(t_id!("read_int"))), vec![])),
+                            Box::new(Expr::Call(Box::new(Expr::GlobalSymbol(t_global!("read_int"))), vec![])),
                         )),
                     )),
                     Statement::Expr(Expr::BinaryOp(
@@ -242,7 +242,7 @@ mod tests {
                         Box::new(Expr::BinaryOp(
                             Box::new(Expr::Constant(Value::I64(1))),
                             BinaryOperator::Equals,
-                            Box::new(Expr::Call(Box::new(Expr::GlobalSymbol(t_id!("read_int"))), vec![])),
+                            Box::new(Expr::Call(Box::new(Expr::GlobalSymbol(t_global!("read_int"))), vec![])),
                         )),
                     )),
                 ],
@@ -260,7 +260,7 @@ mod tests {
     #[test]
     fn test_comparisons_or() {
         let tc = TestCase {
-            ast: Program { functions: vec![Function { name: t_id!(LABEL_MAIN),
+            ast: Program { functions: vec![Function { name: t_global!(LABEL_MAIN),
                 body: vec![
                     Statement::Expr(Expr::BinaryOp(
                         Box::new(Expr::Constant(Value::Bool(true))),
@@ -268,7 +268,7 @@ mod tests {
                         Box::new(Expr::BinaryOp(
                             Box::new(Expr::Constant(Value::I64(1))),
                             BinaryOperator::Equals,
-                            Box::new(Expr::Call(Box::new(Expr::GlobalSymbol(t_id!("read_int"))), vec![])),
+                            Box::new(Expr::Call(Box::new(Expr::GlobalSymbol(t_global!("read_int"))), vec![])),
                         )),
                     )),
                     Statement::Expr(Expr::BinaryOp(
@@ -277,7 +277,7 @@ mod tests {
                         Box::new(Expr::BinaryOp(
                             Box::new(Expr::Constant(Value::I64(1))),
                             BinaryOperator::Equals,
-                            Box::new(Expr::Call(Box::new(Expr::GlobalSymbol(t_id!("read_int"))), vec![])),
+                            Box::new(Expr::Call(Box::new(Expr::GlobalSymbol(t_global!("read_int"))), vec![])),
                         )),
                     )),
                 ],

@@ -1,6 +1,7 @@
 use crate::{
     constants::*,
-    syntax_trees::{ast, shared::*}, utils::id,
+    syntax_trees::{ast, shared::*},
+    utils::global,
 };
 
 impl ast::Expr {
@@ -45,7 +46,7 @@ impl ast::Expr {
                         "Wrong number of args passed to `{func:?}`"
                     );
 
-                    if **func == Id(id!(FN_LEN)) {
+                    if **func == Id(global!(FN_LEN)) {
                         // This one is actually special, it can be
                         // called with any tuple type and there's no way
                         // to express that in ValueType right now so
@@ -166,45 +167,12 @@ impl ast::Statement {
 
 impl ast::Program {
     pub fn type_check(&mut self) {
-        let special_functions = [
-            (
-                id!(FN_READ_INT),
-                ValueType::FunctionType(vec![], Box::new(ValueType::IntType)),
-            ),
-            (
-                id!(FN_PRINT_INT),
-                ValueType::FunctionType(vec![ValueType::IntType], Box::new(ValueType::NoneType)),
-            ),
-            (
-                id!(FN_LEN),
-                ValueType::FunctionType(vec![ValueType::TupleType(vec![])], Box::new(ValueType::IntType)),
-            ),
-            (
-                id!(GC_COLLECT),
-                ValueType::FunctionType(vec![ValueType::IntType], Box::new(ValueType::NoneType)),
-            ),
-        ];
-
-        let function_types = {
-            let mut map = TypeEnv::new();
-            for f in &self.functions {
-                map.insert(
-                    f.name.clone(),
-                    ValueType::FunctionType(
-                        f.params.iter().map(|(_, t)| t.clone()).collect(),
-                        Box::new(f.return_type.clone()),
-                    ),
-                );
-            }
-            
-            map.extend(special_functions);
-            map
-        };
+        self.populate_globals();
 
         for f in self.functions.iter_mut() {
             // Start with dict of other global-scope functions so they
             // can be recognized
-            f.types = function_types.clone();
+            f.types = self.function_types.clone();
 
             // Allow type-checker to recognize params
             for (n, t) in f.params.iter() {
@@ -215,7 +183,45 @@ impl ast::Program {
                 s.type_check(&mut f.types);
             }
         }
+    }
 
-        self.function_types = function_types;
+    pub fn populate_globals(&mut self) {
+        let special_functions = [
+            (
+                global!(FN_READ_INT),
+                ValueType::FunctionType(vec![], Box::new(ValueType::IntType)),
+            ),
+            (
+                global!(FN_PRINT_INT),
+                ValueType::FunctionType(vec![ValueType::IntType], Box::new(ValueType::NoneType)),
+            ),
+            (
+                global!(FN_LEN),
+                ValueType::FunctionType(
+                    vec![ValueType::TupleType(vec![])],
+                    Box::new(ValueType::IntType),
+                ),
+            ),
+            (
+                global!(GC_COLLECT),
+                ValueType::FunctionType(vec![ValueType::IntType], Box::new(ValueType::NoneType)),
+            ),
+        ];
+
+        self.function_types = {
+            let mut map = TypeEnv::new();
+            for f in &self.functions {
+                map.insert(
+                    f.name.clone(),
+                    ValueType::FunctionType(
+                        f.params.iter().map(|(_, t)| t.clone()).collect(),
+                        Box::new(f.return_type.clone()),
+                    ),
+                );
+            }
+
+            map.extend(special_functions);
+            map
+        };
     }
 }

@@ -25,8 +25,8 @@ mod inject_allocations;
 pub use inject_allocations::InjectAllocations;
 mod tupleize_excess_args;
 pub use tupleize_excess_args::TupleizeExcessArgs;
-mod globalize_functions;
-pub use globalize_functions::GlobalizeFunctions;
+mod globalize_identifiers;
+pub use globalize_identifiers::GlobalizeIdentifiers;
 
 #[enum_dispatch]
 pub trait ASTPass {
@@ -41,7 +41,7 @@ pub enum ASTtoAST {
     RemoveComplexOperands,
     InjectAllocations,
     TupleizeExcessArgs,
-    GlobalizeFunctions,
+    GlobalizeIdentifiers,
 }
 
 #[enum_dispatch]

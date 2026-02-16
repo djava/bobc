@@ -27,11 +27,17 @@ mod tests {
     use indexmap::IndexMap;
     use std::collections::HashMap;
 
-    use crate::utils::t_id;
+    use crate::utils::{t_global, t_local};
     use test_support::compiler::{
         constants::LABEL_MAIN,
         syntax_trees::{ast, parser::*, shared::*},
     };
+
+    macro_rules! main_local {
+        ($name:expr) => {
+            t_local!($name, t_global!(LABEL_MAIN))
+        }
+    }
 
     use parse_tree as pt;
 
@@ -80,7 +86,7 @@ mod tests {
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Constant(Value::I64(1)))],
                     types: HashMap::new(),
                     params: IndexMap::new(),
@@ -118,7 +124,7 @@ mod tests {
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Constant(Value::I64(-100)))],
                     types: HashMap::new(),
                     params: IndexMap::new(),
@@ -162,7 +168,7 @@ mod tests {
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::BinaryOp(
                         Box::new(ast::Expr::Constant(Value::I64(1))),
                         BinaryOperator::Add,
@@ -218,7 +224,7 @@ mod tests {
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::BinaryOp(
                         Box::new(ast::Expr::Constant(Value::I64(1))),
                         BinaryOperator::Add,
@@ -270,7 +276,7 @@ mod tests {
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::UnaryOp(
                         UnaryOperator::Minus,
                         Box::new(ast::Expr::Constant(Value::I64(1))),
@@ -322,9 +328,9 @@ mod tests {
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Assign(
-                        AssignDest::Id(t_id!("x")),
+                        AssignDest::Id(main_local!("x")),
                         ast::Expr::BinaryOp(
                             Box::new(ast::Expr::Constant(Value::I64(1000))),
                             BinaryOperator::Add,
@@ -372,10 +378,10 @@ mod tests {
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Call(
-                        Box::new(ast::Expr::Id(t_id!("print"))),
-                        vec![ast::Expr::Id(t_id!("x"))],
+                        Box::new(ast::Expr::Id(main_local!("print"))),
+                        vec![ast::Expr::Id(main_local!("x"))],
                     ))],
                     types: HashMap::new(),
                     params: IndexMap::new(),
@@ -414,9 +420,9 @@ mod tests {
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Call(
-                        Box::new(ast::Expr::Id(t_id!("oogabooga"))),
+                        Box::new(ast::Expr::Id(main_local!("oogabooga"))),
                         vec![],
                     ))],
                     types: HashMap::new(),
@@ -484,9 +490,9 @@ mod tests {
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Call(
-                        Box::new(ast::Expr::Id(t_id!("print"))),
+                        Box::new(ast::Expr::Id(main_local!("print"))),
                         vec![ast::Expr::BinaryOp(
                             Box::new(ast::Expr::BinaryOp(
                                 Box::new(ast::Expr::Constant(Value::I64(1))),
@@ -498,7 +504,7 @@ mod tests {
                                 )),
                             )),
                             BinaryOperator::Subtract,
-                            Box::new(ast::Expr::Call(Box::new(ast::Expr::Id(t_id!("read_int"))), vec![])),
+                            Box::new(ast::Expr::Call(Box::new(ast::Expr::Id(main_local!("read_int"))), vec![])),
                         )],
                     ))],
                     types: HashMap::new(),
@@ -556,12 +562,12 @@ mod tests {
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Call(
-                        Box::new(ast::Expr::Id(t_id!("print"))),
+                        Box::new(ast::Expr::Id(main_local!("print"))),
                         vec![
-                            ast::Expr::Id(t_id!("x")),
-                            ast::Expr::Id(t_id!("y")),
+                            ast::Expr::Id(main_local!("x")),
+                            ast::Expr::Id(main_local!("y")),
                             ast::Expr::Constant(Value::I64(1)),
                             ast::Expr::Constant(Value::I64(3)),
                             ast::Expr::Constant(Value::I64(1000)),
@@ -610,10 +616,10 @@ mod tests {
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Assign(
-                        AssignDest::Id(t_id!("x")),
-                        ast::Expr::Call(Box::new(ast::Expr::Id(t_id!("Fffoo"))), vec![ast::Expr::Constant(Value::I64(1))]),
+                        AssignDest::Id(main_local!("x")),
+                        ast::Expr::Call(Box::new(ast::Expr::Id(main_local!("Fffoo"))), vec![ast::Expr::Constant(Value::I64(1))]),
                     )],
                     types: HashMap::new(),
                     params: IndexMap::new(),
@@ -680,19 +686,19 @@ whatevn = x
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![
                         ast::Statement::Assign(
-                            AssignDest::Id(t_id!("x")),
+                            AssignDest::Id(main_local!("x")),
                             ast::Expr::Constant(Value::I64(100)),
                         ),
                         ast::Statement::Expr(ast::Expr::Call(
-                            Box::new(ast::Expr::Id(t_id!("print"))),
+                            Box::new(ast::Expr::Id(main_local!("print"))),
                             vec![ast::Expr::Constant(Value::I64(1000))],
                         )),
                         ast::Statement::Assign(
-                            AssignDest::Id(t_id!("whatevn")),
-                            ast::Expr::Id(t_id!("x")),
+                            AssignDest::Id(main_local!("whatevn")),
+                            ast::Expr::Id(main_local!("x")),
                         ),
                         ast::Statement::Expr(ast::Expr::BinaryOp(
                             Box::new(ast::Expr::Constant(Value::I64(101010))),
@@ -746,7 +752,7 @@ whatevn = x
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::BinaryOp(
                         Box::new(ast::Expr::Constant(Value::I64(2))),
                         BinaryOperator::Add,
@@ -796,7 +802,7 @@ whatevn = x
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::BinaryOp(
                         Box::new(ast::Expr::Constant(Value::Bool(false))),
                         BinaryOperator::And,
@@ -883,9 +889,9 @@ whatevn = x
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Call(
-                        Box::new(ast::Expr::Id(t_id!("truefoofalse"))),
+                        Box::new(ast::Expr::Id(main_local!("truefoofalse"))),
                         vec![ast::Expr::BinaryOp(
                             Box::new(ast::Expr::BinaryOp(
                                 Box::new(ast::Expr::UnaryOp(
@@ -954,7 +960,7 @@ whatevn = x
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Ternary(
                         Box::new(ast::Expr::Constant(Value::Bool(true))),
                         Box::new(ast::Expr::Constant(Value::I64(1))),
@@ -1012,7 +1018,7 @@ whatevn = x
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Ternary(
                         Box::new(ast::Expr::Constant(Value::Bool(true))),
                         Box::new(ast::Expr::Constant(Value::I64(1))),
@@ -1072,7 +1078,7 @@ whatevn = x
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Ternary(
                         Box::new(ast::Expr::BinaryOp(
                             Box::new(ast::Expr::Constant(Value::I64(1))),
@@ -1124,7 +1130,7 @@ whatevn = x
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Conditional(
                         ast::Expr::Constant(Value::Bool(true)),
                         vec![ast::Statement::Expr(ast::Expr::Constant(Value::I64(1)))],
@@ -1185,7 +1191,7 @@ else { 2 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Conditional(
                         ast::Expr::Constant(Value::Bool(true)),
                         vec![ast::Statement::Expr(ast::Expr::Constant(Value::I64(1)))],
@@ -1258,7 +1264,7 @@ else { 3 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Conditional(
                         ast::Expr::Constant(Value::Bool(true)),
                         vec![ast::Statement::Expr(ast::Expr::Constant(Value::I64(1)))],
@@ -1322,16 +1328,16 @@ else { 3 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Conditional(
                         ast::Expr::BinaryOp(
-                            Box::new(ast::Expr::Id(t_id!("x"))),
+                            Box::new(ast::Expr::Id(main_local!("x"))),
                             BinaryOperator::Equals,
                             Box::new(ast::Expr::Constant(Value::I64(1))),
                         ),
                         vec![ast::Statement::Expr(ast::Expr::Call(
-                            Box::new(ast::Expr::Id(t_id!("print"))),
-                            vec![ast::Expr::Id(t_id!("x"))],
+                            Box::new(ast::Expr::Id(main_local!("print"))),
+                            vec![ast::Expr::Id(main_local!("x"))],
                         ))],
                         vec![],
                     )],
@@ -1396,17 +1402,17 @@ if true { x = 1
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Conditional(
                         ast::Expr::Constant(Value::Bool(true)),
                         vec![
                             ast::Statement::Assign(
-                                AssignDest::Id(t_id!("x")),
+                                AssignDest::Id(main_local!("x")),
                                 ast::Expr::Constant(Value::I64(1)),
                             ),
                             ast::Statement::Expr(ast::Expr::Call(
-                                Box::new(ast::Expr::Id(t_id!("print"))),
-                                vec![ast::Expr::Id(t_id!("x"))],
+                                Box::new(ast::Expr::Id(main_local!("print"))),
+                                vec![ast::Expr::Id(main_local!("x"))],
                             )),
                         ],
                         vec![],
@@ -1449,7 +1455,7 @@ if true { x = 1
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Conditional(
                         ast::Expr::Constant(Value::Bool(true)),
                         vec![],
@@ -1570,31 +1576,31 @@ else { 5 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Conditional(
                         ast::Expr::BinaryOp(
-                            Box::new(ast::Expr::Id(t_id!("x"))),
+                            Box::new(ast::Expr::Id(main_local!("x"))),
                             BinaryOperator::Equals,
                             Box::new(ast::Expr::Constant(Value::I64(1))),
                         ),
                         vec![ast::Statement::Expr(ast::Expr::Constant(Value::I64(1)))],
                         vec![ast::Statement::Conditional(
                             ast::Expr::BinaryOp(
-                                Box::new(ast::Expr::Id(t_id!("x"))),
+                                Box::new(ast::Expr::Id(main_local!("x"))),
                                 BinaryOperator::Equals,
                                 Box::new(ast::Expr::Constant(Value::I64(2))),
                             ),
                             vec![ast::Statement::Expr(ast::Expr::Constant(Value::I64(2)))],
                             vec![ast::Statement::Conditional(
                                 ast::Expr::BinaryOp(
-                                    Box::new(ast::Expr::Id(t_id!("x"))),
+                                    Box::new(ast::Expr::Id(main_local!("x"))),
                                     BinaryOperator::Equals,
                                     Box::new(ast::Expr::Constant(Value::I64(3))),
                                 ),
                                 vec![ast::Statement::Expr(ast::Expr::Constant(Value::I64(3)))],
                                 vec![ast::Statement::Conditional(
                                     ast::Expr::BinaryOp(
-                                        Box::new(ast::Expr::Id(t_id!("x"))),
+                                        Box::new(ast::Expr::Id(main_local!("x"))),
                                         BinaryOperator::Equals,
                                         Box::new(ast::Expr::Constant(Value::I64(4))),
                                     ),
@@ -1654,7 +1660,7 @@ else { 5 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Conditional(
                         ast::Expr::Constant(Value::Bool(true)),
                         vec![ast::Statement::Expr(ast::Expr::Constant(Value::I64(1)))],
@@ -1719,7 +1725,7 @@ else { 5 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Conditional(
                         ast::Expr::Constant(Value::Bool(true)),
                         vec![ast::Statement::Expr(ast::Expr::Constant(Value::I64(1)))],
@@ -1771,7 +1777,7 @@ else { 5 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Tuple(vec![
                         ast::Expr::Constant(Value::I64(1)),
                         ast::Expr::Constant(Value::I64(2)),
@@ -1816,7 +1822,7 @@ else { 5 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Tuple(vec![
                         ast::Expr::Constant(Value::I64(42)),
                     ]))],
@@ -1878,16 +1884,16 @@ else { 5 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Assign(
-                        AssignDest::Id(t_id!("x")),
+                        AssignDest::Id(main_local!("x")),
                         ast::Expr::Tuple(vec![
                             ast::Expr::BinaryOp(
                                 Box::new(ast::Expr::Constant(Value::I64(1))),
                                 BinaryOperator::Add,
                                 Box::new(ast::Expr::Constant(Value::I64(2))),
                             ),
-                            ast::Expr::Call(Box::new(ast::Expr::Id(t_id!("read_int"))), vec![]),
+                            ast::Expr::Call(Box::new(ast::Expr::Id(main_local!("read_int"))), vec![]),
                             ast::Expr::Constant(Value::Bool(true)),
                         ]),
                     )],
@@ -1941,7 +1947,7 @@ else { 5 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Tuple(vec![
                         ast::Expr::Tuple(vec![
                             ast::Expr::Constant(Value::I64(1)),
@@ -1995,7 +2001,7 @@ else { 5 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Tuple(vec![
                         ast::Expr::Constant(Value::I64(1)),
                         ast::Expr::Constant(Value::I64(2)),
@@ -2046,9 +2052,9 @@ else { 5 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Call(
-                        Box::new(ast::Expr::Id(t_id!("print"))),
+                        Box::new(ast::Expr::Id(main_local!("print"))),
                         vec![ast::Expr::Tuple(vec![
                             ast::Expr::Constant(Value::I64(1)),
                             ast::Expr::Constant(Value::I64(2)),
@@ -2097,9 +2103,9 @@ else { 5 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Subscript(
-                        Box::new(ast::Expr::Id(t_id!("x"))),
+                        Box::new(ast::Expr::Id(main_local!("x"))),
                         0,
                     ))],
                     types: HashMap::new(),
@@ -2143,9 +2149,9 @@ else { 5 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Subscript(
-                        Box::new(ast::Expr::Id(t_id!("myvar"))),
+                        Box::new(ast::Expr::Id(main_local!("myvar"))),
                         2,
                     ))],
                     types: HashMap::new(),
@@ -2189,9 +2195,9 @@ else { 5 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Subscript(
-                        Box::new(ast::Expr::Id(t_id!("x"))),
+                        Box::new(ast::Expr::Id(main_local!("x"))),
                         -1,
                     ))],
                     types: HashMap::new(),
@@ -2239,9 +2245,9 @@ else { 5 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Subscript(
-                        Box::new(ast::Expr::Subscript(Box::new(ast::Expr::Id(t_id!("x"))), 0)),
+                        Box::new(ast::Expr::Subscript(Box::new(ast::Expr::Id(main_local!("x"))), 0)),
                         1,
                     ))],
                     types: HashMap::new(),
@@ -2288,9 +2294,9 @@ else { 5 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Subscript(
-                        Box::new(ast::Expr::Call(Box::new(ast::Expr::Id(t_id!("foo"))), vec![])),
+                        Box::new(ast::Expr::Call(Box::new(ast::Expr::Id(main_local!("foo"))), vec![])),
                         0,
                     ))],
                     types: HashMap::new(),
@@ -2338,9 +2344,9 @@ else { 5 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::BinaryOp(
-                        Box::new(ast::Expr::Subscript(Box::new(ast::Expr::Id(t_id!("x"))), 0)),
+                        Box::new(ast::Expr::Subscript(Box::new(ast::Expr::Id(main_local!("x"))), 0)),
                         BinaryOperator::Add,
                         Box::new(ast::Expr::Constant(Value::I64(1))),
                     ))],
@@ -2395,7 +2401,7 @@ else { 5 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Subscript(
                         Box::new(ast::Expr::Tuple(vec![
                             ast::Expr::Constant(Value::I64(1)),
@@ -2450,9 +2456,9 @@ else { 5 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Ternary(
-                        Box::new(ast::Expr::Subscript(Box::new(ast::Expr::Id(t_id!("x"))), 0)),
+                        Box::new(ast::Expr::Subscript(Box::new(ast::Expr::Id(main_local!("x"))), 0)),
                         Box::new(ast::Expr::Constant(Value::I64(1))),
                         Box::new(ast::Expr::Constant(Value::I64(2))),
                     ))],
@@ -2498,9 +2504,9 @@ else { 5 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Assign(
-                        AssignDest::Subscript(t_id!("x"), 0),
+                        AssignDest::Subscript(main_local!("x"), 0),
                         ast::Expr::Constant(Value::I64(1)),
                     )],
                     types: HashMap::new(),
@@ -2543,9 +2549,9 @@ else { 5 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Assign(
-                        AssignDest::Subscript(t_id!("tup"), 3),
+                        AssignDest::Subscript(main_local!("tup"), 3),
                         ast::Expr::Constant(Value::I64(42)),
                     )],
                     types: HashMap::new(),
@@ -2599,11 +2605,11 @@ else { 5 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Assign(
-                        AssignDest::Subscript(t_id!("x"), 1),
+                        AssignDest::Subscript(main_local!("x"), 1),
                         ast::Expr::BinaryOp(
-                            Box::new(ast::Expr::Id(t_id!("y"))),
+                            Box::new(ast::Expr::Id(main_local!("y"))),
                             BinaryOperator::Add,
                             Box::new(ast::Expr::Constant(Value::I64(1))),
                         ),
@@ -2657,9 +2663,9 @@ else { 5 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Assign(
-                        AssignDest::Subscript(t_id!("x"), 0),
+                        AssignDest::Subscript(main_local!("x"), 0),
                         ast::Expr::Tuple(vec![
                             ast::Expr::Constant(Value::I64(1)),
                             ast::Expr::Constant(Value::I64(2)),
@@ -2705,9 +2711,9 @@ else { 5 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Assign(
-                        AssignDest::Subscript(t_id!("x"), -1),
+                        AssignDest::Subscript(main_local!("x"), -1),
                         ast::Expr::Constant(Value::I64(99)),
                     )],
                     types: HashMap::new(),
@@ -2757,11 +2763,11 @@ else { 5 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Conditional(
                         ast::Expr::Constant(Value::Bool(true)),
                         vec![ast::Statement::Assign(
-                            AssignDest::Subscript(t_id!("x"), 0),
+                            AssignDest::Subscript(main_local!("x"), 0),
                             ast::Expr::Constant(Value::I64(1)),
                         )],
                         vec![],
@@ -2814,10 +2820,10 @@ else { 5 }
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Assign(
-                        AssignDest::Subscript(t_id!("x"), 0),
-                        ast::Expr::Subscript(Box::new(ast::Expr::Id(t_id!("y"))), 1),
+                        AssignDest::Subscript(main_local!("x"), 0),
+                        ast::Expr::Subscript(Box::new(ast::Expr::Id(main_local!("y"))), 1),
                     )],
                     types: HashMap::new(),
                     params: IndexMap::new(),
@@ -2879,17 +2885,17 @@ x[0] = 42
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![
                         ast::Statement::Assign(
-                            AssignDest::Id(t_id!("x")),
+                            AssignDest::Id(main_local!("x")),
                             ast::Expr::Tuple(vec![
                                 ast::Expr::Constant(Value::I64(1)),
                                 ast::Expr::Constant(Value::I64(2)),
                             ]),
                         ),
                         ast::Statement::Assign(
-                            AssignDest::Subscript(t_id!("x"), 0),
+                            AssignDest::Subscript(main_local!("x"), 0),
                             ast::Expr::Constant(Value::I64(42)),
                         ),
                     ],
@@ -2907,6 +2913,8 @@ x[0] = 42
 
     #[test]
     fn test_fn_with_params() {
+        let add_id = t_global!("add");
+
         let tc = ParserTestCase {
             input_str: r"fn add(x: int, y: int) -> int { x + y }",
             expected_tokens: vec![
@@ -2934,16 +2942,16 @@ x[0] = 42
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!("add"),
+                    name: add_id.clone(),
                     body: vec![ast::Statement::Expr(ast::Expr::BinaryOp(
-                        Box::new(ast::Expr::Id(t_id!("x"))),
+                        Box::new(ast::Expr::Id(t_local!("x", add_id.clone()))),
                         BinaryOperator::Add,
-                        Box::new(ast::Expr::Id(t_id!("y"))),
+                        Box::new(ast::Expr::Id(t_local!("y", add_id.clone()))),
                     ))],
                     types: HashMap::new(),
                     params: IndexMap::from([
-                        (t_id!("x"), ValueType::IntType),
-                        (t_id!("y"), ValueType::IntType),
+                        (t_local!("x", add_id.clone()), ValueType::IntType),
+                        (t_local!("y", add_id.clone()), ValueType::IntType),
                     ]),
                     return_type: ValueType::IntType,
                 }],
@@ -2955,6 +2963,8 @@ x[0] = 42
 
     #[test]
     fn test_fn_no_return_type() {
+        let greet_id = t_global!("greet");
+
         let tc = ParserTestCase {
             input_str: r"fn greet() { print_int(42) }",
             expected_tokens: vec![
@@ -2976,9 +2986,9 @@ x[0] = 42
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!("greet"),
+                    name: t_global!("greet"),
                     body: vec![ast::Statement::Expr(ast::Expr::Call(
-                        Box::new(ast::Expr::Id(t_id!("print_int"))),
+                        Box::new(ast::Expr::Id(t_local!("print_int", greet_id.clone()))),
                         vec![ast::Expr::Constant(Value::I64(42))],
                     ))],
                     types: HashMap::new(),
@@ -2993,6 +3003,7 @@ x[0] = 42
 
     #[test]
     fn test_fn_single_param() {
+        let neg_id = t_global!("negate");
         let tc = ParserTestCase {
             input_str: r"fn negate(x: int) -> int { 0 - x }",
             expected_tokens: vec![
@@ -3019,14 +3030,14 @@ x[0] = 42
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!("negate"),
+                    name: neg_id.clone(),
                     body: vec![ast::Statement::Expr(ast::Expr::BinaryOp(
                         Box::new(ast::Expr::Constant(Value::I64(0))),
                         BinaryOperator::Subtract,
-                        Box::new(ast::Expr::Id(t_id!("x"))),
+                        Box::new(ast::Expr::Id(t_local!("x", neg_id.clone()))),
                     ))],
                     types: HashMap::new(),
-                    params: IndexMap::from([(t_id!("x"), ValueType::IntType)]),
+                    params: IndexMap::from([(t_local!("x", neg_id.clone()), ValueType::IntType)]),
                     return_type: ValueType::IntType,
                 }],
                 function_types: HashMap::new(),
@@ -3037,6 +3048,7 @@ x[0] = 42
 
     #[test]
     fn test_fn_bool_param() {
+        let check_id = t_global!("check");
         let tc = ParserTestCase {
             input_str: r"fn check(flag: bool) -> int { 1 }",
             expected_tokens: vec![
@@ -3057,10 +3069,10 @@ x[0] = 42
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!("check"),
+                    name: check_id.clone(),
                     body: vec![ast::Statement::Expr(ast::Expr::Constant(Value::I64(1)))],
                     types: HashMap::new(),
-                    params: IndexMap::from([(t_id!("flag"), ValueType::BoolType)]),
+                    params: IndexMap::from([(t_local!("flag", check_id.clone()), ValueType::BoolType)]),
                     return_type: ValueType::IntType,
                 }],
                 function_types: HashMap::new(),
@@ -3071,6 +3083,7 @@ x[0] = 42
 
     #[test]
     fn test_fn_return_with_value() {
+        let id_id = t_global!("id");
         let tc = ParserTestCase {
             input_str: r"fn id(x: int) -> int { return x }",
             expected_tokens: vec![
@@ -3093,10 +3106,10 @@ x[0] = 42
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!("id"),
-                    body: vec![ast::Statement::Return(ast::Expr::Id(t_id!("x")))],
+                    name: id_id.clone(),
+                    body: vec![ast::Statement::Return(ast::Expr::Id(t_local!("x", id_id.clone())))],
                     types: HashMap::new(),
-                    params: IndexMap::from([(t_id!("x"), ValueType::IntType)]),
+                    params: IndexMap::from([(t_local!("x", id_id.clone()), ValueType::IntType)]),
                     return_type: ValueType::IntType,
                 }],
                 function_types: HashMap::new(),
@@ -3107,6 +3120,7 @@ x[0] = 42
 
     #[test]
     fn test_fn_return_no_value() {
+        let dn_id = t_global!("donothing");
         let tc = ParserTestCase {
             input_str: r"fn donothing() { return }",
             expected_tokens: vec![
@@ -3126,7 +3140,7 @@ x[0] = 42
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!("donothing"),
+                    name: dn_id.clone(),
                     body: vec![ast::Statement::Return(ast::Expr::Constant(Value::None))],
                     types: HashMap::new(),
                     params: IndexMap::new(),
@@ -3140,6 +3154,7 @@ x[0] = 42
 
     #[test]
     fn test_multiple_functions() {
+        let d_id = t_global!("double");
         let tc = ParserTestCase {
             input_str: "fn double(x: int) -> int { x + x }\nfn main() -> int { print_int(double(21)) }",
             expected_tokens: vec![
@@ -3187,22 +3202,22 @@ x[0] = 42
             expected_ast: ast::Program {
                 functions: vec![
                     ast::Function {
-                        name: t_id!("double"),
+                        name: d_id.clone(),
                         body: vec![ast::Statement::Expr(ast::Expr::BinaryOp(
-                            Box::new(ast::Expr::Id(t_id!("x"))),
+                            Box::new(ast::Expr::Id(t_local!("x", d_id.clone()))),
                             BinaryOperator::Add,
-                            Box::new(ast::Expr::Id(t_id!("x"))),
+                            Box::new(ast::Expr::Id(t_local!("x", d_id.clone()))),
                         ))],
                         types: HashMap::new(),
-                        params: IndexMap::from([(t_id!("x"), ValueType::IntType)]),
+                        params: IndexMap::from([(t_local!("x", d_id.clone()), ValueType::IntType)]),
                         return_type: ValueType::IntType,
                     },
                     ast::Function {
-                        name: t_id!("main"),
+                        name: t_global!("main"),
                         body: vec![ast::Statement::Expr(ast::Expr::Call(
-                            Box::new(ast::Expr::Id(t_id!("print_int"))),
+                            Box::new(ast::Expr::Id(main_local!("print_int"))),
                             vec![ast::Expr::Call(
-                                Box::new(ast::Expr::Id(t_id!("double"))),
+                                Box::new(ast::Expr::Id(main_local!("double"))),
                                 vec![ast::Expr::Constant(Value::I64(21))],
                             )],
                         ))],
@@ -3219,6 +3234,7 @@ x[0] = 42
 
     #[test]
     fn test_fn_return_bool_type() {
+        let iz_id = t_global!("is_zero");
         let tc = ParserTestCase {
             input_str: r"fn is_zero(x: int) -> bool { x == 0 }",
             expected_tokens: vec![
@@ -3245,14 +3261,14 @@ x[0] = 42
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!("is_zero"),
+                    name: iz_id.clone(),
                     body: vec![ast::Statement::Expr(ast::Expr::BinaryOp(
-                        Box::new(ast::Expr::Id(t_id!("x"))),
+                        Box::new(ast::Expr::Id(t_local!("x", iz_id.clone()))),
                         BinaryOperator::Equals,
                         Box::new(ast::Expr::Constant(Value::I64(0))),
                     ))],
                     types: HashMap::new(),
-                    params: IndexMap::from([(t_id!("x"), ValueType::IntType)]),
+                    params: IndexMap::from([(t_local!("x", iz_id.clone()), ValueType::IntType)]),
                     return_type: ValueType::BoolType,
                 }],
                 function_types: HashMap::new(),
@@ -3291,17 +3307,17 @@ x[0] = 42
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!("main"),
+                    name: t_global!("main"),
                     body: vec![
                         ast::Statement::Assign(
-                            AssignDest::Id(t_id!("x")),
+                            AssignDest::Id(main_local!("x")),
                             ast::Expr::Constant(Value::I64(10)),
                         ),
                         ast::Statement::Expr(ast::Expr::Call(
-                            Box::new(ast::Expr::Id(t_id!("print_int"))),
-                            vec![ast::Expr::Id(t_id!("x"))],
+                            Box::new(ast::Expr::Id(main_local!("print_int"))),
+                            vec![ast::Expr::Id(main_local!("x"))],
                         )),
-                        ast::Statement::Return(ast::Expr::Id(t_id!("x"))),
+                        ast::Statement::Return(ast::Expr::Id(main_local!("x"))),
                     ],
                     types: HashMap::new(),
                     params: IndexMap::new(),
@@ -3315,6 +3331,7 @@ x[0] = 42
 
     #[test]
     fn test_fn_return_expr() {
+        let sq_id = t_global!("square");
         let tc = ParserTestCase {
             input_str: r"fn square(n: int) -> int { return n * n }",
             expected_tokens: vec![
@@ -3342,14 +3359,14 @@ x[0] = 42
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!("square"),
+                    name: sq_id.clone(),
                     body: vec![ast::Statement::Return(ast::Expr::BinaryOp(
-                        Box::new(ast::Expr::Id(t_id!("n"))),
+                        Box::new(ast::Expr::Id(t_local!("n", sq_id.clone()))),
                         BinaryOperator::Multiply,
-                        Box::new(ast::Expr::Id(t_id!("n"))),
+                        Box::new(ast::Expr::Id(t_local!("n", sq_id.clone()))),
                     ))],
                     types: HashMap::new(),
-                    params: IndexMap::from([(t_id!("n"), ValueType::IntType)]),
+                    params: IndexMap::from([(t_local!("n", sq_id.clone()), ValueType::IntType)]),
                     return_type: ValueType::IntType,
                 }],
                 function_types: HashMap::new(),
@@ -3360,6 +3377,7 @@ x[0] = 42
 
     #[test]
     fn test_fn_tuple_param() {
+        let first_id = t_global!("first");
         let tc = ParserTestCase {
             input_str: r"fn first(p: tuple<int, int>) -> int { p[0] }",
             expected_tokens: vec![
@@ -3386,14 +3404,14 @@ x[0] = 42
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!("first"),
+                    name: first_id.clone(),
                     body: vec![ast::Statement::Expr(ast::Expr::Subscript(
-                        Box::new(ast::Expr::Id(t_id!("p"))),
+                        Box::new(ast::Expr::Id(t_local!("p", first_id.clone()))),
                         0,
                     ))],
                     types: HashMap::new(),
                     params: IndexMap::from([(
-                        t_id!("p"),
+                        t_local!("p", first_id.clone()),
                         ValueType::TupleType(vec![ValueType::IntType, ValueType::IntType]),
                     )]),
                     return_type: ValueType::IntType,
@@ -3406,6 +3424,7 @@ x[0] = 42
 
     #[test]
     fn test_fn_tuple_return_type() {
+        let pair_id = t_global!("pair");
         let tc = ParserTestCase {
             input_str: r"fn pair(a: int, b: int) -> tuple<int, int> { (a, b) }",
             expected_tokens: vec![
@@ -3433,15 +3452,15 @@ x[0] = 42
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!("pair"),
+                    name: pair_id.clone(),
                     body: vec![ast::Statement::Expr(ast::Expr::Tuple(vec![
-                        ast::Expr::Id(t_id!("a")),
-                        ast::Expr::Id(t_id!("b")),
+                        ast::Expr::Id(t_local!("a", pair_id.clone())),
+                        ast::Expr::Id(t_local!("b", pair_id.clone())),
                     ]))],
                     types: HashMap::new(),
                     params: IndexMap::from([
-                        (t_id!("a"), ValueType::IntType),
-                        (t_id!("b"), ValueType::IntType),
+                        (t_local!("a", pair_id.clone()), ValueType::IntType),
+                        (t_local!("b", pair_id.clone()), ValueType::IntType),
                     ]),
                     return_type: ValueType::TupleType(vec![ValueType::IntType, ValueType::IntType]),
                 }],
@@ -3453,6 +3472,7 @@ x[0] = 42
 
     #[test]
     fn test_fn_mixed_tuple_and_primitive_params() {
+        let mix_id = t_global!("mix");
         let tc = ParserTestCase {
             input_str: r"fn mix(x: int, p: tuple<int, bool>) -> bool { true }",
             expected_tokens: vec![
@@ -3478,12 +3498,12 @@ x[0] = 42
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!("mix"),
+                    name: mix_id.clone(),
                     body: vec![ast::Statement::Expr(ast::Expr::Constant(Value::Bool(true)))],
                     types: HashMap::new(),
                     params: IndexMap::from([
-                        (t_id!("x"), ValueType::IntType),
-                        (t_id!("p"), ValueType::TupleType(vec![ValueType::IntType, ValueType::BoolType])),
+                        (t_local!("x", mix_id.clone()), ValueType::IntType),
+                        (t_local!("p", mix_id.clone()), ValueType::TupleType(vec![ValueType::IntType, ValueType::BoolType])),
                     ]),
                     return_type: ValueType::BoolType,
                 }],
@@ -3495,6 +3515,7 @@ x[0] = 42
 
     #[test]
     fn test_fn_nested_tuple_param() {
+        let deep_id = t_global!("deep");
         let tc = ParserTestCase {
             input_str: r"fn deep(t: tuple<tuple<int, int>, bool>) -> int { t[0][0] }",
             expected_tokens: vec![
@@ -3532,17 +3553,17 @@ x[0] = 42
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!("deep"),
+                    name: deep_id.clone(),
                     body: vec![ast::Statement::Expr(ast::Expr::Subscript(
                         Box::new(ast::Expr::Subscript(
-                            Box::new(ast::Expr::Id(t_id!("t"))),
+                            Box::new(ast::Expr::Id(t_local!("t", deep_id.clone()))),
                             0,
                         )),
                         0,
                     ))],
                     types: HashMap::new(),
                     params: IndexMap::from([(
-                        t_id!("t"),
+                        t_local!("t", deep_id.clone()),
                         ValueType::TupleType(vec![
                             ValueType::TupleType(vec![ValueType::IntType, ValueType::IntType]),
                             ValueType::BoolType,
@@ -3604,16 +3625,16 @@ x[0] = 42
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Call(
                         Box::new(ast::Expr::Ternary(
                             Box::new(ast::Expr::BinaryOp(
-                                Box::new(ast::Expr::Id(t_id!("i"))),
+                                Box::new(ast::Expr::Id(main_local!("i"))),
                                 BinaryOperator::Equals,
                                 Box::new(ast::Expr::Constant(Value::I64(0))),
                             )),
-                            Box::new(ast::Expr::Id(t_id!("a"))),
-                            Box::new(ast::Expr::Id(t_id!("b"))),
+                            Box::new(ast::Expr::Id(main_local!("a"))),
+                            Box::new(ast::Expr::Id(main_local!("b"))),
                         )),
                         vec![ast::Expr::Constant(Value::I64(10))],
                     ))],
@@ -3662,9 +3683,9 @@ x[0] = 42
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!(LABEL_MAIN),
+                    name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Call(
-                        Box::new(ast::Expr::Subscript(Box::new(ast::Expr::Id(t_id!("t"))), 0)),
+                        Box::new(ast::Expr::Subscript(Box::new(ast::Expr::Id(main_local!("t"))), 0)),
                         vec![ast::Expr::Constant(Value::I64(10))],
                     ))],
                     types: HashMap::new(),
@@ -3679,6 +3700,7 @@ x[0] = 42
 
     #[test]
     fn test_fn_nested_tuple_return_type() {
+        let wrap_id = t_global!("wrap");
         let tc = ParserTestCase {
             input_str: r"fn wrap(x: int) -> tuple<tuple<int, int>, bool> { ((x, x), true) }",
             expected_tokens: vec![
@@ -3715,16 +3737,16 @@ x[0] = 42
             },
             expected_ast: ast::Program {
                 functions: vec![ast::Function {
-                    name: t_id!("wrap"),
+                    name: wrap_id.clone(),
                     body: vec![ast::Statement::Expr(ast::Expr::Tuple(vec![
                         ast::Expr::Tuple(vec![
-                            ast::Expr::Id(t_id!("x")),
-                            ast::Expr::Id(t_id!("x")),
+                            ast::Expr::Id(t_local!("x", wrap_id.clone())),
+                            ast::Expr::Id(t_local!("x", wrap_id.clone())),
                         ]),
                         ast::Expr::Constant(Value::Bool(true)),
                     ]))],
                     types: HashMap::new(),
-                    params: IndexMap::from([(t_id!("x"), ValueType::IntType)]),
+                    params: IndexMap::from([(t_local!("x", wrap_id.clone()), ValueType::IntType)]),
                     return_type: ValueType::TupleType(vec![
                         ValueType::TupleType(vec![ValueType::IntType, ValueType::IntType]),
                         ValueType::BoolType,

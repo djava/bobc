@@ -1,16 +1,16 @@
 use super::parse_tree as pt;
 use crate::syntax_trees::{ast, shared::*};
-use crate::utils::id;
+use crate::utils::{local, global};
 use std::iter::Peekable;
 use std::vec::IntoIter;
 
-fn to_ast_expr(pte: pt::Expr) -> ast::Expr {
+fn to_ast_expr(pte: pt::Expr, func_id: &Identifier) -> ast::Expr {
     match pte {
         pt::Expr::Int(val) => ast::Expr::Constant(Value::I64(val)),
         pt::Expr::Bool(val) => ast::Expr::Constant(Value::Bool(val)),
-        pt::Expr::Id(name) => ast::Expr::Id(id!(name)),
+        pt::Expr::Id(name) => ast::Expr::Id(local!(name, func_id.clone())),
         pt::Expr::Unary(op, val) => {
-            let ast_val = Box::new(to_ast_expr(*val));
+            let ast_val = Box::new(to_ast_expr(*val, func_id));
             let ast_op = match op {
                 pt::Operator::Minus => UnaryOperator::Minus,
                 pt::Operator::Plus => UnaryOperator::Plus,
@@ -20,10 +20,10 @@ fn to_ast_expr(pte: pt::Expr) -> ast::Expr {
 
             ast::Expr::UnaryOp(ast_op, ast_val)
         }
-        pt::Expr::Parens(sub_expr) => to_ast_expr(*sub_expr),
+        pt::Expr::Parens(sub_expr) => to_ast_expr(*sub_expr, func_id),
         pt::Expr::Binary(left, op, right) => {
-            let ast_left = Box::new(to_ast_expr(*left));
-            let ast_right = Box::new(to_ast_expr(*right));
+            let ast_left = Box::new(to_ast_expr(*left, func_id));
+            let ast_right = Box::new(to_ast_expr(*right, func_id));
             let ast_op = match op {
                 pt::Operator::Minus => BinaryOperator::Subtract,
                 pt::Operator::Plus => BinaryOperator::Add,
@@ -45,38 +45,39 @@ fn to_ast_expr(pte: pt::Expr) -> ast::Expr {
             ast::Expr::BinaryOp(ast_left, ast_op, ast_right)
         }
         pt::Expr::Call(func, args) => {
-            let ast_args = args.into_iter().map(to_ast_expr).collect();
+            let ast_args = args.into_iter().map(|a| to_ast_expr(a, func_id)).collect();
 
-            ast::Expr::Call(Box::new(to_ast_expr(*func)), ast_args)
+            ast::Expr::Call(Box::new(to_ast_expr(*func, func_id)), ast_args)
         }
         pt::Expr::Ternary(cond, pos, neg) => {
-            let ast_cond = to_ast_expr(*cond);
-            let ast_pos = to_ast_expr(*pos);
-            let ast_neg = to_ast_expr(*neg);
+            let ast_cond = to_ast_expr(*cond, func_id);
+            let ast_pos = to_ast_expr(*pos, func_id);
+            let ast_neg = to_ast_expr(*neg, func_id);
 
             ast::Expr::Ternary(Box::new(ast_cond), Box::new(ast_pos), Box::new(ast_neg))
         }
         pt::Expr::Tuple(elems) => {
-            let ast_elems = elems.into_iter().map(to_ast_expr).collect();
+            let ast_elems = elems.into_iter().map(|e| to_ast_expr(e, func_id)).collect();
 
             ast::Expr::Tuple(ast_elems)
         }
-        pt::Expr::Subscript(expr, idx) => ast::Expr::Subscript(Box::new(to_ast_expr(*expr)), idx),
+        pt::Expr::Subscript(expr, idx) => ast::Expr::Subscript(Box::new(to_ast_expr(*expr, func_id)), idx),
     }
 }
 
 pub fn to_ast_statement<'a>(
     iter: &mut Peekable<IntoIter<pt::Statement<'a>>>,
+    func_name: &Identifier,
 ) -> Option<ast::Statement> {
     match iter.next() {
-        Some(pt::Statement::Expr(pte)) => Some(ast::Statement::Expr(to_ast_expr(pte))),
+        Some(pt::Statement::Expr(pte)) => Some(ast::Statement::Expr(to_ast_expr(pte, func_name))),
         Some(pt::Statement::Assign(name, pte)) => Some(ast::Statement::Assign(
-            AssignDest::Id(id!(name)),
-            to_ast_expr(pte),
+            AssignDest::Id(local!(name, func_name.clone())),
+            to_ast_expr(pte, func_name),
         )),
         Some(pt::Statement::SubscriptAssign(name, idx, pte)) => Some(ast::Statement::Assign(
-            AssignDest::Subscript(id!(name), idx),
-            to_ast_expr(pte),
+            AssignDest::Subscript(local!(name, func_name.clone()), idx),
+            to_ast_expr(pte, func_name),
         )),
         Some(pt::Statement::If(cond, body)) => {
             // There could be many stacked else-if statements that we
@@ -92,11 +93,11 @@ pub fn to_ast_statement<'a>(
                     iter.next_if(|v| matches!(v, pt::Statement::ElseIf(_, _)))
                 {
                     stacked_ast_neg_bodies
-                        .push((Some(to_ast_expr(sub_cond)), to_ast_statements(sub_body)));
+                        .push((Some(to_ast_expr(sub_cond, func_name)), to_ast_statements(sub_body, func_name)));
                 } else if let Some(pt::Statement::Else(sub_body)) =
                     iter.next_if(|v| matches!(v, pt::Statement::Else(_)))
                 {
-                    stacked_ast_neg_bodies.push((None, to_ast_statements(sub_body)));
+                    stacked_ast_neg_bodies.push((None, to_ast_statements(sub_body, func_name)));
                     // The `else` must be the end of the chain, so let's
                     // just break here
                     break;
@@ -120,8 +121,8 @@ pub fn to_ast_statement<'a>(
                 }
             }
 
-            let ast_cond = to_ast_expr(cond);
-            let ast_body = to_ast_statements(body);
+            let ast_cond = to_ast_expr(cond, func_name);
+            let ast_body = to_ast_statements(body, func_name);
 
             Some(ast::Statement::Conditional(
                 ast_cond,
@@ -137,12 +138,12 @@ pub fn to_ast_statement<'a>(
             );
         }
         Some(pt::Statement::While(cond, body)) => Some(ast::Statement::WhileLoop(
-            to_ast_expr(cond),
-            to_ast_statements(body),
+            to_ast_expr(cond, func_name),
+            to_ast_statements(body, func_name),
         )),
         Some(pt::Statement::Return(opt_val)) => {
             let val = opt_val
-                .map(to_ast_expr)
+                .map(|v| to_ast_expr(v, func_name))
                 .unwrap_or(ast::Expr::Constant(Value::None));
 
             Some(ast::Statement::Return(val))
@@ -151,11 +152,11 @@ pub fn to_ast_statement<'a>(
     }
 }
 
-fn to_ast_statements(body: Vec<pt::Statement>) -> Vec<ast::Statement> {
+fn to_ast_statements(body: Vec<pt::Statement>, func_name: &Identifier) -> Vec<ast::Statement> {
     let mut pt_iter = body.into_iter().peekable();
 
     let mut statements = vec![];
-    while let Some(s) = to_ast_statement(&mut pt_iter) {
+    while let Some(s) = to_ast_statement(&mut pt_iter, func_name) {
         statements.push(s);
     }
 
@@ -163,15 +164,17 @@ fn to_ast_statements(body: Vec<pt::Statement>) -> Vec<ast::Statement> {
 }
 
 pub fn to_ast_function(ptf: pt::Function) -> ast::Function {
+    let func_id = global!(ptf.name);
     let ast_params = ptf
         .params
         .into_iter()
-        .map(|(name, typ)| (id!(name), typ))
+        .map(|(name, typ)| (local!(name, func_id.clone()), typ))
         .collect();
 
+    let ast_body = to_ast_statements(ptf.statements, &func_id);
     ast::Function {
-        name: id!(ptf.name),
-        body: to_ast_statements(ptf.statements),
+        name: func_id,
+        body: ast_body,
         params: ast_params,
         return_type: ptf.return_type,
         types: TypeEnv::new(),

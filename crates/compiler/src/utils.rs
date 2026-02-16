@@ -35,21 +35,37 @@ pub fn x86_block_adj_graph<'a>(blocks: &'a [Block]) -> DiGraph<&'a Block, ()> {
     block_graph
 }
 
-macro_rules! id {
+macro_rules! global {
     ($name:expr) => {
-        crate::syntax_trees::shared::Identifier::Named(std::sync::Arc::from($name))
+        crate::syntax_trees::shared::Identifier::Global(std::sync::Arc::from($name))
     };
 }
-pub(crate) use id;
+pub(crate) use global;
+
+macro_rules! local {
+    ($name:expr, $func:expr) => {
+        crate::syntax_trees::shared::Identifier::Local(std::sync::Arc::from($name), Box::new($func))
+    };
+}
+pub(crate) use local;
 
 #[cfg(test)]
-macro_rules! t_id {
+macro_rules! t_global {
     ($name:expr) => {
-        test_support::compiler::syntax_trees::shared::Identifier::Named(std::sync::Arc::from($name))
+        test_support::compiler::syntax_trees::shared::Identifier::Global(std::sync::Arc::from($name))
     };
 }
 #[cfg(test)]
-pub(crate) use t_id;
+pub(crate) use t_global;
+
+#[cfg(test)]
+macro_rules! t_local {
+    ($name:expr, $func:expr) => {
+        test_support::compiler::syntax_trees::shared::Identifier::Local(std::sync::Arc::from($name), Box::new($func))
+    };
+}
+#[cfg(test)]
+pub(crate) use t_local;
 
 #[allow(unused_macros)]
 macro_rules! label {

@@ -5,7 +5,8 @@ use std::sync::{Arc, Mutex};
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Identifier {
     Ephemeral(u64),
-    Named(Arc<str>),
+    Global(Arc<str>),
+    Local(Arc<str>, Box<Identifier>)
 }
 
 impl Identifier {
@@ -25,7 +26,7 @@ impl Identifier {
 
 impl From<&str> for Identifier {
     fn from(value: &str) -> Self {
-        Identifier::Named(Arc::from(value))
+        Identifier::Global(Arc::from(value))
     }
 }
 

@@ -55,6 +55,7 @@ impl Pipeline {
     pub fn make_opt() -> Self {
         Self {
             ast_passes: vec![
+                ASTtoAST::from(GlobalizeIdentifiers),
                 ASTtoAST::from(TypeCheck),
                 ASTtoAST::from(ShortCircuiting),
                 ASTtoAST::from(PartialEval),
@@ -62,7 +63,6 @@ impl Pipeline {
                 ASTtoAST::from(RemoveComplexOperands),
                 ASTtoAST::from(TypeCheck),
                 ASTtoAST::from(InjectAllocations),
-                ASTtoAST::from(GlobalizeFunctions),
             ],
             ast_to_ir_pass: ASTtoIR::from(TranslateASTtoIR),
             ir_passes: vec![],
@@ -79,13 +79,13 @@ impl Pipeline {
     pub fn make_no_opt() -> Self {
         Self {
             ast_passes: vec![
+                ASTtoAST::from(GlobalizeIdentifiers),
                 ASTtoAST::from(TypeCheck),
                 ASTtoAST::from(ShortCircuiting),
                 ASTtoAST::from(TupleizeExcessArgs),
                 ASTtoAST::from(RemoveComplexOperands),
                 ASTtoAST::from(TypeCheck),
                 ASTtoAST::from(InjectAllocations),
-                ASTtoAST::from(GlobalizeFunctions),
             ],
             ast_to_ir_pass: ASTtoIR::from(TranslateASTtoIR),
             ir_passes: vec![],
