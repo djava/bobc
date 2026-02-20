@@ -57,6 +57,7 @@ impl Pipeline {
             ast_passes: vec![
                 ASTtoAST::from(GlobalizeIdentifiers),
                 ASTtoAST::from(TypeCheck),
+                ASTtoAST::from(ClosurizeFunctions),
                 ASTtoAST::from(ClosurizeLambdas),
                 ASTtoAST::from(TypeCheck),
                 ASTtoAST::from(ShortCircuiting),
@@ -83,6 +84,7 @@ impl Pipeline {
             ast_passes: vec![
                 ASTtoAST::from(GlobalizeIdentifiers),
                 ASTtoAST::from(TypeCheck),
+                ASTtoAST::from(ClosurizeFunctions),
                 ASTtoAST::from(ClosurizeLambdas),
                 ASTtoAST::from(TypeCheck),
                 ASTtoAST::from(ShortCircuiting),

@@ -1,4 +1,6 @@
-use crate::syntax_trees::x86::Register;
+use std::sync::LazyLock;
+
+use crate::{syntax_trees::{Identifier, x86::Register}, utils::global};
 
 // Block labels
 pub const LABEL_USER_ENTRY: &str = "user_entry";
@@ -7,18 +9,31 @@ pub const LABEL_MAIN: &str = "main";
 pub const LABEL_EXIT: &str = "exit";
 
 // GC runtime symbols
-pub const GC_COLLECT: &str = "__gc_collect";
 pub const GC_FREE_PTR: &str = "__gc_free_ptr";
 pub const GC_FROMSPACE_BEGIN: &str = "__gc_fromspace_begin";
 pub const GC_FROMSPACE_END: &str = "__gc_fromspace_end";
 pub const GC_ROOTSTACK_BEGIN: &str = "__gc_rootstack_begin";
 pub const GC_ROOTSTACK_END: &str = "__gc_rootstack_end";
-pub const GC_INITIALIZE: &str = "__gc_initialize";
 
 // Built-in function names
 pub const FN_PRINT_INT: &str = "print_int";
 pub const FN_READ_INT: &str = "read_int";
 pub const FN_LEN: &str = "len";
+pub const FN_GC_COLLECT: &str = "__gc_collect";
+pub const FN_GC_INITIALIZE: &str = "__gc_initialize";
+
+pub static EXTERNED_FUNCTIONS: LazyLock<Vec<Identifier>> = LazyLock::new(|| {
+    [
+        FN_PRINT_INT,
+        FN_READ_INT,
+        FN_LEN,
+        FN_GC_COLLECT,
+        FN_GC_INITIALIZE,
+    ]
+    .into_iter()
+    .map(|f| global!(f))
+    .collect()
+});
 
 // Size of a machine word in bytes (= size of i64)
 pub const WORD_SIZE: i64 = 8;

@@ -81,8 +81,7 @@ fn extract_lambdas_from_expr(e: &mut Expr, extracted: &mut Vec<Function>) {
         Expr::Subscript(expr, _) => {
             extract_lambdas_from_expr(expr, extracted);
         }
-        Expr::Constant(_) | Expr::Allocate(_, _) | Expr::GlobalSymbol(_) | Expr::Id(_) => {}
-        Expr::Closure(..) => panic!("Closures should not exist yet"),
+        Expr::Constant(_) | Expr::Allocate(_, _) | Expr::GlobalSymbol(_) | Expr::Id(_) | Expr::Closure(..) => {}
     }
 }
 

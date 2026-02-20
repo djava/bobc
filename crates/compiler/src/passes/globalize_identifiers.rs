@@ -8,8 +8,6 @@ pub struct GlobalizeIdentifiers;
 impl ASTPass for GlobalizeIdentifiers {
     fn run_pass(self, mut m: Program) -> Program {
         m.populate_globals();
-        dbg!(&m.function_types);
-
         let global_types = &m.function_types;
         for f in m.functions.iter_mut() {
             for s in f.body.iter_mut() {

@@ -42,8 +42,8 @@ impl ast::Expr {
                 .clone(),
             Constant(v) => ValueType::from(&*v),
             Call(func, args) => {
-                let func_type = func.type_check(env, &None);
-                if let ValueType::FunctionType(arg_types, ret_type) = func_type {
+                let callee_type = func.type_check(env, &None);
+                if let ValueType::FunctionType(arg_types, ret_type) = callee_type {
                     assert_eq!(
                         args.len(),
                         arg_types.len(),
@@ -73,6 +73,26 @@ impl ast::Expr {
                     }
 
                     *ret_type
+                } else if let ValueType::TupleType(closure_elems) = callee_type {
+                    if let Some(ValueType::FunctionType(arg_types, ret_type)) = closure_elems.get(0)
+                    {
+                        assert_eq!(
+                            args.len() + 1,
+                            arg_types.len(),
+                            "Wrong number of args passed to `{func:?}`"
+                        );
+                        for (a, typ) in args.iter_mut().zip(arg_types.iter().skip(1)) {
+                            assert_eq!(
+                                a.type_check(env, &Some(typ.clone())),
+                                *typ,
+                                "Passed wrong arg type `{a:?}` to function `{func:?}`"
+                            )
+                        }
+
+                        (**ret_type).clone()
+                    } else {
+                        panic!("Tried to call non-closure-tuple: {func:?}")
+                    }
                 } else {
                     panic!("Tried to call non-function: {func:?}");
                 }
@@ -129,19 +149,26 @@ impl ast::Expr {
                 }
             }
             Closure(id, _, _) => {
-                let func_type = env.get(id).expect(format!("Unknown closure id: {id:?}").as_str());
+                let func_type = env
+                    .get(id)
+                    .expect(format!("Unknown closure id: {id:?}").as_str());
 
                 if let ValueType::FunctionType(param_types, _) = func_type {
                     if let Some(ValueType::TupleType(capture_types)) = param_types.get(0) {
                         let capture_types = capture_types.iter().cloned();
-                        ValueType::TupleType([func_type.clone()].into_iter().chain(capture_types).collect())
+                        ValueType::TupleType(
+                            [func_type.clone()]
+                                .into_iter()
+                                .chain(capture_types)
+                                .collect(),
+                        )
                     } else {
                         panic!("Closure function didn't have captures as first arg")
                     }
                 } else {
                     panic!("func_type is non-function type??");
                 }
-            } 
+            }
         };
 
         // Exclude closures from type hint checks because they have been
@@ -171,7 +198,9 @@ impl ast::Statement {
                     } else {
                         panic!("Indeterminate typed assign-expression with no type hint");
                     }
-                } else if let Some(type_hint) = opt_type_hint && !matches!(e, ast::Expr::Closure(..)) {
+                } else if let Some(type_hint) = opt_type_hint
+                    && !matches!(e, ast::Expr::Closure(..))
+                {
                     // Exclude closures from type-hint checks because
                     // their types change during the closurize_lambdas
                     // pass but the type hint type doesnt change
@@ -271,7 +300,7 @@ impl ast::Program {
                 ),
             ),
             (
-                global!(GC_COLLECT),
+                global!(FN_GC_COLLECT),
                 ValueType::FunctionType(vec![ValueType::IntType], Box::new(ValueType::NoneType)),
             ),
         ];

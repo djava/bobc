@@ -422,7 +422,7 @@ fn locs_written(i: &Instr) -> Vec<Location> {
             // Consider r15 to be written by a call to __gc_collect()
             // because it might do the GC copy and change the gc stack ptr
             if let Arg::Global(Identifier::Global(name)) = func_id
-                && &**name == GC_COLLECT
+                && &**name == FN_GC_COLLECT
             {
                 locations.push(Location::Reg(Register::r15));
             }

@@ -523,12 +523,12 @@ const SPECIAL_FUNCTIONS: [(
     usize,
     fn(Vec<ir::Atom>, Option<AssignDest>) -> Vec<Instr>,
 ); 2] = [
-    (GC_COLLECT, 1, |mut args, _dest| {
+    (FN_GC_COLLECT, 1, |mut args, _dest| {
         assert!(_dest.is_none());
         vec![
             Instr::movq(x86::Arg::Reg(Register::r15), x86::Arg::Reg(Register::rdi)),
             Instr::movq(atom_to_arg(args.remove(0)), x86::Arg::Reg(Register::rsi)),
-            Instr::callq(x86::Arg::Global(global!(GC_COLLECT)), 2),
+            Instr::callq(x86::Arg::Global(global!(FN_GC_COLLECT)), 2),
         ]
     }),
     (FN_LEN, 1, |mut args, dest_opt| {
