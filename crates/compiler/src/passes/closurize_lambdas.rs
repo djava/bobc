@@ -424,6 +424,22 @@ mod tests {
             *extracted_closure.params.get_index(0).unwrap().1,
             ValueType::TupleType(vec![ValueType::IntType])
         );
+
+        // The captured `foo` Id in the body must be rewritten to captures_id[0]
+        let captures_id = extracted_closure.params.get_index(0).unwrap().0.clone();
+        assert_eq!(
+            extracted_closure.body[0],
+            Statement::Expr(Expr::Subscript(Box::new(Expr::Id(captures_id)), 0))
+        );
+
+        // function_types reflects the new signature with the captures-tuple param
+        assert_eq!(
+            program.function_types[&t_global!("__1")],
+            ValueType::FunctionType(
+                vec![ValueType::TupleType(vec![ValueType::IntType])],
+                Box::new(ValueType::NoneType),
+            )
+        );
     }
 
     #[test]
@@ -468,6 +484,16 @@ mod tests {
         assert_eq!(
             *lam.params.get_index(0).unwrap().1,
             ValueType::TupleType(vec![])
+        );
+        // Body has nothing to rewrite — the constant is unchanged
+        assert_eq!(lam.body[0], Statement::Return(Expr::Constant(Value::I64(42))));
+        // Signature in function_types has the (empty) captures-tuple param
+        assert_eq!(
+            program.function_types[&t_global!("__no_cap")],
+            ValueType::FunctionType(
+                vec![ValueType::TupleType(vec![])],
+                Box::new(ValueType::IntType),
+            )
         );
     }
 
@@ -524,6 +550,7 @@ mod tests {
 
         program = TypeCheck.run_pass(program);
         program = ClosurizeLambdas.run_pass(program);
+        program = TypeCheck.run_pass(program);
 
         let lam = program
             .functions
@@ -534,6 +561,31 @@ mod tests {
         assert_eq!(
             *lam.params.get_index(0).unwrap().1,
             ValueType::TupleType(vec![ValueType::IntType, ValueType::BoolType]),
+        );
+
+        // foo → captures_id[0], bar → captures_id[1]
+        let captures_id = lam.params.get_index(0).unwrap().0.clone();
+        assert_eq!(
+            lam.body[0],
+            Statement::Expr(Expr::Subscript(
+                Box::new(Expr::Id(captures_id.clone())),
+                0
+            ))
+        );
+        assert_eq!(
+            lam.body[1],
+            Statement::Expr(Expr::Subscript(Box::new(Expr::Id(captures_id)), 1))
+        );
+
+        assert_eq!(
+            program.function_types[&t_global!("__multi_cap")],
+            ValueType::FunctionType(
+                vec![ValueType::TupleType(vec![
+                    ValueType::IntType,
+                    ValueType::BoolType
+                ])],
+                Box::new(ValueType::NoneType),
+            )
         );
     }
 
@@ -589,6 +641,25 @@ mod tests {
         assert_eq!(
             *lam.params.get_index(0).unwrap().1,
             ValueType::TupleType(vec![ValueType::IntType]),
+        );
+
+        // The captured `x` inside the BinaryOp becomes captures_id[0]
+        let captures_id = lam.params.get_index(0).unwrap().0.clone();
+        assert_eq!(
+            lam.body[0],
+            Statement::Return(Expr::BinaryOp(
+                Box::new(Expr::Subscript(Box::new(Expr::Id(captures_id)), 0)),
+                BinaryOperator::Add,
+                Box::new(Expr::Constant(Value::I64(1))),
+            ))
+        );
+
+        assert_eq!(
+            program.function_types[&t_global!("__arith_cap")],
+            ValueType::FunctionType(
+                vec![ValueType::TupleType(vec![ValueType::IntType])],
+                Box::new(ValueType::IntType),
+            )
         );
     }
 
@@ -646,6 +717,18 @@ mod tests {
             }
             other => panic!("Expected Closure expression, got: {other:?}"),
         }
+
+        // The extracted function's body must use captures_id[0] instead of Id("val")
+        let lam = program
+            .functions
+            .iter()
+            .find(|f| f.name == t_global!("__closure_repl"))
+            .unwrap();
+        let captures_id = lam.params.get_index(0).unwrap().0.clone();
+        assert_eq!(
+            lam.body[0],
+            Statement::Expr(Expr::Subscript(Box::new(Expr::Id(captures_id)), 0))
+        );
     }
 
     #[test]
@@ -719,6 +802,30 @@ mod tests {
                 *lam.params.get_index(0).unwrap().1,
                 ValueType::TupleType(vec![ValueType::IntType]),
             );
+            // Each lambda's body should reference n via captures_id[0]
+            let captures_id = lam.params.get_index(0).unwrap().0.clone();
+            assert_eq!(
+                lam.body[0],
+                Statement::Expr(Expr::Subscript(Box::new(Expr::Id(captures_id)), 0))
+            );
+        }
+
+        // Both Closures in main carry n as the sole captured id
+        let main_func = program
+            .functions
+            .iter()
+            .find(|f| f.name == t_global!(LABEL_MAIN))
+            .unwrap();
+        for (body_idx, expected_name) in [(1, t_global!("__lam_a")), (2, t_global!("__lam_b"))] {
+            match &main_func.body[body_idx] {
+                Statement::Assign(_, Expr::Closure(name, captured_ids, param_count), _) => {
+                    assert_eq!(*name, expected_name);
+                    assert_eq!(captured_ids.len(), 1);
+                    assert_eq!(captured_ids[0], main_local!("n"));
+                    assert_eq!(*param_count, 1);
+                }
+                other => panic!("Expected Closure, got: {other:?}"),
+            }
         }
     }
 
