@@ -364,7 +364,7 @@ mod tests {
     use indexmap::IndexMap;
     use test_support::compiler::{
         constants::LABEL_MAIN,
-        passes::{ASTPass, TypeCheck, ClosurizeLambdas},
+        passes::{ASTPass, ClosurizeLambdas, TypeCheck},
         syntax_trees::{ast::*, shared::*},
     };
 
@@ -413,9 +413,425 @@ mod tests {
         program = TypeCheck.run_pass(program);
         program = ClosurizeLambdas.run_pass(program);
         program = TypeCheck.run_pass(program);
-        
-        let extracted_closure = &program.functions.iter().find(|f| f.name == t_global!("__1")).unwrap();
+
+        let extracted_closure = &program
+            .functions
+            .iter()
+            .find(|f| f.name == t_global!("__1"))
+            .unwrap();
         assert_eq!(extracted_closure.params.len(), 1);
-        assert_eq!(*extracted_closure.params.get_index(0).unwrap().1, ValueType::TupleType(vec![ValueType::IntType]));
+        assert_eq!(
+            *extracted_closure.params.get_index(0).unwrap().1,
+            ValueType::TupleType(vec![ValueType::IntType])
+        );
+    }
+
+    #[test]
+    fn test_no_capture_lambda() {
+        // A lambda that doesn't reference any outer variables still
+        // receives an empty captures-tuple as its first parameter.
+        let mut program = Program {
+            functions: vec![Function {
+                name: t_global!(LABEL_MAIN),
+                body: vec![Statement::Assign(
+                    AssignDest::Id(main_local!("func")),
+                    Expr::Lambda(Function {
+                        name: t_global!("__no_cap"),
+                        body: vec![Statement::Return(Expr::Constant(Value::I64(42)))],
+                        types: TypeEnv::new(),
+                        params: IndexMap::new(),
+                        return_type: ValueType::IntType,
+                    }),
+                    Some(ValueType::FunctionType(
+                        vec![],
+                        Box::new(ValueType::IntType),
+                    )),
+                )],
+                types: TypeEnv::new(),
+                params: IndexMap::new(),
+                return_type: ValueType::IntType,
+            }],
+            function_types: TypeEnv::new(),
+        };
+
+        program = TypeCheck.run_pass(program);
+        program = ClosurizeLambdas.run_pass(program);
+        program = TypeCheck.run_pass(program);
+
+        assert_eq!(program.functions.len(), 2);
+        let lam = program
+            .functions
+            .iter()
+            .find(|f| f.name == t_global!("__no_cap"))
+            .unwrap();
+        assert_eq!(lam.params.len(), 1);
+        assert_eq!(
+            *lam.params.get_index(0).unwrap().1,
+            ValueType::TupleType(vec![])
+        );
+    }
+
+    #[test]
+    fn test_multiple_captures() {
+        // A lambda capturing two outer variables gets a captures-tuple
+        // containing both types, in the order they first appear in the body.
+        let mut program = Program {
+            functions: vec![Function {
+                name: t_global!(LABEL_MAIN),
+                body: vec![
+                    Statement::Assign(
+                        AssignDest::Id(main_local!("foo")),
+                        Expr::Constant(Value::I64(1)),
+                        None,
+                    ),
+                    Statement::Assign(
+                        AssignDest::Id(main_local!("bar")),
+                        Expr::Constant(Value::Bool(true)),
+                        None,
+                    ),
+                    Statement::Assign(
+                        AssignDest::Id(main_local!("func")),
+                        Expr::Lambda(Function {
+                            name: t_global!("__multi_cap"),
+                            body: vec![
+                                // foo referenced first → index 0 in captures tuple
+                                Statement::Expr(Expr::Id(t_local!(
+                                    "foo",
+                                    t_global!("__multi_cap")
+                                ))),
+                                // bar referenced second → index 1
+                                Statement::Expr(Expr::Id(t_local!(
+                                    "bar",
+                                    t_global!("__multi_cap")
+                                ))),
+                            ],
+                            types: TypeEnv::new(),
+                            params: IndexMap::new(),
+                            return_type: ValueType::NoneType,
+                        }),
+                        Some(ValueType::FunctionType(
+                            vec![],
+                            Box::new(ValueType::NoneType),
+                        )),
+                    ),
+                ],
+                types: TypeEnv::new(),
+                params: IndexMap::new(),
+                return_type: ValueType::IntType,
+            }],
+            function_types: TypeEnv::new(),
+        };
+
+        program = TypeCheck.run_pass(program);
+        program = ClosurizeLambdas.run_pass(program);
+
+        let lam = program
+            .functions
+            .iter()
+            .find(|f| f.name == t_global!("__multi_cap"))
+            .unwrap();
+        assert_eq!(lam.params.len(), 1);
+        assert_eq!(
+            *lam.params.get_index(0).unwrap().1,
+            ValueType::TupleType(vec![ValueType::IntType, ValueType::BoolType]),
+        );
+    }
+
+    #[test]
+    fn test_capture_in_arithmetic_expression() {
+        // A captured variable that appears inside a sub-expression
+        // (not at the top level of a statement) is still detected and rewritten.
+        let mut program = Program {
+            functions: vec![Function {
+                name: t_global!(LABEL_MAIN),
+                body: vec![
+                    Statement::Assign(
+                        AssignDest::Id(main_local!("x")),
+                        Expr::Constant(Value::I64(10)),
+                        None,
+                    ),
+                    Statement::Assign(
+                        AssignDest::Id(main_local!("func")),
+                        Expr::Lambda(Function {
+                            name: t_global!("__arith_cap"),
+                            body: vec![Statement::Return(Expr::BinaryOp(
+                                Box::new(Expr::Id(t_local!("x", t_global!("__arith_cap")))),
+                                BinaryOperator::Add,
+                                Box::new(Expr::Constant(Value::I64(1))),
+                            ))],
+                            types: TypeEnv::new(),
+                            params: IndexMap::new(),
+                            return_type: ValueType::IntType,
+                        }),
+                        Some(ValueType::FunctionType(
+                            vec![],
+                            Box::new(ValueType::IntType),
+                        )),
+                    ),
+                ],
+                types: TypeEnv::new(),
+                params: IndexMap::new(),
+                return_type: ValueType::IntType,
+            }],
+            function_types: TypeEnv::new(),
+        };
+
+        program = TypeCheck.run_pass(program);
+        program = ClosurizeLambdas.run_pass(program);
+        program = TypeCheck.run_pass(program);
+
+        let lam = program
+            .functions
+            .iter()
+            .find(|f| f.name == t_global!("__arith_cap"))
+            .unwrap();
+        assert_eq!(lam.params.len(), 1);
+        assert_eq!(
+            *lam.params.get_index(0).unwrap().1,
+            ValueType::TupleType(vec![ValueType::IntType]),
+        );
+    }
+
+    #[test]
+    fn test_closure_replaces_lambda() {
+        // The Expr::Lambda at the call site must be replaced with Expr::Closure
+        // carrying the function name and the list of captured parent-scoped ids.
+        let mut program = Program {
+            functions: vec![Function {
+                name: t_global!(LABEL_MAIN),
+                body: vec![
+                    Statement::Assign(
+                        AssignDest::Id(main_local!("val")),
+                        Expr::Constant(Value::I64(7)),
+                        None,
+                    ),
+                    Statement::Assign(
+                        AssignDest::Id(main_local!("func")),
+                        Expr::Lambda(Function {
+                            name: t_global!("__closure_repl"),
+                            body: vec![Statement::Expr(Expr::Id(t_local!(
+                                "val",
+                                t_global!("__closure_repl")
+                            )))],
+                            types: TypeEnv::new(),
+                            params: IndexMap::new(),
+                            return_type: ValueType::NoneType,
+                        }),
+                        Some(ValueType::FunctionType(
+                            vec![],
+                            Box::new(ValueType::NoneType),
+                        )),
+                    ),
+                ],
+                types: TypeEnv::new(),
+                params: IndexMap::new(),
+                return_type: ValueType::IntType,
+            }],
+            function_types: TypeEnv::new(),
+        };
+
+        program = TypeCheck.run_pass(program);
+        program = ClosurizeLambdas.run_pass(program);
+
+        assert_eq!(program.functions.len(), 2);
+
+        let main_func = &program.functions[0];
+        match &main_func.body[1] {
+            Statement::Assign(_, Expr::Closure(name, captured_ids, param_count), _) => {
+                assert_eq!(*name, t_global!("__closure_repl"));
+                assert_eq!(captured_ids.len(), 1);
+                assert_eq!(captured_ids[0], main_local!("val"));
+                // param_count = 1: only the injected captures-tuple param
+                assert_eq!(*param_count, 1);
+            }
+            other => panic!("Expected Closure expression, got: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_multiple_lambdas() {
+        // Two independent lambdas in the same function are each extracted
+        // as separate top-level functions.
+        let mut program = Program {
+            functions: vec![Function {
+                name: t_global!(LABEL_MAIN),
+                body: vec![
+                    Statement::Assign(
+                        AssignDest::Id(main_local!("n")),
+                        Expr::Constant(Value::I64(5)),
+                        None,
+                    ),
+                    Statement::Assign(
+                        AssignDest::Id(main_local!("f1")),
+                        Expr::Lambda(Function {
+                            name: t_global!("__lam_a"),
+                            body: vec![Statement::Expr(Expr::Id(t_local!(
+                                "n",
+                                t_global!("__lam_a")
+                            )))],
+                            types: TypeEnv::new(),
+                            params: IndexMap::new(),
+                            return_type: ValueType::NoneType,
+                        }),
+                        Some(ValueType::FunctionType(
+                            vec![],
+                            Box::new(ValueType::NoneType),
+                        )),
+                    ),
+                    Statement::Assign(
+                        AssignDest::Id(main_local!("f2")),
+                        Expr::Lambda(Function {
+                            name: t_global!("__lam_b"),
+                            body: vec![Statement::Expr(Expr::Id(t_local!(
+                                "n",
+                                t_global!("__lam_b")
+                            )))],
+                            types: TypeEnv::new(),
+                            params: IndexMap::new(),
+                            return_type: ValueType::NoneType,
+                        }),
+                        Some(ValueType::FunctionType(
+                            vec![],
+                            Box::new(ValueType::NoneType),
+                        )),
+                    ),
+                ],
+                types: TypeEnv::new(),
+                params: IndexMap::new(),
+                return_type: ValueType::IntType,
+            }],
+            function_types: TypeEnv::new(),
+        };
+
+        program = TypeCheck.run_pass(program);
+        program = ClosurizeLambdas.run_pass(program);
+        program = TypeCheck.run_pass(program);
+
+        assert_eq!(program.functions.len(), 3);
+        for lambda_name in [t_global!("__lam_a"), t_global!("__lam_b")] {
+            let lam = program
+                .functions
+                .iter()
+                .find(|f| f.name == lambda_name)
+                .unwrap();
+            assert_eq!(lam.params.len(), 1);
+            assert_eq!(
+                *lam.params.get_index(0).unwrap().1,
+                ValueType::TupleType(vec![ValueType::IntType]),
+            );
+        }
+    }
+
+    #[test]
+    fn test_lambda_in_conditional() {
+        // A lambda nested inside a conditional branch is still extracted.
+        let mut program = Program {
+            functions: vec![Function {
+                name: t_global!(LABEL_MAIN),
+                body: vec![
+                    Statement::Assign(
+                        AssignDest::Id(main_local!("x")),
+                        Expr::Constant(Value::I64(3)),
+                        None,
+                    ),
+                    Statement::Conditional(
+                        Expr::Constant(Value::Bool(true)),
+                        vec![Statement::Assign(
+                            AssignDest::Id(main_local!("f")),
+                            Expr::Lambda(Function {
+                                name: t_global!("__cond_lam"),
+                                body: vec![Statement::Expr(Expr::Id(t_local!(
+                                    "x",
+                                    t_global!("__cond_lam")
+                                )))],
+                                types: TypeEnv::new(),
+                                params: IndexMap::new(),
+                                return_type: ValueType::NoneType,
+                            }),
+                            Some(ValueType::FunctionType(
+                                vec![],
+                                Box::new(ValueType::NoneType),
+                            )),
+                        )],
+                        vec![],
+                    ),
+                ],
+                types: TypeEnv::new(),
+                params: IndexMap::new(),
+                return_type: ValueType::IntType,
+            }],
+            function_types: TypeEnv::new(),
+        };
+
+        program = TypeCheck.run_pass(program);
+        program = ClosurizeLambdas.run_pass(program);
+
+        assert_eq!(program.functions.len(), 2);
+        let lam = program
+            .functions
+            .iter()
+            .find(|f| f.name == t_global!("__cond_lam"))
+            .unwrap();
+        assert_eq!(lam.params.len(), 1);
+        assert_eq!(
+            *lam.params.get_index(0).unwrap().1,
+            ValueType::TupleType(vec![ValueType::IntType]),
+        );
+    }
+
+    #[test]
+    fn test_lambda_in_while_loop() {
+        // A lambda nested inside a while loop body is still extracted.
+        let mut program = Program {
+            functions: vec![Function {
+                name: t_global!(LABEL_MAIN),
+                body: vec![
+                    Statement::Assign(
+                        AssignDest::Id(main_local!("flag")),
+                        Expr::Constant(Value::Bool(false)),
+                        None,
+                    ),
+                    Statement::WhileLoop(
+                        Expr::Constant(Value::Bool(false)),
+                        vec![Statement::Assign(
+                            AssignDest::Id(main_local!("g")),
+                            Expr::Lambda(Function {
+                                name: t_global!("__while_lam"),
+                                body: vec![Statement::Expr(Expr::Id(t_local!(
+                                    "flag",
+                                    t_global!("__while_lam")
+                                )))],
+                                types: TypeEnv::new(),
+                                params: IndexMap::new(),
+                                return_type: ValueType::NoneType,
+                            }),
+                            Some(ValueType::FunctionType(
+                                vec![],
+                                Box::new(ValueType::NoneType),
+                            )),
+                        )],
+                    ),
+                ],
+                types: TypeEnv::new(),
+                params: IndexMap::new(),
+                return_type: ValueType::IntType,
+            }],
+            function_types: TypeEnv::new(),
+        };
+
+        program = TypeCheck.run_pass(program);
+        program = ClosurizeLambdas.run_pass(program);
+
+        assert_eq!(program.functions.len(), 2);
+        let lam = program
+            .functions
+            .iter()
+            .find(|f| f.name == t_global!("__while_lam"))
+            .unwrap();
+        assert_eq!(lam.params.len(), 1);
+        assert_eq!(
+            *lam.params.get_index(0).unwrap().1,
+            ValueType::TupleType(vec![ValueType::BoolType]),
+        );
     }
 }
