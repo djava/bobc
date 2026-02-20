@@ -148,7 +148,7 @@ impl ast::Expr {
                     panic!("No expected type for lambda");
                 }
             }
-            Closure(id, _, _) => {
+            Closure(id, _) => {
                 let func_type = env
                     .get(id)
                     .expect(format!("Unknown closure id: {id:?}").as_str());

@@ -106,10 +106,9 @@ fn convert_lambda_to_closure(e: &mut Expr) -> Function {
         replace_captures_with_tup_reference(func, &captures_id, &captured_ids);
 
         let func_name = func.name.clone();
-        let func_param_count = func.params.len();
         // Replace the Expr::Lambda with an Expr::Closure
         let lambda_expr =
-            std::mem::replace(e, Expr::Closure(func_name, captured_ids, func_param_count));
+            std::mem::replace(e, Expr::Closure(func_name, captured_ids));
 
         if let Expr::Lambda(func) = lambda_expr {
             func
@@ -707,12 +706,10 @@ mod tests {
 
         let main_func = &program.functions[0];
         match &main_func.body[1] {
-            Statement::Assign(_, Expr::Closure(name, captured_ids, param_count), _) => {
+            Statement::Assign(_, Expr::Closure(name, captured_ids), _) => {
                 assert_eq!(*name, t_global!("__closure_repl"));
                 assert_eq!(captured_ids.len(), 1);
                 assert_eq!(captured_ids[0], main_local!("val"));
-                // param_count = 1: only the injected captures-tuple param
-                assert_eq!(*param_count, 1);
             }
             other => panic!("Expected Closure expression, got: {other:?}"),
         }
@@ -817,11 +814,10 @@ mod tests {
             .unwrap();
         for (body_idx, expected_name) in [(1, t_global!("__lam_a")), (2, t_global!("__lam_b"))] {
             match &main_func.body[body_idx] {
-                Statement::Assign(_, Expr::Closure(name, captured_ids, param_count), _) => {
+                Statement::Assign(_, Expr::Closure(name, captured_ids), _) => {
                     assert_eq!(*name, expected_name);
                     assert_eq!(captured_ids.len(), 1);
                     assert_eq!(captured_ids[0], main_local!("n"));
-                    assert_eq!(*param_count, 1);
                 }
                 other => panic!("Expected Closure, got: {other:?}"),
             }

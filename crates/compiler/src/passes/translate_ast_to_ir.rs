@@ -182,7 +182,7 @@ fn generate_for_effect(
             ret
         }
         ast::Expr::Constant(_)
-        | ast::Expr::Closure(_, _, _)
+        | ast::Expr::Closure(_, _)
         | ast::Expr::BinaryOp(_, _, _)
         | ast::Expr::UnaryOp(_, _)
         | ast::Expr::Subscript(_, _)

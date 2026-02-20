@@ -16,7 +16,7 @@ pub enum Expr {
     Allocate(usize, ValueType),
     GlobalSymbol(Identifier),
     Lambda(Function),
-    Closure(Identifier, Vec<Identifier>, usize)
+    Closure(Identifier, Vec<Identifier>)
 }
 
 #[derive(Debug, Clone, PartialEq)]

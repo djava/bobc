@@ -61,9 +61,7 @@ fn closurize_func_references_for_expr(
     match e {
         Expr::Id(id) | Expr::GlobalSymbol(id)=> {
             if func_env.contains_key(id) && !EXTERNED_FUNCTIONS.contains(id) {
-                // TODO: Going to remove the arity arg from closures,
-                // just set it to 0 for now
-                *e = Expr::Closure(id.clone(), vec![], 0);
+                *e = Expr::Closure(id.clone(), vec![]);
             }
         }
         Expr::BinaryOp(l, _, r) => {
@@ -216,7 +214,7 @@ mod tests {
         let main_func = result.functions.iter().find(|f| f.name == t_global!(LABEL_MAIN)).unwrap();
         assert_eq!(
             main_func.body[0],
-            Statement::Expr(Expr::Closure(foo_name, vec![], 0))
+            Statement::Expr(Expr::Closure(foo_name, vec![]))
         );
     }
 
@@ -242,9 +240,8 @@ mod tests {
     }
 
     #[test]
-    fn test_global_symbol_not_converted() {
-        // Expr::GlobalSymbol is not converted even when the name is in function_types —
-        // only Expr::Id is subject to conversion.
+    fn test_global_symbol_converted() {
+        // Expr::GlobalSymbol whose identifier is in function_types is also converted to Closure.
         let foo_name = t_global!("foo");
         let mut function_types = TypeEnv::new();
         function_types.insert(foo_name.clone(), make_func_type(vec![], ValueType::IntType));
@@ -263,7 +260,7 @@ mod tests {
         let result = ClosurizeFunctions.run_pass(program);
         assert_eq!(
             result.functions[0].body[0],
-            Statement::Expr(Expr::GlobalSymbol(foo_name))
+            Statement::Expr(Expr::Closure(foo_name, vec![]))
         );
     }
 
@@ -295,7 +292,7 @@ mod tests {
                 // The callee (GlobalSymbol) is unchanged
                 assert_eq!(**callee, Expr::GlobalSymbol(t_global!("apply")));
                 // The argument (Id referencing a function) is converted
-                assert_eq!(args[0], Expr::Closure(foo_name, vec![], 0));
+                assert_eq!(args[0], Expr::Closure(foo_name, vec![]));
             }
             other => panic!("Expected Call, got: {other:?}"),
         }
@@ -328,7 +325,7 @@ mod tests {
             Statement::Conditional(_, pos_body, _) => {
                 assert_eq!(
                     pos_body[0],
-                    Statement::Expr(Expr::Closure(foo_name, vec![], 0))
+                    Statement::Expr(Expr::Closure(foo_name, vec![]))
                 );
             }
             other => panic!("Expected Conditional, got: {other:?}"),
@@ -361,7 +358,7 @@ mod tests {
             Statement::WhileLoop(_, loop_body) => {
                 assert_eq!(
                     loop_body[0],
-                    Statement::Expr(Expr::Closure(foo_name, vec![], 0))
+                    Statement::Expr(Expr::Closure(foo_name, vec![]))
                 );
             }
             other => panic!("Expected WhileLoop, got: {other:?}"),

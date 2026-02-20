@@ -111,7 +111,7 @@ fn interpret_expr(
         Subscript(_expr, _value) => todo!(),
         Allocate(_, _value_type) => todo!(),
         Lambda(_) => todo!(),
-        Closure(_, _, _) => todo!(),
+        Closure(_, _) => todo!(),
     }
 }
 
