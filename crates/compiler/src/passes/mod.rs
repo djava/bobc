@@ -31,6 +31,8 @@ mod closurize_lambdas;
 pub use closurize_lambdas::ClosurizeLambdas;
 mod closurize_functions;
 pub use closurize_functions::ClosurizeFunctions;
+mod declosurize_calls;
+pub use declosurize_calls::DeclosurizeCalls;
 
 #[enum_dispatch]
 pub trait ASTPass {
@@ -48,6 +50,7 @@ pub enum ASTtoAST {
     GlobalizeIdentifiers,
     ClosurizeLambdas,
     ClosurizeFunctions,
+    DeclosurizeCalls,
 }
 
 #[enum_dispatch]

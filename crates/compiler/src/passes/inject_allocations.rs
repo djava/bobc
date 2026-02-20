@@ -73,7 +73,7 @@ fn replace_tuples_in_expr(expr: &mut Expr, type_env: &mut TypeEnv) {
         Expr::Tuple(elems) => {
             // TODO: Passing None to e.type_check means that lambdas
             // cant be in tuples... Annoying but I'd have to refactor
-            // quite a bit to make that work
+            // quite a bit to make that work (edit: Not sure this is true)
             let tup_type = ValueType::TupleType(
                 elems
                     .iter_mut()
@@ -82,10 +82,22 @@ fn replace_tuples_in_expr(expr: &mut Expr, type_env: &mut TypeEnv) {
             );
             *expr = get_initialize_tuple_expr(elems, tup_type);
         }
+        Expr::Closure(id, captures) => {
+            let tup_type = ValueType::TupleType(
+                std::iter::once(type_env[id].clone())
+                    .chain(captures.iter().map(|c| type_env[c].clone()))
+                    .collect(),
+            );
+            let mut elems = std::iter::once(id)
+                .chain(captures)
+                .map(|i| Expr::Id(i.clone()))
+                .collect();
+            *expr = get_initialize_tuple_expr(&mut elems, tup_type);
+        }
         Expr::Subscript(expr, _) => {
             replace_tuples_in_expr(expr, type_env);
         }
-        Expr::Closure(..) | Expr::Constant(_) | Expr::Id(_) | Expr::Allocate(_, _) | Expr::GlobalSymbol(_) => {}
+        Expr::Constant(_) | Expr::Id(_) | Expr::Allocate(_, _) | Expr::GlobalSymbol(_) => {}
         Expr::Lambda(_) => panic!("Should've been removed already"),
     }
 }

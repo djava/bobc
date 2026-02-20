@@ -343,10 +343,23 @@ fn rco_expr(e: &Expr, needs_atomicity: bool) -> ExprTransformation {
                 ephemeral_assigns,
             }
         }
-        Expr::Constant(_)
-        | Expr::Id(_)
-        | Expr::Closure(..)
-        | Expr::GlobalSymbol(_) => ExprTransformation {
+
+        Expr::Closure(_, _) => {
+            if needs_atomicity {
+                let eph_id = Identifier::new_ephemeral();
+                ExprTransformation {
+                    new_expr: Expr::Id(eph_id.clone()),
+                    ephemeral_assigns: vec![(eph_id, e.clone())],
+                }
+            } else {
+                ExprTransformation {
+                    new_expr: e.clone(),
+                    ephemeral_assigns: vec![],
+                }
+            }
+        }
+
+        Expr::Constant(_) | Expr::Id(_) | Expr::GlobalSymbol(_) => ExprTransformation {
             new_expr: e.clone(),
             ephemeral_assigns: vec![],
         },

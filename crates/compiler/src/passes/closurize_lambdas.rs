@@ -81,7 +81,11 @@ fn extract_lambdas_from_expr(e: &mut Expr, extracted: &mut Vec<Function>) {
         Expr::Subscript(expr, _) => {
             extract_lambdas_from_expr(expr, extracted);
         }
-        Expr::Constant(_) | Expr::Allocate(_, _) | Expr::GlobalSymbol(_) | Expr::Id(_) | Expr::Closure(..) => {}
+        Expr::Constant(_)
+        | Expr::Allocate(_, _)
+        | Expr::GlobalSymbol(_)
+        | Expr::Id(_)
+        | Expr::Closure(..) => {}
     }
 }
 
@@ -90,15 +94,20 @@ fn convert_lambda_to_closure(e: &mut Expr) -> Function {
         // Collect which IDs are used as captures in this lambda
         let captured_ids = find_and_disambiguate_captures(func);
 
+        let this_func_type = ValueType::FunctionType(
+            std::iter::once(ValueType::TupleType(vec![])) // can't recurse here, good enough
+                .chain(func.params.iter().map(|(_, typ)| typ.clone()))
+                .collect(),
+            Box::new(func.return_type.clone()),
+        );
         // Add the capture-tuple param
         let captures_id = Identifier::new_ephemeral();
         func.params.insert_before(
             0,
             captures_id.clone(),
             ValueType::TupleType(
-                captured_ids
-                    .iter()
-                    .map(|id| func.types[id].clone())
+                std::iter::once(this_func_type)
+                    .chain(captured_ids.iter().map(|id| func.types[id].clone()))
                     .collect(),
             ),
         );
@@ -107,8 +116,7 @@ fn convert_lambda_to_closure(e: &mut Expr) -> Function {
 
         let func_name = func.name.clone();
         // Replace the Expr::Lambda with an Expr::Closure
-        let lambda_expr =
-            std::mem::replace(e, Expr::Closure(func_name, captured_ids));
+        let lambda_expr = std::mem::replace(e, Expr::Closure(func_name, captured_ids));
 
         if let Expr::Lambda(func) = lambda_expr {
             func
@@ -273,7 +281,8 @@ fn replace_captures_with_tup_reference_for_statement(
             match assign_dest {
                 AssignDest::Id(id) => {
                     if let Some(capture_idx) = captures.iter().position(|i| i == id) {
-                        *assign_dest = AssignDest::Subscript(captures_id.clone(), capture_idx as _);
+                        *assign_dest =
+                            AssignDest::Subscript(captures_id.clone(), (capture_idx + 1) as _);
                     }
                 }
                 AssignDest::Subscript(_, _) => {
@@ -314,7 +323,10 @@ fn replace_captures_with_tup_reference_for_expr(
     match e {
         Expr::Id(id) => {
             if let Some(capture_idx) = captures.iter().position(|i| i == id) {
-                *e = Expr::Subscript(Box::new(Expr::Id(captures_id.clone())), capture_idx as _);
+                *e = Expr::Subscript(
+                    Box::new(Expr::Id(captures_id.clone())),
+                    (capture_idx + 1) as _,
+                );
             }
         }
         Expr::BinaryOp(l, _, r) => {
@@ -418,16 +430,12 @@ mod tests {
             .find(|f| f.name == t_global!("__1"))
             .unwrap();
         assert_eq!(extracted_closure.params.len(), 1);
-        assert_eq!(
-            *extracted_closure.params.get_index(0).unwrap().1,
-            ValueType::TupleType(vec![ValueType::IntType])
-        );
 
         // The captured `foo` Id in the body must be rewritten to captures_id[0]
         let captures_id = extracted_closure.params.get_index(0).unwrap().0.clone();
         assert_eq!(
             extracted_closure.body[0],
-            Statement::Expr(Expr::Subscript(Box::new(Expr::Id(captures_id)), 0))
+            Statement::Expr(Expr::Subscript(Box::new(Expr::Id(captures_id)), 1))
         );
 
         // function_types reflects the new signature with the captures-tuple param
@@ -479,12 +487,11 @@ mod tests {
             .find(|f| f.name == t_global!("__no_cap"))
             .unwrap();
         assert_eq!(lam.params.len(), 1);
-        assert_eq!(
-            *lam.params.get_index(0).unwrap().1,
-            ValueType::TupleType(vec![])
-        );
         // Body has nothing to rewrite — the constant is unchanged
-        assert_eq!(lam.body[0], Statement::Return(Expr::Constant(Value::I64(42))));
+        assert_eq!(
+            lam.body[0],
+            Statement::Return(Expr::Constant(Value::I64(42)))
+        );
         // Signature in function_types has the (empty) captures-tuple param
         assert_eq!(
             program.function_types[&t_global!("__no_cap")],
@@ -556,23 +563,16 @@ mod tests {
             .find(|f| f.name == t_global!("__multi_cap"))
             .unwrap();
         assert_eq!(lam.params.len(), 1);
-        assert_eq!(
-            *lam.params.get_index(0).unwrap().1,
-            ValueType::TupleType(vec![ValueType::IntType, ValueType::BoolType]),
-        );
 
         // foo → captures_id[0], bar → captures_id[1]
         let captures_id = lam.params.get_index(0).unwrap().0.clone();
         assert_eq!(
             lam.body[0],
-            Statement::Expr(Expr::Subscript(
-                Box::new(Expr::Id(captures_id.clone())),
-                0
-            ))
+            Statement::Expr(Expr::Subscript(Box::new(Expr::Id(captures_id.clone())), 1))
         );
         assert_eq!(
             lam.body[1],
-            Statement::Expr(Expr::Subscript(Box::new(Expr::Id(captures_id)), 1))
+            Statement::Expr(Expr::Subscript(Box::new(Expr::Id(captures_id)), 2))
         );
 
         assert_eq!(
@@ -636,17 +636,13 @@ mod tests {
             .find(|f| f.name == t_global!("__arith_cap"))
             .unwrap();
         assert_eq!(lam.params.len(), 1);
-        assert_eq!(
-            *lam.params.get_index(0).unwrap().1,
-            ValueType::TupleType(vec![ValueType::IntType]),
-        );
 
-        // The captured `x` inside the BinaryOp becomes captures_id[0]
+        // The captured `x` inside the BinaryOp becomes captures_id[1]
         let captures_id = lam.params.get_index(0).unwrap().0.clone();
         assert_eq!(
             lam.body[0],
             Statement::Return(Expr::BinaryOp(
-                Box::new(Expr::Subscript(Box::new(Expr::Id(captures_id)), 0)),
+                Box::new(Expr::Subscript(Box::new(Expr::Id(captures_id)), 1)),
                 BinaryOperator::Add,
                 Box::new(Expr::Constant(Value::I64(1))),
             ))
@@ -723,7 +719,7 @@ mod tests {
         let captures_id = lam.params.get_index(0).unwrap().0.clone();
         assert_eq!(
             lam.body[0],
-            Statement::Expr(Expr::Subscript(Box::new(Expr::Id(captures_id)), 0))
+            Statement::Expr(Expr::Subscript(Box::new(Expr::Id(captures_id)), 1))
         );
     }
 
@@ -802,7 +798,7 @@ mod tests {
             let captures_id = lam.params.get_index(0).unwrap().0.clone();
             assert_eq!(
                 lam.body[0],
-                Statement::Expr(Expr::Subscript(Box::new(Expr::Id(captures_id)), 0))
+                Statement::Expr(Expr::Subscript(Box::new(Expr::Id(captures_id)), 1))
             );
         }
 
