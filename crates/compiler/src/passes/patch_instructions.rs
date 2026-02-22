@@ -96,6 +96,13 @@ fn patch_block(b: &mut Block) {
                 ]);
             }
 
+            Instr::leaq(s, d) if !matches!(d, Arg::Reg(_)) => {
+                new_instrs.extend([
+                    Instr::leaq(s.clone(), Arg::Reg(Register::rax)),
+                    Instr::movq(Arg::Reg(Register::rax), d.clone()),
+                ]);
+            }
+
             _ => new_instrs.push(i.clone()),
         }
     }

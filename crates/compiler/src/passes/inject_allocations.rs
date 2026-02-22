@@ -89,9 +89,8 @@ fn replace_tuples_in_expr(expr: &mut Expr, type_env: &mut TypeEnv) {
                     .chain(captures.iter().map(|c| type_env[c].clone()))
                     .collect(),
             );
-            let mut elems = std::iter::once(id)
-                .chain(captures)
-                .map(|i| Expr::Id(i.clone()))
+            let mut elems = std::iter::once(Expr::GlobalSymbol(id.clone()))
+                .chain(captures.iter().map(|i| Expr::Id(i.clone())))
                 .collect();
             *expr = get_initialize_tuple_expr(&mut elems, tup_type);
         }

@@ -90,9 +90,7 @@ fn globalize_for_expr(e: &mut Expr, global_types: &TypeEnv) {
             globalize_for_expr(expr, global_types);
         }
 
-        Expr::Closure(..) | Expr::Allocate(_, _) | Expr::Constant(_) | Expr::GlobalSymbol(_) => {}
-
-        Expr::Lambda(_) => panic!("Should've been removed already"),
+        Expr::Lambda(_) | Expr::Closure(..) | Expr::Allocate(_, _) | Expr::Constant(_) | Expr::GlobalSymbol(_) => {}
     }
 }
 

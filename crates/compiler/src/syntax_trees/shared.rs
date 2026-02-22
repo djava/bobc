@@ -22,6 +22,19 @@ impl Identifier {
 
         Identifier::Ephemeral(id)
     }
+
+    pub fn new_lambda_name() -> Identifier {
+        static COUNTER: Mutex<u64> = Mutex::new(0);
+
+        let id = {
+            let mut c = COUNTER.lock().unwrap();
+            let id = *c;
+            *c += 1;
+            id
+        };
+
+        Identifier::Global(Arc::from(format!("__LAMBDA_{id}")))
+    }
 }
 
 impl From<&str> for Identifier {

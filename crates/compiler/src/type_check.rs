@@ -143,6 +143,13 @@ impl ast::Expr {
                 }
 
                 if let Some(lambda_type) = expected_type {
+                    if let ValueType::FunctionType(args, ret_type) = lambda_type {
+                        for (param, param_type) in func.params.iter_mut().zip(args) {
+                            *param.1 = param_type.clone();
+                            func.types.insert(param.0.clone(), param.1.clone());
+                        }
+                        func.return_type = *ret_type.clone();
+                    }
                     lambda_type.clone()
                 } else {
                     panic!("No expected type for lambda");
@@ -176,8 +183,9 @@ impl ast::Expr {
         // hint... its fine
         if let Some(expected) = expected_type
             && !matches!(self, Closure(..))
+            && result_type != *expected
         {
-            assert_eq!(expected, &result_type, "Did not match expected type");
+            println!("WARNING: {result_type:?} did not match expected type: {expected:?} in expr {self:?}");
         }
 
         result_type

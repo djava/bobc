@@ -101,11 +101,10 @@ parser! {
 
         rule callable_type() -> ValueType =
             [Token::CallableType] [Token::Less]
-                [Token::OpenBracket] args:(_type() ** [Token::Comma]) [Token::OpenBracket]
-                [Token::Comma]
-                ret:_type()
+                [Token::OpenBracket] args:(_type() ** [Token::Comma]) [Token::CloseBracket]
+                return_type:([Token::Comma] ret:_type() {ret})?
             [Token::Greater]
-            { ValueType::FunctionType(args, Box::new(ret))}
+            { ValueType::FunctionType(args, Box::new(return_type.unwrap_or(ValueType::NoneType)))}
 
         rule none_type() -> ValueType = [Token::NoneType] { ValueType::NoneType }
 
