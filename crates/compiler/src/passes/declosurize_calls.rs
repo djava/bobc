@@ -13,7 +13,6 @@ impl ASTPass for DeclosurizeCalls {
                 declosurize_for_statement(s);
             }
         }
-
         m
     }
 }
@@ -36,10 +35,10 @@ fn declosurize_for_statement(s: &mut Statement) {
             for s in statements {
                 declosurize_for_statement(s);
             }
-        },
+        }
         Statement::Return(expr) => {
             declosurize_for_expr(expr);
-        },
+        }
     }
 }
 
@@ -55,14 +54,24 @@ fn declosurize_for_expr(e: &mut Expr) {
             // an ID
             if let Expr::Id(clos_id) = &**func {
                 let fn_ptr_id = Identifier::new_ephemeral();
+                let result_id = Identifier::new_ephemeral();
                 let mut args_with_capture = vec![Expr::Id(clos_id.clone())];
                 args_with_capture.extend(args.clone());
 
                 *e = Expr::StatementBlock(
                     vec![
-                        Statement::Assign(AssignDest::Id(fn_ptr_id.clone()), Expr::Subscript(Box::new(Expr::Id(clos_id.clone())), 0), None)
+                        Statement::Assign(
+                            AssignDest::Id(fn_ptr_id.clone()),
+                            Expr::Subscript(Box::new(Expr::Id(clos_id.clone())), 0),
+                            None,
+                        ),
+                        Statement::Assign(
+                            AssignDest::Id(result_id.clone()),
+                            Expr::Call(Box::new(Expr::Id(fn_ptr_id.clone())), args_with_capture),
+                            None
+                        ),
                     ],
-                    Box::new(Expr::Call(Box::new(Expr::Id(fn_ptr_id.clone())), args_with_capture))
+                    Box::new(Expr::Id(result_id.clone())),
                 );
             }
         }
@@ -70,35 +79,35 @@ fn declosurize_for_expr(e: &mut Expr) {
         Expr::BinaryOp(expr, _, expr1) => {
             declosurize_for_expr(expr);
             declosurize_for_expr(expr1);
-        },
+        }
         Expr::UnaryOp(_, expr) => {
             declosurize_for_expr(expr);
-        },
+        }
         Expr::Ternary(expr, expr1, expr2) => {
             declosurize_for_expr(expr);
             declosurize_for_expr(expr1);
             declosurize_for_expr(expr2);
-        },
+        }
         Expr::StatementBlock(statements, expr) => {
             declosurize_for_expr(expr);
             for s in statements {
                 declosurize_for_statement(s);
             }
-        },
+        }
         Expr::Tuple(exprs) => {
             for e in exprs {
                 declosurize_for_expr(e);
             }
-        },
+        }
         Expr::Subscript(expr, _) => {
             declosurize_for_expr(expr);
-        },
-        
+        }
+
         Expr::Constant(..)
         | Expr::Id(..)
         | Expr::Allocate(..)
         | Expr::GlobalSymbol(..)
         | Expr::Lambda(..)
-        | Expr::Closure(..) => {},
+        | Expr::Closure(..) => {}
     }
 }
