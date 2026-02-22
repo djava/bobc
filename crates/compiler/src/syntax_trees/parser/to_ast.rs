@@ -209,6 +209,6 @@ pub fn to_ast_function(ptf: pt::Function) -> ast::Function {
 pub fn to_ast(ptm: pt::Module) -> ast::Program {
     ast::Program {
         functions: ptm.functions.into_iter().map(to_ast_function).collect(),
-        function_types: TypeEnv::new(),
+        global_types: TypeEnv::new(),
     }
 }

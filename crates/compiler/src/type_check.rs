@@ -274,10 +274,6 @@ impl ast::Program {
         self.populate_globals();
 
         for f in self.functions.iter_mut() {
-            // Start with dict of other global-scope functions so they
-            // can be recognized
-            f.types = self.function_types.clone();
-
             f.type_check();
         }
     }
@@ -305,7 +301,7 @@ impl ast::Program {
             ),
         ];
 
-        self.function_types = {
+        self.global_types = {
             let mut map = TypeEnv::new();
             for f in &self.functions {
                 map.insert(
@@ -318,7 +314,18 @@ impl ast::Program {
             }
 
             map.extend(special_functions);
+            map.extend(
+                EXTERNED_VARIABLES
+                    .iter()
+                    .map(|v| (v.clone(), ValueType::IntType)),
+            );
             map
         };
+
+        for f in self.functions.iter_mut() {
+            // Start with dict of other global-scope functions so they
+            // can be recognized
+            f.types = self.global_types.clone();
+        }
     }
 }

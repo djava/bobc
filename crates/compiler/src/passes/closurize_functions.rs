@@ -16,11 +16,10 @@ impl ASTPass for ClosurizeFunctions {
                 .insert_before(0, Identifier::new_ephemeral(), ValueType::TupleType(vec![]));
 
             for s in f.body.iter_mut() {
-                closurize_func_references_for_statement(s, &m.function_types);
+                closurize_func_references_for_statement(s, &m.global_types);
             }
         }
 
-        dbg!(&m);
         m
     }
 }

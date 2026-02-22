@@ -40,5 +40,5 @@ pub struct Function {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Program {
     pub functions: Vec<Function>,
-    pub function_types: TypeEnv,
+    pub global_types: TypeEnv,
 }
