@@ -25,7 +25,7 @@ impl X86Pass for RegisterAllocation {
 }
 
 fn regalloc_function(f: &mut Function) {
-    let liveness = DataflowAnalysis::from_program(&f);
+    let liveness = DataflowAnalysis::from_function(&f);
 
     let AllocateStorageResult {
         id_to_storage,
@@ -149,7 +149,9 @@ fn allocate_storage<'a>(dataflow: &'a DataflowAnalysis, types: &TypeEnv) -> Allo
     let mut color_to_storage = HashMap::from(COLOR_TO_REG_STORAGE);
 
     for (location, color) in &graph_colors {
-        if let Location::Id(id) = location {
+        if let Location::Id(id) = location
+            && !matches!(id, Identifier::Global(_))
+        {
             let storage = if let Some(storage) = color_to_storage.get(color) {
                 // If this color was already allocated a storage, use that
                 *storage
@@ -195,19 +197,24 @@ fn allocate_storage<'a>(dataflow: &'a DataflowAnalysis, types: &TypeEnv) -> Allo
 
 fn replace_arg_with_allocated(arg: &mut Arg, id_to_stg: &HashMap<Identifier, Storage>) {
     match arg {
+        Arg::Variable(Identifier::Global(_))
+        | Arg::Immediate(_)
+        | Arg::Reg(_)
+        | Arg::ByteReg(_)
+        | Arg::Global(_)
+        | Arg::Deref(_, _) => {
+            // All of these argument forms should've been *unchanged* by
+            // register allocation, as they all refer to absolute
+            // things. They do *participate* in regalloc for graph
+            // coloring purposes, but they should NOT have been
+            // reassigned to a different location
+        }
         Arg::Variable(id) => {
             if let Some(storage) = id_to_stg.get(id) {
                 *arg = storage.to_arg()
             } else {
                 panic!("No storage found for variable: {id:?}");
             }
-        }
-        Arg::Immediate(_) | Arg::Reg(_) | Arg::ByteReg(_) | Arg::Global(_) | Arg::Deref(_, _) => {
-            // All of these argument forms should've been *unchanged* by
-            // register allocation, as they all refer to absolute
-            // things. They do *participate* in regalloc for graph
-            // coloring purposes, but they should NOT have been
-            // reassigned to a different location
         }
     }
 }
@@ -266,11 +273,11 @@ mod tests {
             match i {
                 Instr::addq(s, d) | Instr::subq(s, d) | Instr::movq(s, d) | Instr::imulq(s, d) => {
                     for arg in [s, d] {
-                        assert!(!matches!(arg, Arg::Variable(_)));
+                        assert!(!matches!(arg, Arg::Variable(Identifier::Local(_, _)) | Arg::Variable(Identifier::Ephemeral(_))));
                     }
                 }
                 Instr::negq(arg) | Instr::pushq(arg) | Instr::popq(arg) => {
-                    assert!(!matches!(arg, Arg::Variable(_)));
+                    assert!(!matches!(arg, Arg::Variable(Identifier::Local(_, _)) | Arg::Variable(Identifier::Ephemeral(_))));
                 }
                 _ => {}
             }

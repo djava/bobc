@@ -20,7 +20,7 @@ pub struct DataflowAnalysis {
 }
 
 impl DataflowAnalysis {
-    pub fn from_program(f: &Function) -> DataflowAnalysis {
+    pub fn from_function(f: &Function) -> DataflowAnalysis {
         let blocks = &f.blocks;
         let block_adj_graph = x86_block_adj_graph(blocks);
 
@@ -166,12 +166,12 @@ impl DataflowAnalysis {
                 // If instruction is movq, for each v in L_after, if v
                 // is neither s nor d, add edge (d, v)
                 for v in l_after {
-                    if !loc_to_node.contains_key(v) {
-                        panic!(
-                            "Couldn't find location node for {v:?} - most likely, it is read but never written to"
-                        );
-                    }
-                    if v != &s && v != &d {
+                    if v != &s && v != &d && !matches!(v, Location::Id(Identifier::Global(_))) {
+                        if !loc_to_node.contains_key(v) {
+                            panic!(
+                                "Couldn't find location node for {v:?} - most likely, it is read but never written to"
+                            );
+                        }
                         graph.add_edge(loc_to_node[&d], loc_to_node[v], ());
                     }
                 }
@@ -182,7 +182,7 @@ impl DataflowAnalysis {
                 // If instruction is movzbq, for each v in L_after, if v
                 // is neither s nor d, add edge (d, v)
                 for v in l_after {
-                    if v != &s && v != &d {
+                    if v != &s && v != &d && !matches!(v, Location::Id(Identifier::Global(_))) {
                         if !loc_to_node.contains_key(v) {
                             panic!(
                                 "Couldn't find location node for {v:?} - most likely, it is read but never written to"
@@ -196,7 +196,7 @@ impl DataflowAnalysis {
                 // in L_after, if v != d, add edge (d,v)
                 for d in locs_written(i) {
                     for v in l_after {
-                        if v != &d {
+                        if v != &d && !matches!(v, Location::Id(Identifier::Global(_))) {
                             if !loc_to_node.contains_key(v) {
                                 panic!(
                                     "Couldn't find location node for {v:?} - most likely, it is read but never written to"
@@ -246,7 +246,9 @@ impl DataflowAnalysis {
         for i in instrs {
             if let Instr::movq(s, d) = i {
                 if let Some(s_loc) = Location::try_from_arg(s)
+                    && !matches!(s_loc, Location::Id(Identifier::Global(_)))
                     && let Some(d_loc) = Location::try_from_arg(d)
+                    && !matches!(d_loc, Location::Id(Identifier::Global(_)))
                 {
                     if !loc_to_node.contains_key(&s_loc) {
                         panic!(
@@ -275,7 +277,7 @@ impl DataflowAnalysis {
     ) -> HashMap<Location, u32> {
         let mut count_map = HashMap::from_iter(all_locations.iter().map(|loc| (loc.clone(), 0u32)));
         let mut count_for_arg = |a: &Arg| {
-            if let Some(loc) = Location::try_from_arg(a) {
+            if let Some(loc) = Location::try_from_arg(a) && !matches!(loc, Location::Id(Identifier::Global(_))) {
                 let count = count_map
                     .get_mut(&loc)
                     .expect("Location wasn't in all_locations");
