@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::syntax_trees::x86::{Block, Directive, Instr};
+use crate::syntax_trees::{ValueType, x86::{Block, Directive, Instr}};
 use petgraph::graph::DiGraph;
 
 pub fn x86_block_adj_graph<'a>(blocks: &'a [Block]) -> DiGraph<&'a Block, ()> {
@@ -82,3 +82,22 @@ macro_rules! label {
 }
 #[allow(unused_imports)]
 pub(crate) use label;
+
+pub fn closurize_type(vt: &mut ValueType) {
+    // Closurize the type for any type elements of type-hints
+    if let ValueType::FunctionType(args, ret) = vt {
+        *vt = ValueType::TupleType(vec![ValueType::FunctionType(
+            std::iter::once(ValueType::TupleType(vec![ValueType::FunctionType(
+                args.clone(),
+                ret.clone(),
+            )]))
+            .chain(args.iter().cloned())
+            .collect(),
+            ret.clone(),
+        )])
+    } else if let ValueType::TupleType(elems) = vt {
+        for e in elems {
+            closurize_type(e);
+        }
+    }
+}

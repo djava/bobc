@@ -72,9 +72,6 @@ fn replace_tuples_in_expr(expr: &mut Expr, type_env: &mut TypeEnv) {
             replace_tuples_in_expr(expr, type_env);
         }
         Expr::Tuple(elems) => {
-            // TODO: Passing None to e.type_check means that lambdas
-            // cant be in tuples... Annoying but I'd have to refactor
-            // quite a bit to make that work (edit: Not sure this is true)
             let tup_type = ValueType::TupleType(
                 elems
                     .iter_mut()

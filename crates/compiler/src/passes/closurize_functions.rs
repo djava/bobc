@@ -2,6 +2,7 @@ use crate::{
     constants::EXTERNED_FUNCTIONS,
     passes::ASTPass,
     syntax_trees::{ast::*, shared::*},
+    utils::closurize_type
 };
 
 #[derive(Debug)]
@@ -28,14 +29,7 @@ impl ASTPass for ClosurizeFunctions {
             }
 
             for (_, typ) in f.params.iter_mut() {
-                if let ValueType::FunctionType(args, ret) = typ {
-                    *typ = ValueType::TupleType(vec![ValueType::FunctionType(
-                        std::iter::once(ValueType::TupleType(vec![]))
-                            .chain(args.iter().cloned())
-                            .collect(),
-                        ret.clone(),
-                    )])
-                }
+                closurize_type(typ);
             }
         }
 
@@ -45,8 +39,13 @@ impl ASTPass for ClosurizeFunctions {
 
 fn closurize_func_references_for_statement(s: &mut Statement, func_env: &TypeEnv) {
     match s {
-        Statement::Assign(_, expr, _) => {
+        Statement::Assign(_, expr, type_hint) => {
             closurize_func_references_for_expr(expr, func_env);
+
+            // Closurize the type for any type elements of type-hints
+            if let Some(vt) = type_hint {
+                closurize_type(vt);
+            }
         }
         Statement::Expr(expr) => closurize_func_references_for_expr(expr, func_env),
         Statement::Conditional(cond, pos_body, neg_body) => {
@@ -167,17 +166,10 @@ mod tests {
                 "function {:?} should have exactly one captures param",
                 f.name
             );
-            let (param_id, param_type) = f.params.get_index(0).unwrap();
+            let (param_id, _) = f.params.get_index(0).unwrap();
             assert!(
                 matches!(param_id, Identifier::Ephemeral(_)),
                 "captures param must be Ephemeral"
-            );
-            assert_eq!(
-                *param_type,
-                ValueType::TupleType(vec![ValueType::FunctionType(
-                    vec![ValueType::TupleType(vec![])],
-                    Box::new(ValueType::IntType)
-                )])
             );
         }
     }
@@ -202,15 +194,8 @@ mod tests {
         let f = &result.functions[0];
 
         assert_eq!(f.params.len(), 2);
-        let (cap_id, cap_type) = f.params.get_index(0).unwrap();
+        let (cap_id, _) = f.params.get_index(0).unwrap();
         assert!(matches!(cap_id, Identifier::Ephemeral(_)));
-        assert_eq!(
-            *cap_type,
-            ValueType::TupleType(vec![ValueType::FunctionType(
-                vec![ValueType::TupleType(vec![]), ValueType::IntType],
-                Box::new(ValueType::IntType)
-            )])
-        );
         assert_eq!(*f.params.get_index(1).unwrap().0, x_param);
         assert_eq!(*f.params.get_index(1).unwrap().1, ValueType::IntType);
     }

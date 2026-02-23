@@ -302,3 +302,65 @@ fn main() {
         expected_outputs: VecDeque::from(vec![10, 11, 12]),
     });
 }
+
+// ── Tuples in lambdas ────────────────────────────────────────────
+
+#[test]
+fn test_lambda_captures_tuple() {
+    // Lambda captures a tuple from the enclosing scope and reads elements
+    execute_test_case(TestCase {
+        input: "fn main() {
+    t = (3, 7)
+    f: callable<[int], int> = lambda x: t[0] + t[1] + x
+    print_int(f(0))
+    print_int(f(10))
+}",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![10, 20]),
+    });
+}
+
+#[test]
+fn test_lambda_captures_tuple_single_element() {
+    // Lambda captures a tuple and uses one element in computation
+    execute_test_case(TestCase {
+        input: "fn main() {
+    t = (10, 20)
+    f: callable<[int], int> = lambda x: t[0] + x
+    print_int(f(5))
+}",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![15]),
+    });
+}
+
+#[test]
+fn test_lambda_in_tuple() {
+    // A tuple whose element is a lambda (closure stored in a tuple slot)
+    execute_test_case(TestCase {
+        input: "fn main() {
+    offset = 5
+    tup: tuple<callable<[int], int>> = (lambda x: x + offset,)
+    print_int(tup[0](10))
+    print_int(tup[0](20))
+}",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![15, 25]),
+    });
+}
+
+#[test]
+fn test_lambda_returns_tuple_element() {
+    // Lambda body subscripts into a captured tuple and returns an element
+    execute_test_case(TestCase {
+        input: "fn main() {
+    data = (100, 200, 300)
+    get: callable<[int], int> = lambda i: data[0] + i
+    print_int(get(0))
+    print_int(get(1))
+    print_int(get(2))
+}",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![100, 101, 102]),
+    });
+}

@@ -81,11 +81,11 @@ impl ast::Expr {
                             arg_types.len(),
                             "Wrong number of args passed to `{func:?}`"
                         );
-                        for (a, typ) in args.iter_mut().zip(arg_types.iter().skip(1)) {
+                        for (arg_expr, expected) in args.iter_mut().zip(arg_types.iter().skip(1)) {
+                            let actual = arg_expr.type_check(env, &Some(expected.clone()));
                             assert_eq!(
-                                a.type_check(env, &Some(typ.clone())),
-                                *typ,
-                                "Passed wrong arg type `{a:?}` to function `{func:?}`"
+                                actual, *expected,
+                                "Passed wrong arg type `{actual:?}` to function `{func:?}`"
                             )
                         }
 
@@ -118,12 +118,21 @@ impl ast::Expr {
                 expr.type_check(env, &None)
             }
             Tuple(elements) => {
-                let element_types: Vec<_> = elements
-                    .iter_mut()
-                    .map(|e| e.type_check(env, &None))
-                    .collect();
+                if let Some(ValueType::TupleType(exp_elem_types)) = expected_type {
+                    let mut element_types = vec![];
+                    for (elem, hint) in elements.iter_mut().zip(exp_elem_types) {
+                        element_types.push(elem.type_check(env, &Some(hint.clone())));
+                    }
 
-                ValueType::TupleType(element_types)
+                    ValueType::TupleType(element_types)
+                } else {
+                    let element_types: Vec<_> = elements
+                        .iter_mut()
+                        .map(|e| e.type_check(env, &None))
+                        .collect();
+    
+                    ValueType::TupleType(element_types)
+                }
             }
             Subscript(tup, idx) => {
                 if let ValueType::TupleType(elems) = tup.type_check(env, &None) {
@@ -185,7 +194,9 @@ impl ast::Expr {
             && !matches!(self, Closure(..))
             && result_type != *expected
         {
-            println!("WARNING: {result_type:?} did not match expected type: {expected:?} in expr {self:?}");
+            println!(
+                "WARNING: {result_type:?} did not match expected type: {expected:?} in expr {self:?}"
+            );
         }
 
         result_type

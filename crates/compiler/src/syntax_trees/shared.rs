@@ -85,6 +85,16 @@ impl PartialEq for ValueType {
                     l_elems == r_elems
                 }
             }
+            (Self::TupleType(clos_elems), Self::FunctionType(args, ret))
+            | (Self::FunctionType(args, ret), Self::TupleType(clos_elems)) => {
+                if let Some(ValueType::FunctionType(clos_args, clos_ret)) = clos_elems.get(0)
+                    && let Some(ValueType::TupleType(_)) = clos_args.get(0)
+                {
+                    clos_args == args && clos_ret == ret
+                } else {
+                    false
+                }
+            }
             (Self::FunctionType(l0, l1), Self::FunctionType(r0, r1)) => l0 == r0 && l1 == r1,
             (Self::PointerType(l0), Self::PointerType(r0)) => l0 == r0,
             _ => core::mem::discriminant(self) == core::mem::discriminant(other),
