@@ -1,5 +1,7 @@
 use crate::{
-    constants::EXTERNED_FUNCTIONS, passes::ASTPass, syntax_trees::{ast::*, shared::*}
+    constants::EXTERNED_FUNCTIONS,
+    passes::ASTPass,
+    syntax_trees::{ast::*, shared::*},
 };
 
 #[derive(Debug)]
@@ -12,11 +14,28 @@ impl ASTPass for ClosurizeFunctions {
         for f in m.functions.iter_mut() {
             // Insert a captures parameter to the function to unify the
             // calling procedure with capturing lambdas
+            let closure_type = ValueType::TupleType(vec![ValueType::FunctionType(
+                std::iter::once(ValueType::TupleType(vec![]))
+                    .chain(f.params.iter().map(|(_, typ)| typ.clone()))
+                    .collect(),
+                Box::new(f.return_type.clone()),
+            )]);
             f.params
-                .insert_before(0, Identifier::new_ephemeral(), ValueType::TupleType(vec![]));
+                .insert_before(0, Identifier::new_ephemeral(), closure_type);
 
             for s in f.body.iter_mut() {
                 closurize_func_references_for_statement(s, &m.global_types);
+            }
+
+            for (_, typ) in f.params.iter_mut() {
+                if let ValueType::FunctionType(args, ret) = typ {
+                    *typ = ValueType::TupleType(vec![ValueType::FunctionType(
+                        std::iter::once(ValueType::TupleType(vec![]))
+                            .chain(args.iter().cloned())
+                            .collect(),
+                        ret.clone(),
+                    )])
+                }
             }
         }
 
@@ -24,10 +43,7 @@ impl ASTPass for ClosurizeFunctions {
     }
 }
 
-fn closurize_func_references_for_statement(
-    s: &mut Statement,
-    func_env: &TypeEnv,
-) {
+fn closurize_func_references_for_statement(s: &mut Statement, func_env: &TypeEnv) {
     match s {
         Statement::Assign(_, expr, _) => {
             closurize_func_references_for_expr(expr, func_env);
@@ -54,12 +70,9 @@ fn closurize_func_references_for_statement(
     }
 }
 
-fn closurize_func_references_for_expr(
-    e: &mut Expr,
-    func_env: &TypeEnv,
-) {
+fn closurize_func_references_for_expr(e: &mut Expr, func_env: &TypeEnv) {
     match e {
-        Expr::Id(id) | Expr::GlobalSymbol(id)=> {
+        Expr::Id(id) | Expr::GlobalSymbol(id) => {
             if func_env.contains_key(id) && !EXTERNED_FUNCTIONS.contains(id) {
                 *e = Expr::Closure(id.clone(), vec![]);
             }
@@ -148,10 +161,24 @@ mod tests {
         let result = ClosurizeFunctions.run_pass(program);
 
         for f in &result.functions {
-            assert_eq!(f.params.len(), 1, "function {:?} should have exactly one captures param", f.name);
+            assert_eq!(
+                f.params.len(),
+                1,
+                "function {:?} should have exactly one captures param",
+                f.name
+            );
             let (param_id, param_type) = f.params.get_index(0).unwrap();
-            assert!(matches!(param_id, Identifier::Ephemeral(_)), "captures param must be Ephemeral");
-            assert_eq!(*param_type, ValueType::TupleType(vec![]));
+            assert!(
+                matches!(param_id, Identifier::Ephemeral(_)),
+                "captures param must be Ephemeral"
+            );
+            assert_eq!(
+                *param_type,
+                ValueType::TupleType(vec![ValueType::FunctionType(
+                    vec![ValueType::TupleType(vec![])],
+                    Box::new(ValueType::IntType)
+                )])
+            );
         }
     }
 
@@ -177,7 +204,13 @@ mod tests {
         assert_eq!(f.params.len(), 2);
         let (cap_id, cap_type) = f.params.get_index(0).unwrap();
         assert!(matches!(cap_id, Identifier::Ephemeral(_)));
-        assert_eq!(*cap_type, ValueType::TupleType(vec![]));
+        assert_eq!(
+            *cap_type,
+            ValueType::TupleType(vec![ValueType::FunctionType(
+                vec![ValueType::TupleType(vec![]), ValueType::IntType],
+                Box::new(ValueType::IntType)
+            )])
+        );
         assert_eq!(*f.params.get_index(1).unwrap().0, x_param);
         assert_eq!(*f.params.get_index(1).unwrap().1, ValueType::IntType);
     }
@@ -211,7 +244,11 @@ mod tests {
         };
 
         let result = ClosurizeFunctions.run_pass(program);
-        let main_func = result.functions.iter().find(|f| f.name == t_global!(LABEL_MAIN)).unwrap();
+        let main_func = result
+            .functions
+            .iter()
+            .find(|f| f.name == t_global!(LABEL_MAIN))
+            .unwrap();
         assert_eq!(
             main_func.body[0],
             Statement::Expr(Expr::Closure(foo_name, vec![]))

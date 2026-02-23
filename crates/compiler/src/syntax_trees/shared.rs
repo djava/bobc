@@ -45,7 +45,7 @@ impl From<&str> for Identifier {
 
 pub type TypeEnv = HashMap<Identifier, ValueType>;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum ValueType {
     IntType,
     FunctionType(Vec<ValueType>, Box<ValueType>),
@@ -66,6 +66,28 @@ impl From<&Value> for ValueType {
                 Self::FunctionType(arg_types.clone(), Box::new(ret_type.clone()))
             }
             Value::None => Self::NoneType,
+        }
+    }
+}
+
+impl PartialEq for ValueType {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::TupleType(l_elems), Self::TupleType(r_elems)) => {
+                if let Some(ValueType::FunctionType(l_args, l_ret)) = l_elems.get(0)
+                    && let Some(ValueType::TupleType(_)) = l_args.get(0)
+                    && let Some(ValueType::FunctionType(r_args, r_ret)) = r_elems.get(0)
+                    && let Some(ValueType::TupleType(_)) = r_args.get(0)
+                {
+                    // This is a closure
+                    l_args[1..] == r_args[1..] && l_ret == r_ret
+                } else {
+                    l_elems == r_elems
+                }
+            }
+            (Self::FunctionType(l0, l1), Self::FunctionType(r0, r1)) => l0 == r0 && l1 == r1,
+            (Self::PointerType(l0), Self::PointerType(r0)) => l0 == r0,
+            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
         }
     }
 }
