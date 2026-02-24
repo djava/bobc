@@ -20,11 +20,7 @@ impl X86Pass for OptimizeFallthrough {
                 .node_indices()
                 .find(|idx| {
                     let node_weight = block_adj_graph.node_weight(*idx).unwrap();
-                    if let Directive::Label(node_label) = &node_weight.label {
-                        *node_label == f.entry_block
-                    } else {
-                        panic!("node label wasn't label")
-                    }
+                    node_weight.label == f.entry_block
                 })
                 .expect("Couldn't find entry block in adj graph");
 
@@ -33,10 +29,8 @@ impl X86Pass for OptimizeFallthrough {
             permute_into_order(&mut f.blocks, node_order);
 
             for i in 0..f.blocks.len().saturating_sub(1) {
-                let should_pop = if let Some(Instr::jmp(jmp_dest)) = f.blocks[i].instrs.last()
-                    && let Directive::Label(next_label) = &f.blocks[i + 1].label
-                {
-                    jmp_dest == next_label
+                let should_pop = if let Some(Instr::jmp(jmp_dest)) = f.blocks[i].instrs.last() {
+                    jmp_dest == &f.blocks[i + 1].label
                 } else {
                     false
                 };
@@ -133,19 +127,19 @@ mod tests {
                 name: t_global!(LABEL_MAIN),
                 blocks: vec![
                     Block {
-                        label: Directive::Label(Identifier::Ephemeral(4)),
+                        label: Identifier::Ephemeral(4),
                         instrs: vec![Instr::retq],
                     },
                     Block {
-                        label: Directive::Label(Identifier::Ephemeral(1)),
+                        label: Identifier::Ephemeral(1),
                         instrs: vec![Instr::jmp(Identifier::Ephemeral(2))],
                     },
                     Block {
-                        label: Directive::Label(Identifier::Ephemeral(3)),
+                        label: Identifier::Ephemeral(3),
                         instrs: vec![Instr::jmp(Identifier::Ephemeral(4))],
                     },
                     Block {
-                        label: Directive::Label(Identifier::Ephemeral(2)),
+                        label: Identifier::Ephemeral(2),
                         instrs: vec![Instr::jmp(Identifier::Ephemeral(3))],
                     },
                 ],
@@ -162,19 +156,19 @@ mod tests {
             program.functions[0].blocks,
             vec![
                 Block {
-                    label: Directive::Label(Identifier::Ephemeral(1)),
+                    label: Identifier::Ephemeral(1),
                     instrs: vec![],
                 },
                 Block {
-                    label: Directive::Label(Identifier::Ephemeral(2)),
+                    label: Identifier::Ephemeral(2),
                     instrs: vec![],
                 },
                 Block {
-                    label: Directive::Label(Identifier::Ephemeral(3)),
+                    label: Identifier::Ephemeral(3),
                     instrs: vec![],
                 },
                 Block {
-                    label: Directive::Label(Identifier::Ephemeral(4)),
+                    label: Identifier::Ephemeral(4),
                     instrs: vec![Instr::retq],
                 },
             ],
@@ -191,19 +185,19 @@ mod tests {
                 name: t_global!(LABEL_MAIN),
                 blocks: vec![
                     Block {
-                        label: Directive::Label(Identifier::Ephemeral(3)),
+                        label: Identifier::Ephemeral(3),
                         instrs: vec![Instr::jmp(Identifier::Ephemeral(2))],
                     },
                     Block {
-                        label: Directive::Label(Identifier::Ephemeral(1)),
+                        label: Identifier::Ephemeral(1),
                         instrs: vec![Instr::jmp(Identifier::Ephemeral(2))],
                     },
                     Block {
-                        label: Directive::Label(Identifier::Ephemeral(4)),
+                        label: Identifier::Ephemeral(4),
                         instrs: vec![Instr::retq],
                     },
                     Block {
-                        label: Directive::Label(Identifier::Ephemeral(2)),
+                        label: Identifier::Ephemeral(2),
                         instrs: vec![
                             Instr::jmpcc(Comparison::Equals, Identifier::Ephemeral(4)),
                             Instr::jmp(Identifier::Ephemeral(3)),
@@ -227,19 +221,19 @@ mod tests {
             program.functions[0].blocks,
             vec![
                 Block {
-                    label: Directive::Label(Identifier::Ephemeral(1)),
+                    label: Identifier::Ephemeral(1),
                     instrs: vec![],
                 },
                 Block {
-                    label: Directive::Label(Identifier::Ephemeral(2)),
+                    label: Identifier::Ephemeral(2),
                     instrs: vec![Instr::jmpcc(Comparison::Equals, Identifier::Ephemeral(4))],
                 },
                 Block {
-                    label: Directive::Label(Identifier::Ephemeral(3)),
+                    label: Identifier::Ephemeral(3),
                     instrs: vec![Instr::jmp(Identifier::Ephemeral(2))],
                 },
                 Block {
-                    label: Directive::Label(Identifier::Ephemeral(4)),
+                    label: Identifier::Ephemeral(4),
                     instrs: vec![Instr::retq],
                 },
             ],
@@ -259,30 +253,30 @@ mod tests {
                 name: t_global!(LABEL_MAIN),
                 blocks: vec![
                     Block {
-                        label: Directive::Label(Identifier::Ephemeral(5)),
+                        label: Identifier::Ephemeral(5),
                         instrs: vec![Instr::jmp(Identifier::Ephemeral(2))],
                     },
                     Block {
-                        label: Directive::Label(Identifier::Ephemeral(1)),
+                        label: Identifier::Ephemeral(1),
                         instrs: vec![Instr::jmp(Identifier::Ephemeral(2))],
                     },
                     Block {
-                        label: Directive::Label(Identifier::Ephemeral(6)),
+                        label: Identifier::Ephemeral(6),
                         instrs: vec![Instr::retq],
                     },
                     Block {
-                        label: Directive::Label(Identifier::Ephemeral(3)),
+                        label: Identifier::Ephemeral(3),
                         instrs: vec![
                             Instr::jmpcc(Comparison::Equals, Identifier::Ephemeral(5)),
                             Instr::jmp(Identifier::Ephemeral(4)),
                         ],
                     },
                     Block {
-                        label: Directive::Label(Identifier::Ephemeral(4)),
+                        label: Identifier::Ephemeral(4),
                         instrs: vec![Instr::jmp(Identifier::Ephemeral(2))],
                     },
                     Block {
-                        label: Directive::Label(Identifier::Ephemeral(2)),
+                        label: Identifier::Ephemeral(2),
                         instrs: vec![
                             Instr::jmpcc(Comparison::Equals, Identifier::Ephemeral(6)),
                             Instr::jmp(Identifier::Ephemeral(3)),
@@ -307,27 +301,27 @@ mod tests {
             program.functions[0].blocks,
             vec![
                 Block {
-                    label: Directive::Label(Identifier::Ephemeral(1)),
+                    label: Identifier::Ephemeral(1),
                     instrs: vec![],
                 },
                 Block {
-                    label: Directive::Label(Identifier::Ephemeral(2)),
+                    label: Identifier::Ephemeral(2),
                     instrs: vec![Instr::jmpcc(Comparison::Equals, Identifier::Ephemeral(6))],
                 },
                 Block {
-                    label: Directive::Label(Identifier::Ephemeral(3)),
+                    label: Identifier::Ephemeral(3),
                     instrs: vec![Instr::jmpcc(Comparison::Equals, Identifier::Ephemeral(5))],
                 },
                 Block {
-                    label: Directive::Label(Identifier::Ephemeral(4)),
+                    label: Identifier::Ephemeral(4),
                     instrs: vec![Instr::jmp(Identifier::Ephemeral(2))],
                 },
                 Block {
-                    label: Directive::Label(Identifier::Ephemeral(6)),
+                    label: Identifier::Ephemeral(6),
                     instrs: vec![Instr::retq],
                 },
                 Block {
-                    label: Directive::Label(Identifier::Ephemeral(5)),
+                    label: Identifier::Ephemeral(5),
                     instrs: vec![Instr::jmp(Identifier::Ephemeral(2))],
                 },
             ],
@@ -346,30 +340,30 @@ mod tests {
                 name: t_global!(LABEL_MAIN),
                 blocks: vec![
                     Block {
-                        label: Directive::Label(Identifier::Ephemeral(5)),
+                        label: Identifier::Ephemeral(5),
                         instrs: vec![Instr::jmp(Identifier::Ephemeral(2))],
                     },
                     Block {
-                        label: Directive::Label(Identifier::Ephemeral(1)),
+                        label: Identifier::Ephemeral(1),
                         instrs: vec![Instr::jmp(Identifier::Ephemeral(2))],
                     },
                     Block {
-                        label: Directive::Label(Identifier::Ephemeral(6)),
+                        label: Identifier::Ephemeral(6),
                         instrs: vec![Instr::retq],
                     },
                     Block {
-                        label: Directive::Label(Identifier::Ephemeral(3)),
+                        label: Identifier::Ephemeral(3),
                         instrs: vec![
                             Instr::jmpcc(Comparison::Equals, Identifier::Ephemeral(5)),
                             Instr::jmp(Identifier::Ephemeral(4)),
                         ],
                     },
                     Block {
-                        label: Directive::Label(Identifier::Ephemeral(4)),
+                        label: Identifier::Ephemeral(4),
                         instrs: vec![Instr::jmp(Identifier::Ephemeral(3))],
                     },
                     Block {
-                        label: Directive::Label(Identifier::Ephemeral(2)),
+                        label: Identifier::Ephemeral(2),
                         instrs: vec![
                             Instr::jmpcc(Comparison::Equals, Identifier::Ephemeral(6)),
                             Instr::jmp(Identifier::Ephemeral(3)),
@@ -393,27 +387,27 @@ mod tests {
             program.functions[0].blocks,
             vec![
                 Block {
-                    label: Directive::Label(Identifier::Ephemeral(1)),
+                    label: Identifier::Ephemeral(1),
                     instrs: vec![],
                 },
                 Block {
-                    label: Directive::Label(Identifier::Ephemeral(2)),
+                    label: Identifier::Ephemeral(2),
                     instrs: vec![Instr::jmpcc(Comparison::Equals, Identifier::Ephemeral(6))],
                 },
                 Block {
-                    label: Directive::Label(Identifier::Ephemeral(3)),
+                    label: Identifier::Ephemeral(3),
                     instrs: vec![Instr::jmpcc(Comparison::Equals, Identifier::Ephemeral(5))],
                 },
                 Block {
-                    label: Directive::Label(Identifier::Ephemeral(4)),
+                    label: Identifier::Ephemeral(4),
                     instrs: vec![Instr::jmp(Identifier::Ephemeral(3))],
                 },
                 Block {
-                    label: Directive::Label(Identifier::Ephemeral(6)),
+                    label: Identifier::Ephemeral(6),
                     instrs: vec![Instr::retq],
                 },
                 Block {
-                    label: Directive::Label(Identifier::Ephemeral(5)),
+                    label: Identifier::Ephemeral(5),
                     instrs: vec![Instr::jmp(Identifier::Ephemeral(2))],
                 },
             ],
@@ -429,24 +423,27 @@ mod tests {
                 name: t_global!(LABEL_MAIN),
                 blocks: vec![
                     Block {
-                        label: Directive::Label(Identifier::Ephemeral(4)),
+                        label: Identifier::Ephemeral(4),
                         instrs: vec![Instr::retq],
                     },
                     Block {
-                        label: Directive::Label(Identifier::Ephemeral(1)),
+                        label: Identifier::Ephemeral(1),
                         instrs: vec![Instr::jmp(Identifier::Ephemeral(2))],
                     },
                     Block {
-                        label: Directive::Label(Identifier::Ephemeral(5)),
+                        label: Identifier::Ephemeral(5),
                         instrs: vec![Instr::jmp(Identifier::Ephemeral(4))],
                     },
                     Block {
-                        label: Directive::Label(Identifier::Ephemeral(3)),
+                        label: Identifier::Ephemeral(3),
                         instrs: vec![Instr::jmp(Identifier::Ephemeral(4))],
                     },
                     Block {
-                        label: Directive::Label(Identifier::Ephemeral(2)),
-                        instrs: vec![Instr::jmpcc(Comparison::Equals, Identifier::Ephemeral(5)), Instr::jmp(Identifier::Ephemeral(3))],
+                        label: Identifier::Ephemeral(2),
+                        instrs: vec![
+                            Instr::jmpcc(Comparison::Equals, Identifier::Ephemeral(5)),
+                            Instr::jmp(Identifier::Ephemeral(3)),
+                        ],
                     },
                 ],
                 entry_block: Identifier::Ephemeral(1),
@@ -462,27 +459,26 @@ mod tests {
             program.functions[0].blocks,
             vec![
                 Block {
-                    label: Directive::Label(Identifier::Ephemeral(1)),
+                    label: Identifier::Ephemeral(1),
                     instrs: vec![],
                 },
                 Block {
-                    label: Directive::Label(Identifier::Ephemeral(2)),
+                    label: Identifier::Ephemeral(2),
                     instrs: vec![Instr::jmpcc(Comparison::Equals, Identifier::Ephemeral(5))],
                 },
                 Block {
-                    label: Directive::Label(Identifier::Ephemeral(3)),
+                    label: Identifier::Ephemeral(3),
                     instrs: vec![],
                 },
                 Block {
-                    label: Directive::Label(Identifier::Ephemeral(4)),
+                    label: Identifier::Ephemeral(4),
                     instrs: vec![Instr::retq],
                 },
                 Block {
-                    label: Directive::Label(Identifier::Ephemeral(5)),
+                    label: Identifier::Ephemeral(5),
                     instrs: vec![Instr::jmp(Identifier::Ephemeral(4))],
                 },
             ],
         )
     }
-i 
 }

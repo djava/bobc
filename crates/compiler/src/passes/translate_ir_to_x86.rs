@@ -27,11 +27,7 @@ impl IRtoX86Pass for TranslateIRtoX86 {
                 let label = block.label.clone();
                 x86_blocks.push(block);
 
-                if let x86::Directive::Label(name) = label {
-                    name
-                } else {
-                    unreachable!()
-                }
+                label
             };
 
             for (id, block) in f.blocks {
@@ -65,7 +61,7 @@ fn translate_block(label: Identifier, b: ir::Block, exit_block: &Identifier) -> 
     }
 
     x86::Block {
-        label: x86::Directive::Label(label),
+        label,
         instrs,
     }
 }
@@ -630,7 +626,7 @@ fn translate_arg_passing(
     instrs.push(Instr::jmp(old_entry_point));
 
     x86::Block {
-        label: x86::Directive::Label(Identifier::new_ephemeral()),
+        label: Identifier::new_ephemeral(),
         instrs,
     }
 }

@@ -425,7 +425,7 @@ pub fn interpret_x86(m: &X86Program, inputs: &mut VecDeque<i64>, outputs: &mut V
     let mut curr_block_idx = curr_func
         .blocks
         .iter()
-        .position(|b| b.label == Directive::Label(curr_func.entry_block.clone()))
+        .position(|b| b.label == curr_func.entry_block)
         .unwrap();
     let mut curr_instr_iter = curr_func.blocks[curr_block_idx].instrs.iter();
     let mut call_stack = VecDeque::new();
@@ -443,7 +443,7 @@ pub fn interpret_x86(m: &X86Program, inputs: &mut VecDeque<i64>, outputs: &mut V
                 if let Some(new_block_idx) = curr_func
                     .blocks
                     .iter()
-                    .position(|b| b.label == Directive::Label(label.clone()))
+                    .position(|b| b.label == label)
                 {
                     // Look for blocks within this function to jump to
                     curr_block_idx = new_block_idx;
@@ -455,7 +455,7 @@ pub fn interpret_x86(m: &X86Program, inputs: &mut VecDeque<i64>, outputs: &mut V
                     curr_block_idx = curr_func
                         .blocks
                         .iter()
-                        .position(|b| b.label == Directive::Label(curr_func.entry_block.clone()))
+                        .position(|b| b.label == curr_func.entry_block)
                         .unwrap();
                     curr_instr_iter = curr_func.blocks[curr_block_idx].instrs.iter();
                 } else {
@@ -469,7 +469,7 @@ pub fn interpret_x86(m: &X86Program, inputs: &mut VecDeque<i64>, outputs: &mut V
                     curr_block_idx = curr_func
                         .blocks
                         .iter()
-                        .position(|b| b.label == Directive::Label(curr_func.entry_block.clone()))
+                        .position(|b| b.label == curr_func.entry_block)
                         .unwrap();
                     curr_instr_iter = curr_func.blocks[curr_block_idx].instrs.iter();
                     println!("Calling to {:?}", curr_func.name);

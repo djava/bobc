@@ -30,14 +30,9 @@ fn perform_operation(blocks: &mut Vec<Block>, func_exit_block_id: &mut Identifie
                 let into_idx = edge_iter.next().unwrap().source();
 
                 let from_block = &blocks[from_idx.index()];
-                let from_label = if let Directive::Label(label) = &from_block.label {
-                    label
-                } else {
-                    panic!("Block label was not label")
-                };
 
                 if let Some(Instr::jmp(into_label)) = &blocks[into_idx.index()].instrs.last()
-                    && into_label == from_label
+                    && into_label == &from_block.label
                 {
                     // Only now are we sure these blocks can be squashed
                     //  - This block's only source edge is source
@@ -57,14 +52,11 @@ fn perform_operation(blocks: &mut Vec<Block>, func_exit_block_id: &mut Identifie
                     into_block.instrs.pop();
                     into_block.instrs.extend(from_block.instrs);
 
-                    if let Directive::Label(from_block_id) = from_block.label
-                        && &from_block_id == func_exit_block_id
+                    if &from_block.label == func_exit_block_id
                     {
                         // The block we just removed was the exit block,
                         // so we have to update the reference
-                        if let Directive::Label(into_block_id) = &into_block.label {
-                            *func_exit_block_id = into_block_id.clone();
-                        }
+                        *func_exit_block_id = into_block.label.clone();
                     }
 
                     // It's inefficient, but for now we're just going to

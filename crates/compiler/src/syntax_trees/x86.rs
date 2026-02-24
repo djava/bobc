@@ -104,7 +104,7 @@ pub enum Directive {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Block {
-    pub label: Directive,
+    pub label: Identifier,
     pub instrs: Vec<Instr>,
 }
 
@@ -270,7 +270,7 @@ impl Display for X86Program {
                 writeln!(f, "{dir}")?;
             }
             for block in &func.blocks {
-                writeln!(f, "{}", block.label)?;
+                writeln!(f, "{}", Directive::Label(block.label.clone()))?;
                 for i in block.instrs.iter() {
                     writeln!(f, "\t{i}")?;
                 }

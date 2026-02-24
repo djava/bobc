@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::syntax_trees::{ValueType, x86::{Block, Directive, Instr}};
+use crate::syntax_trees::{ValueType, x86::{Block, Instr}};
 use petgraph::graph::DiGraph;
 
 #[derive(Debug, Clone, Copy, PartialEq, Hash)]
@@ -15,11 +15,7 @@ pub fn x86_block_adj_graph<'a>(blocks: &'a [Block]) -> DiGraph<&'a Block, JumpTy
     let label_node_map = {
         let mut map = HashMap::new();
         for b in blocks.iter() {
-            if let Directive::Label(label) = &b.label {
-                map.insert(label, block_graph.add_node(b));
-            } else {
-                panic!("block label was not a label");
-            }
+            map.insert(&b.label, block_graph.add_node(b));
         }
         map
     };

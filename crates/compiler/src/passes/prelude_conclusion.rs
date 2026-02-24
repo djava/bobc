@@ -24,7 +24,7 @@ fn add_prelude_conclusion(f: &mut Function) {
     }
 
     let entry_block = Block {
-        label: Directive::Label(f.name.clone()),
+        label: f.name.clone(),
         instrs: generate_prelude(f),
     };
     f.blocks.insert(0, entry_block);
@@ -36,7 +36,7 @@ fn add_prelude_conclusion(f: &mut Function) {
     if let Some(exit_block) = f
         .blocks
         .iter_mut()
-        .find(|b| b.label == Directive::Label(f.exit_block.clone()))
+        .find(|b| b.label == f.exit_block)
     {
         exit_block.instrs.extend(exit_conclusion_instrs);
     } else {
