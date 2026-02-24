@@ -115,10 +115,10 @@ pub struct Function {
     pub blocks: Vec<Block>,
     pub entry_block: Identifier,
     pub exit_block: Identifier,
-    pub(crate) stack_size: usize,
-    pub(crate) gc_stack_size: usize,
-    pub(crate) types: TypeEnv,
-    pub(crate) callee_saved_used: Vec<Register>,
+    pub stack_size: usize,
+    pub gc_stack_size: usize,
+    pub types: TypeEnv,
+    pub callee_saved_used: Vec<Register>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
