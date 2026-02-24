@@ -9,7 +9,7 @@ use crate::{
     constants::*,
     passes::register_allocation::Location,
     syntax_trees::{shared::*, x86::*},
-    utils::x86_block_adj_graph,
+    utils::{JumpType, x86_block_adj_graph},
 };
 
 #[derive(Debug, Clone)]
@@ -61,7 +61,7 @@ impl DataflowAnalysis {
     }
 
     fn analyze_dataflow(
-        block_graph: DiGraph<&Block, ()>,
+        block_graph: DiGraph<&Block, JumpType>,
     ) -> HashMap<&Block, Vec<HashSet<Location>>> {
         let mut alive_before_blocks: HashMap<NodeIndex, HashSet<Location>> = block_graph
             .node_indices()

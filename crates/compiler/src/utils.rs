@@ -3,7 +3,13 @@ use std::collections::HashMap;
 use crate::syntax_trees::{ValueType, x86::{Block, Directive, Instr}};
 use petgraph::graph::DiGraph;
 
-pub fn x86_block_adj_graph<'a>(blocks: &'a [Block]) -> DiGraph<&'a Block, ()> {
+#[derive(Debug, Clone, Copy, PartialEq, Hash)]
+pub enum JumpType {
+    Conditional,
+    Unconditional
+}
+
+pub fn x86_block_adj_graph<'a>(blocks: &'a [Block]) -> DiGraph<&'a Block, JumpType> {
     let mut block_graph = DiGraph::new();
 
     let label_node_map = {
@@ -22,9 +28,14 @@ pub fn x86_block_adj_graph<'a>(blocks: &'a [Block]) -> DiGraph<&'a Block, ()> {
         let this_block = block_graph.node_weight(idx).unwrap();
         for i in this_block.instrs.iter() {
             match i {
-                Instr::jmp(dest) | Instr::jmpcc(_, dest) => {
+                Instr::jmp(dest) => {
                     if let Some(dest_node) = label_node_map.get(dest) {
-                        block_graph.add_edge(idx, *dest_node, ());
+                        block_graph.add_edge(idx, *dest_node, JumpType::Unconditional);
+                    }
+                }
+                Instr::jmpcc(_, dest) => {
+                    if let Some(dest_node) = label_node_map.get(dest) {
+                        block_graph.add_edge(idx, *dest_node, JumpType::Conditional);
                     }
                 }
                 _ => {}
