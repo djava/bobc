@@ -61,6 +61,11 @@ fn to_ast_expr(pte: pt::Expr, func_id: &Identifier) -> ast::Expr {
 
             ast::Expr::Tuple(ast_elems)
         }
+        pt::Expr::Array(elems) => {
+            let ast_elems = elems.into_iter().map(|e| to_ast_expr(e, func_id)).collect();
+
+            ast::Expr::Array(ast_elems)
+        }
         pt::Expr::Subscript(expr, idx) => {
             ast::Expr::Subscript(Box::new(to_ast_expr(*expr, func_id)), idx)
         }

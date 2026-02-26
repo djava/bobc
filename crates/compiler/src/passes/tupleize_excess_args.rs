@@ -163,7 +163,7 @@ fn replace_excess_use_for_expr(
             }
             replace_excess_use_for_expr(expr, excess_names, tuple_id);
         }
-        Expr::Tuple(elems) => {
+        Expr::Tuple(elems)| Expr::Array(elems) => {
             for e in elems {
                 replace_excess_use_for_expr(e, excess_names, tuple_id);
             }
@@ -238,7 +238,7 @@ fn replace_excess_calls_for_expr(e: &mut Expr) {
             }
             replace_excess_calls_for_expr(expr);
         }
-        Expr::Tuple(elems) => {
+        Expr::Tuple(elems) | Expr::Array(elems) => {
             for e in elems {
                 replace_excess_calls_for_expr(e);
             }

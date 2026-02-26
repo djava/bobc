@@ -60,10 +60,7 @@ fn translate_block(label: Identifier, b: ir::Block, exit_block: &Identifier) -> 
         instrs.extend(translate_statement(s, exit_block));
     }
 
-    x86::Block {
-        label,
-        instrs,
-    }
+    x86::Block { label, instrs }
 }
 
 fn translate_statement(s: ir::Statement, exit_block: &Identifier) -> Vec<Instr> {
@@ -189,7 +186,7 @@ fn translate_atom(dest: AssignDest, atom: ir::Atom) -> Vec<Instr> {
 }
 
 fn translate_allocation(dest: AssignDest, bytes: usize, value_type: ValueType) -> Vec<Instr> {
-    let tag = i64::from_ne_bytes(make_tuple_tag(value_type).to_ne_bytes());
+    let tag = i64::from_ne_bytes(make_allocation_tag(value_type).to_ne_bytes());
 
     // Bump allocator pointer, write tag. pointer is in r11
     let mut ret = vec![
@@ -228,7 +225,7 @@ fn translate_allocation(dest: AssignDest, bytes: usize, value_type: ValueType) -
     ret
 }
 
-fn make_tuple_tag(value_type: ValueType) -> u64 {
+fn make_allocation_tag(value_type: ValueType) -> u64 {
     if let ValueType::TupleType(elems) = value_type {
         if elems.len() > MAX_TUPLE_ELEMENTS {
             unimplemented!("The compiler has a max of {MAX_TUPLE_ELEMENTS} tuple elements")
@@ -242,6 +239,14 @@ fn make_tuple_tag(value_type: ValueType) -> u64 {
         TupleTag::new()
             .with_forwarding(false)
             .with_length(elems.len() as u8)
+            .with_pointer_mask(pointer_mask)
+            .into_bits()
+    } else if let ValueType::ArrayType(elems, len) = value_type {
+        let pointer_mask = matches!(*elems, ValueType::PointerType(_));
+
+        ArrayTag::new()
+            .with_forwarding(false)
+            .with_length(len as u64)
             .with_pointer_mask(pointer_mask)
             .into_bits()
     } else {
@@ -519,7 +524,7 @@ const SPECIAL_FUNCTIONS: [(
     &'static str,
     usize,
     fn(Vec<ir::Atom>, Option<AssignDest>) -> Vec<Instr>,
-); 2] = [
+); 1] = [
     (FN_GC_COLLECT, 1, |mut args, _dest| {
         assert!(_dest.is_none());
         vec![
@@ -527,30 +532,6 @@ const SPECIAL_FUNCTIONS: [(
             Instr::movq(atom_to_arg(args.remove(0)), x86::Arg::Reg(Register::rsi)),
             Instr::callq(x86::Arg::Global(global!(FN_GC_COLLECT)), 2),
         ]
-    }),
-    (FN_LEN, 1, |mut args, dest_opt| {
-        if let Some(dest) = dest_opt {
-            vec![
-                Instr::movq(atom_to_arg(args.remove(0)), x86::Arg::Reg(Register::rax)),
-                Instr::movq(
-                    x86::Arg::Deref(Register::rax, 0),
-                    x86::Arg::Reg(Register::rax),
-                ),
-                // Shift and mask out the length field of the tuple tag
-                Instr::sarq(
-                    x86::Arg::Immediate(TUPLE_LENGTH_TAG_SHIFT),
-                    x86::Arg::Reg(Register::rax),
-                ),
-                Instr::andq(
-                    x86::Arg::Immediate(TUPLE_LENGTH_TAG_MASK),
-                    x86::Arg::Reg(Register::rax),
-                ),
-                Instr::movq(x86::Arg::Reg(Register::rax), assigndest_to_arg(dest)),
-            ]
-        } else {
-            // No dest - no-op
-            vec![]
-        }
     }),
 ];
 

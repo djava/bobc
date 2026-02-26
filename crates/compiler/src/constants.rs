@@ -57,9 +57,6 @@ pub const WORD_SIZE: i64 = 8;
 // use this value as a literal because their macro systems require it.
 pub const MAX_TUPLE_ELEMENTS: usize = 50;
 
-// Tuple tag field extraction constants (see TupleTag in syntax_trees/shared.rs)
-pub const TUPLE_LENGTH_TAG_MASK: i64 = 0x03F;
-pub const TUPLE_LENGTH_TAG_SHIFT: i64 = 1; // skip the forwarding bit
 
 // Maximum number of function arguments passed in registers (System V AMD64 ABI)
 pub const MAX_REGISTER_ARGS: usize = 6;

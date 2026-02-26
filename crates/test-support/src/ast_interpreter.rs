@@ -108,6 +108,7 @@ fn interpret_expr(
             interpret_expr(expr, inputs, outputs, val_env, func_env)
         }
         Tuple(_exprs) => todo!(),
+        Array(_exprs) => todo!(),
         Subscript(_expr, _value) => todo!(),
         Allocate(_, _value_type) => todo!(),
         Lambda(_) => todo!(),

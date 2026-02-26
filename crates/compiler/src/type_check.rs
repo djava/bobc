@@ -50,7 +50,7 @@ impl ast::Expr {
                         "Wrong number of args passed to `{func:?}`"
                     );
 
-                    if **func == Id(global!(FN_LEN)) {
+                    if **func == GlobalSymbol(global!(FN_LEN)) {
                         // This one is actually special, it can be
                         // called with any tuple type and there's no way
                         // to express that in ValueType right now so
@@ -60,7 +60,7 @@ impl ast::Expr {
                         // can't use len indirectly now :(
                         assert!(matches!(
                             args[0].type_check(env, &None),
-                            ValueType::TupleType(_)
+                            ValueType::TupleType(_) | ValueType::ArrayType(_, _)
                         ));
                     } else {
                         for (a, typ) in args.iter_mut().zip(arg_types) {
@@ -130,17 +130,46 @@ impl ast::Expr {
                         .iter_mut()
                         .map(|e| e.type_check(env, &None))
                         .collect();
-    
+
                     ValueType::TupleType(element_types)
                 }
             }
-            Subscript(tup, idx) => {
-                if let ValueType::TupleType(elems) = tup.type_check(env, &None) {
+            Array(elements) => {
+                let expected_elem_type = expected_type.clone().map_or(None, |t| {
+                    if let ValueType::ArrayType(e, _) = t {
+                        Some(*e)
+                    } else {
+                        None
+                    }
+                });
+
+                if !elements.is_empty() {
+                    let first_type = elements[0].type_check(env, &expected_elem_type);
+                    for e in elements.iter_mut().skip(1) {
+                        assert_eq!(e.type_check(env, &expected_elem_type), first_type);
+                    }
+
+                    ValueType::ArrayType(Box::new(first_type), elements.len())
+                } else {
+                    expected_elem_type
+                        .map(|e| ValueType::ArrayType(Box::new(e), 0))
+                        .unwrap_or(ValueType::ArrayType(Box::new(ValueType::Indeterminate), 0))
+                }
+            }
+            Subscript(exp, idx) => {
+                let exp_type = exp.type_check(env, &None);
+                if let ValueType::TupleType(elems) = exp_type {
                     assert!(
                         *idx >= 0 && *idx < elems.len() as i64,
                         "Indexed tuple out of bounds"
                     );
                     elems[*idx as usize].clone()
+                } else if let ValueType::ArrayType(elems, len) = exp_type {
+                    assert!(
+                        *idx >= 0 && *idx < len as i64,
+                        "Indexed array out of bounds"
+                    );
+                    *elems
                 } else {
                     panic!("Subscripted a non-tuple")
                 }

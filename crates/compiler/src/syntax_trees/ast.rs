@@ -12,6 +12,7 @@ pub enum Expr {
     Ternary(Box<Expr>, Box<Expr>, Box<Expr>),
     StatementBlock(Vec<Statement>, Box<Expr>),
     Tuple(Vec<Expr>),
+    Array(Vec<Expr>),
     Subscript(Box<Expr>, i64),
     Allocate(usize, ValueType),
     GlobalSymbol(Identifier),

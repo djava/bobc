@@ -98,7 +98,7 @@ fn closurize_func_references_for_expr(e: &mut Expr, func_env: &TypeEnv) {
             }
             closurize_func_references_for_expr(expr, func_env);
         }
-        Expr::Tuple(exprs) => {
+        Expr::Tuple(exprs) | Expr::Array(exprs) => {
             for e in exprs {
                 closurize_func_references_for_expr(e, func_env);
             }

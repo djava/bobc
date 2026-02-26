@@ -841,3 +841,24 @@ int64_t proxy_vec_set(int64_t* vec, int i, int64_t arg) {
   }
     
 }
+
+#define TAG_IS_ARRAY_MASK 0x01
+#define TAG_IS_ARRAY_SHIFT 62
+
+// Tuple tag field extraction constants (see TupleTag in syntax_trees/shared.rs)
+#define TUPLE_LENGTH_TAG_MASK 0x03F
+#define TUPLE_LENGTH_TAG_SHIFT 1
+
+// Array tag field extraction constants (see ArrayTag in syntax_trees/shared.rs)
+#define ARRAY_LENGTH_TAG_MASK 0x0FFFFFFFFFFFFFFF
+#define ARRAY_LENGTH_TAG_SHIFT 2
+
+int64_t len(int64_t* ptr) {
+  if ((*ptr >> TAG_IS_ARRAY_SHIFT) & TAG_IS_ARRAY_MASK) {
+    // Array
+    return (*ptr >> ARRAY_LENGTH_TAG_SHIFT) & ARRAY_LENGTH_TAG_MASK;
+  } else {
+    // Tuple
+    return (*ptr >> TUPLE_LENGTH_TAG_SHIFT) & TUPLE_LENGTH_TAG_MASK;
+  }
+}

@@ -199,6 +199,9 @@ fn generate_for_effect(
         ast::Expr::Tuple(_exprs) => {
             panic!("All tuple ast-exprs should have been removed by inject_allocation")
         }
+        ast::Expr::Array(_exprs) => {
+            panic!("All array ast-exprs should have been removed by inject_allocation")
+        }
         ast::Expr::Lambda(_) => panic!("Should've been removed already"),
     }
 }
@@ -304,6 +307,7 @@ fn generate_for_assign(
         }
         ast::Expr::Closure(..) => todo!(),
         ast::Expr::Tuple(_) => panic!("All tuples should've been removed by inject_allocations"),
+        ast::Expr::Array(_) => panic!("All arrays should've been removed by inject_allocations"),
         ast::Expr::Lambda(_) => panic!("Should've been removed already"),
     }
 }
@@ -391,6 +395,7 @@ fn generate_for_predicate(
         }
         ast::Expr::Allocate(_, _value_type) => panic!("Allocate is not a valid predicate"),
         ast::Expr::Tuple(_) => panic!("A tuple is not a valid predicate"),
+        ast::Expr::Array(_) => panic!("An array is not a valid predicate"),
         ast::Expr::Closure(..) => panic!("A closure is not a valid predicate"),
         ast::Expr::Lambda(_) => panic!("Should've been removed already"),
     }

@@ -78,7 +78,19 @@ fn replace_tuples_in_expr(expr: &mut Expr, type_env: &mut TypeEnv) {
                     .map(|e| e.type_check(type_env, &None))
                     .collect(),
             );
-            *expr = get_initialize_tuple_expr(elems, tup_type);
+            *expr = get_initialize_allocation_expr(elems, tup_type);
+        }
+        Expr::Array(elems) => {
+            let arr_type = ValueType::ArrayType(
+                Box::new(
+                    elems
+                        .get_mut(0)
+                        .map(|e| e.type_check(type_env, &None))
+                        .unwrap_or(ValueType::Indeterminate),
+                ),
+                elems.len(),
+            );
+            *expr = get_initialize_allocation_expr(elems, arr_type);
         }
         Expr::Closure(id, captures) => {
             let tup_type = ValueType::TupleType(
@@ -89,7 +101,7 @@ fn replace_tuples_in_expr(expr: &mut Expr, type_env: &mut TypeEnv) {
             let mut elems = std::iter::once(Expr::GlobalSymbol(id.clone()))
                 .chain(captures.iter().map(|i| Expr::Id(i.clone())))
                 .collect();
-            *expr = get_initialize_tuple_expr(&mut elems, tup_type);
+            *expr = get_initialize_allocation_expr(&mut elems, tup_type);
         }
         Expr::Subscript(expr, _) => {
             replace_tuples_in_expr(expr, type_env);
@@ -99,7 +111,7 @@ fn replace_tuples_in_expr(expr: &mut Expr, type_env: &mut TypeEnv) {
     }
 }
 
-fn get_initialize_tuple_expr(elems: &mut Vec<Expr>, tup_type: ValueType) -> Expr {
+fn get_initialize_allocation_expr(elems: &mut Vec<Expr>, tup_type: ValueType) -> Expr {
     let free_ptr = Expr::GlobalSymbol(global!(GC_FREE_PTR));
     let fromspace_end = Expr::GlobalSymbol(global!(GC_FROMSPACE_END));
     let collect = |n| {

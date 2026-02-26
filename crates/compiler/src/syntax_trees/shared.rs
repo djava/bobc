@@ -51,6 +51,7 @@ pub enum ValueType {
     FunctionType(Vec<ValueType>, Box<ValueType>),
     BoolType,
     TupleType(Vec<ValueType>),
+    ArrayType(Box<ValueType>, usize),
     PointerType(Box<ValueType>),
     NoneType,
     Indeterminate,
@@ -62,6 +63,15 @@ impl From<&Value> for ValueType {
             Value::I64(_) => Self::IntType,
             Value::Bool(_) => Self::BoolType,
             Value::Tuple(elems) => Self::TupleType(elems.iter().map(ValueType::from).collect()),
+            Value::Array(elems) => Self::ArrayType(
+                Box::new(
+                    elems
+                        .get(0)
+                        .map(ValueType::from)
+                        .unwrap_or(ValueType::Indeterminate),
+                ),
+                elems.len(),
+            ),
             Value::Function(_, arg_types, ret_type) => {
                 Self::FunctionType(arg_types.clone(), Box::new(ret_type.clone()))
             }
@@ -97,6 +107,7 @@ impl PartialEq for ValueType {
             }
             (Self::FunctionType(l0, l1), Self::FunctionType(r0, r1)) => l0 == r0 && l1 == r1,
             (Self::PointerType(l0), Self::PointerType(r0)) => l0 == r0,
+            (Self::ArrayType(typ, len), Self::ArrayType(typ1, len1)) => typ == typ1 && len == len1,
             _ => core::mem::discriminant(self) == core::mem::discriminant(other),
         }
     }
@@ -107,6 +118,7 @@ pub enum Value {
     I64(i64),
     Bool(bool),
     Tuple(Vec<Value>),
+    Array(Vec<Value>),
     Function(Identifier, Vec<ValueType>, ValueType),
     None,
 }
@@ -117,6 +129,7 @@ impl Into<i64> for Value {
             Value::I64(val) => val,
             Value::Bool(val) => val as _,
             Value::Tuple(_) => panic!("Cannot convert Value::Tuple into i64"),
+            Value::Array(_) => panic!("Cannot convert Value::Array into i64"),
             Value::Function(_, _, _) => panic!("Cannot convert Value::Function into i64"),
             Value::None => panic!("Cannot convert Value::None into i64"),
         }
@@ -128,7 +141,7 @@ impl Into<bool> for Value {
         match self {
             Value::I64(val) => val != 0,
             Value::Bool(val) => val,
-            Value::Tuple(elems) => !elems.is_empty(),
+            Value::Tuple(elems) | Value::Array(elems) => !elems.is_empty(),
             Value::Function(_, _, _) => panic!("Cannot convert Value::Function into bool"),
             Value::None => panic!("Cannot convert Value::None into bool"),
         }
@@ -140,7 +153,7 @@ impl Into<bool> for &Value {
         match self {
             Value::I64(val) => *val != 0,
             Value::Bool(val) => *val,
-            Value::Tuple(elems) => !elems.is_empty(),
+            Value::Tuple(elems) | Value::Array(elems) => !elems.is_empty(),
             Value::Function(_, _, _) => panic!("Cannot convert Value::Function into bool"),
             Value::None => panic!("Cannot convert Value::None into bool"),
         }
@@ -153,6 +166,7 @@ impl From<&Value> for i64 {
             Value::I64(val) => *val,
             Value::Bool(val) => *val as _,
             Value::Tuple(_) => panic!("Cannot convert Value::Tuple into i64"),
+            Value::Array(_) => panic!("Cannot convert Value::Array into i64"),
             Value::Function(_, _, _) => panic!("Cannot convert Value::Function into i64"),
             Value::None => panic!("Cannot convert Value::None into i64"),
         }
@@ -251,6 +265,22 @@ pub struct TupleTag {
     pub length: u8,
     #[bits(50)]
     pub pointer_mask: u64,
-    #[bits(7)]
+    #[bits(5)]
+    __: u8,
+    #[bits(1, default = false)]
+    pub is_array: bool,
+    #[bits(1)]
+    __: u8,
+}
+
+#[bitfield(u64, order = Lsb)]
+pub struct ArrayTag {
+    pub forwarding: bool,
+    pub pointer_mask: bool,
+    #[bits(60)]
+    pub length: u64,
+    #[bits(1, default = true)]
+    pub is_array: bool,
+    #[bits(1)]
     __: u8,
 }

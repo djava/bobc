@@ -81,7 +81,7 @@ fn globalize_for_expr(e: &mut Expr, global_types: &TypeEnv) {
             }
             globalize_for_expr(expr, global_types);
         }
-        Expr::Tuple(elems) => {
+        Expr::Tuple(elems) | Expr::Array(elems)  => {
             for e in elems {
                 globalize_for_expr(e, global_types);
             }

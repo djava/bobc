@@ -50,7 +50,7 @@ fn shortcircuit_expr(e: &mut Expr) {
             ss.iter_mut().for_each(shortcircuit_statement);
             shortcircuit_expr(&mut *e);
         }
-        Expr::Tuple(elems) => {
+        Expr::Tuple(elems) | Expr::Array(elems) => {
             elems.iter_mut().for_each(shortcircuit_expr);
         }
         Expr::Subscript(tup, _idx) => {

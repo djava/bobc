@@ -205,7 +205,7 @@ fn partial_eval_expr(e: &mut Expr) {
                 }
             }
         }
-        Tuple(elems) => elems.iter_mut().for_each(partial_eval_expr),
+        Tuple(elems) | Expr::Array(elems) => elems.iter_mut().for_each(partial_eval_expr),
         Subscript(tup, idx) => {
             partial_eval_expr(tup.as_mut());
             if let Tuple(elems) = &**tup {
@@ -367,7 +367,7 @@ mod tests {
                     "Ternary with Constant condition should have been resolved: {e:?}"
                 );
             }
-            Expr::Tuple(elems) => {
+            Expr::Tuple(elems) | Expr::Array(elems) => {
                 elems.iter().for_each(check_expr_invariants);
             }
             Expr::Subscript(tup, idx) => {

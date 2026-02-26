@@ -94,7 +94,7 @@ fn declosurize_for_expr(e: &mut Expr) {
                 declosurize_for_statement(s);
             }
         }
-        Expr::Tuple(exprs) => {
+        Expr::Tuple(exprs) | Expr::Array(exprs) => {
             for e in exprs {
                 declosurize_for_expr(e);
             }

@@ -31,6 +31,7 @@ pub enum Expr<'a> {
     Call(Box<Expr<'a>>, Vec<Expr<'a>>),
     Ternary(Box<Expr<'a>>, Box<Expr<'a>>, Box<Expr<'a>>),
     Tuple(Vec<Expr<'a>>),
+    Array(Vec<Expr<'a>>),
     Subscript(Box<Expr<'a>>, i64),
     Lambda(Vec<&'a str>, Vec<Statement<'a>>),
 }
@@ -99,6 +100,10 @@ parser! {
             [Token::TupleType] [Token::Less] types:(_type() ++ [Token::Comma]) [Token::Greater]
             { ValueType::TupleType(types) }
 
+        rule array_type() -> ValueType =
+            [Token::ArrayType] [Token::Less] typ:_type() [Token::Comma] [Token::Int(len)] [Token::Greater]
+            { ValueType::ArrayType(Box::new(typ), len as usize) }
+
         rule callable_type() -> ValueType =
             [Token::CallableType] [Token::Less]
                 [Token::OpenBracket] args:(_type() ** [Token::Comma]) [Token::CloseBracket]
@@ -108,7 +113,7 @@ parser! {
 
         rule none_type() -> ValueType = [Token::NoneType] { ValueType::NoneType }
 
-        rule _type() -> ValueType = tuple_type() / primitive_type() / callable_type() / none_type()
+        rule _type() -> ValueType = array_type() / tuple_type() / primitive_type() / callable_type() / none_type()
 
         // Trailing comma is mandatory for one elem but optional for multiple
         rule tuple_elements() -> Vec<Expr<'t>> =
@@ -116,7 +121,13 @@ parser! {
             { elems }
 
         rule tuple() -> Expr<'t> =
-            [Token::OpenParen] args:tuple_elements() [Token::CloseParen] { Expr::Tuple(args) }
+            [Token::OpenParen] elems:tuple_elements() [Token::CloseParen] { Expr::Tuple(elems) }
+
+        rule array_elements() -> Vec<Expr<'t>> =
+            s:(expr() ** [Token::Comma]) [Token::Comma]? { s }
+
+        rule array() -> Expr<'t> =
+            [Token::OpenBracket] elems:array_elements() [Token::CloseBracket] { Expr::Array(elems) }
 
         rule lambda_oneliner_body() -> Vec<Statement<'t>> = e:expr() {
             vec![Statement::Return(Some(e))]
@@ -128,11 +139,15 @@ parser! {
             body:(lambda_oneliner_body() / statement_body())
             { Expr::Lambda(args, body) }
 
-        rule expr() -> Expr<'t> =
+        rule ternary() -> Expr<'t> =
             cond:precedence_expr() [Token::QuestionMark] pos:expr() [Token::Colon] neg:expr() {
                 Expr::Ternary(Box::new(cond), Box::new(pos), Box::new(neg))
             }
+
+        rule expr() -> Expr<'t> =
+              ternary()
             / tuple()
+            / array()
             / lambda()
             / precedence_expr()
 

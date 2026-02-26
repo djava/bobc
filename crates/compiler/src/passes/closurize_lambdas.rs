@@ -74,7 +74,7 @@ fn extract_lambdas_from_expr(e: &mut Expr, extracted: &mut Vec<Function>) {
             }
             extract_lambdas_from_expr(expr, extracted);
         }
-        Expr::Tuple(exprs) => {
+        Expr::Tuple(exprs) | Expr::Array(exprs) => {
             for e in exprs {
                 extract_lambdas_from_expr(e, extracted);
             }
@@ -211,7 +211,7 @@ fn find_and_disambiguate_captures_for_expr(
             }
             find_and_disambiguate_captures_for_expr(expr, this_env, captures);
         }
-        Expr::Tuple(exprs) => {
+        Expr::Tuple(exprs) | Expr::Array(exprs) => {
             for e in exprs {
                 find_and_disambiguate_captures_for_expr(e, this_env, captures);
             }
@@ -355,7 +355,7 @@ fn replace_captures_with_tup_reference_for_expr(
             }
             replace_captures_with_tup_reference_for_expr(expr, captures_id, captures);
         }
-        Expr::Tuple(exprs) => {
+        Expr::Tuple(exprs) | Expr::Array(exprs) => {
             for e in exprs {
                 replace_captures_with_tup_reference_for_expr(e, captures_id, captures);
             }

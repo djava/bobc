@@ -322,6 +322,31 @@ fn rco_expr(e: &Expr, needs_atomicity: bool) -> ExprTransformation {
                 ephemeral_assigns,
             }
         }
+        Expr::Array(elems) => {
+            let mut ephemeral_assigns = vec![];
+            let mut new_elems = vec![];
+
+            // Each arg must be transformed, and all the ephermal
+            // assignments must be inserted before this call happens
+            for elem in elems {
+                let elem_transform = rco_expr(&*elem, true);
+                ephemeral_assigns.extend(elem_transform.ephemeral_assigns);
+                new_elems.push(elem_transform.new_expr);
+            }
+
+            let new_expr = if needs_atomicity {
+                let id = Identifier::new_ephemeral();
+                ephemeral_assigns.push((id.clone(), Expr::Array(new_elems)));
+                Expr::Id(id)
+            } else {
+                Expr::Array(new_elems)
+            };
+
+            ExprTransformation {
+                new_expr,
+                ephemeral_assigns,
+            }
+        },
         Expr::Subscript(tup, index_val) => {
             let mut ephemeral_assigns = vec![];
 
@@ -419,7 +444,7 @@ mod tests {
                     assert!(is_atomic(arg), "Call argument must be atomic, got {arg:?}");
                 }
             }
-            Expr::Tuple(elems) => {
+            Expr::Tuple(elems) | Expr::Array(elems) => {
                 for elem in elems {
                     assert!(
                         is_atomic(elem),
