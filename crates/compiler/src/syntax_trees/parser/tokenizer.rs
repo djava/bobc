@@ -43,6 +43,8 @@ pub enum Token<'a> {
     RightArrow,
     Return,
     Lambda,
+    For,
+    Semicolon
 }
 
 parser! {
@@ -66,6 +68,7 @@ parser! {
         rule _if() -> Token<'input> = "if" &__ { Token::If }
         rule _else() -> Token<'input> = "else" &__ { Token::Else }
         rule _while() -> Token <'input> = "while" &__ { Token::While }
+        rule _for() -> Token <'input> = "for" &__ { Token::For }
         rule and_word() -> Token<'input> = "and"&__ { Token::And }
         rule or_word() -> Token<'input> = "or" &__ { Token::Or }
         rule not_word() -> Token<'input> = "not" &__ { Token::Not }
@@ -104,13 +107,14 @@ parser! {
         rule colon() -> Token<'input> = ":" { Token::Colon }
         rule asterisk() -> Token<'input> = "*" { Token::Asterisk }
         rule right_arrow() -> Token<'input> = "->" { Token::RightArrow }
+        rule semicolon() -> Token<'input> = ";" { Token::Semicolon }
 
         /// A word token requires trailing whitespace/EOF/puncutation
         rule word_token() -> Token<'input>
             = t:(bool() / and_word() / or_word() / not_word() /_if() /
                  _else() / _while() / is() / int() / _fn() / int_type() /
                  bool_type() / tuple_type() / _return() / callable_type() /
-                 lambda() / none_type() / array_type() / identifier()) &__ {t}
+                 lambda() / none_type() / array_type() / _for() / identifier()) &__ {t}
 
         /// A punctuation token does not require trailing whitespace
         rule punctuation_token() -> Token<'input>
@@ -118,7 +122,7 @@ parser! {
               less_equals() / greater() / less() / and_sym() / or_sym() / not_sym() /
               open_paren() / close_paren() / equals() / plus() / minus() / comma() /
               newline() / open_curly() / close_curly() / open_bracket() / close_bracket() /
-              question_mark() / colon() / asterisk()
+              question_mark() / colon() / asterisk() / semicolon()
 
         rule token() -> Token<'input> = word_token() / punctuation_token()
 

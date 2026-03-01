@@ -95,22 +95,29 @@ fn to_ast_expr(pte: pt::Expr, func_id: &Identifier) -> ast::Expr {
 pub fn to_ast_statement<'a>(
     iter: &mut Peekable<IntoIter<pt::Statement<'a>>>,
     func_name: &Identifier,
-) -> Option<ast::Statement> {
+    ast_statements: &mut Vec<ast::Statement>,
+) {
     match iter.next() {
-        Some(pt::Statement::Expr(pte)) => Some(ast::Statement::Expr(to_ast_expr(pte, func_name))),
-        Some(pt::Statement::Assign(name, pte, type_hint)) => Some(ast::Statement::Assign(
-            AssignDest::Id(local!(name, func_name.clone())),
-            to_ast_expr(pte, func_name),
-            type_hint,
-        )),
-        Some(pt::Statement::SubscriptAssign(container, idx, pte)) => Some(ast::Statement::Assign(
-            AssignDest::ComplexSubscript(ComplexSubscript {
-                container: to_ast_expr(container, func_name),
-                index: to_ast_expr(idx, func_name),
-            }),
-            to_ast_expr(pte, func_name),
-            None,
-        )),
+        Some(pt::Statement::Expr(pte)) => {
+            ast_statements.push(ast::Statement::Expr(to_ast_expr(pte, func_name)));
+        }
+        Some(pt::Statement::Assign(name, pte, type_hint)) => {
+            ast_statements.push(ast::Statement::Assign(
+                AssignDest::Id(local!(name, func_name.clone())),
+                to_ast_expr(pte, func_name),
+                type_hint,
+            ));
+        }
+        Some(pt::Statement::SubscriptAssign(container, idx, pte)) => {
+            ast_statements.push(ast::Statement::Assign(
+                AssignDest::ComplexSubscript(ComplexSubscript {
+                    container: to_ast_expr(container, func_name),
+                    index: to_ast_expr(idx, func_name),
+                }),
+                to_ast_expr(pte, func_name),
+                None,
+            ));
+        }
         Some(pt::Statement::If(cond, body)) => {
             // There could be many stacked else-if statements that we
             // need to consume all of here to combine them into one big
@@ -158,11 +165,11 @@ pub fn to_ast_statement<'a>(
             let ast_cond = to_ast_expr(cond, func_name);
             let ast_body = to_ast_statements(body, func_name);
 
-            Some(ast::Statement::Conditional(
+            ast_statements.push(ast::Statement::Conditional(
                 ast_cond,
                 ast_body,
                 ast_neg_body,
-            ))
+            ));
         }
         Some(pt::Statement::ElseIf(_, _)) | Some(pt::Statement::Else(_)) => {
             // Any else/if or else pt::Statements should've been
@@ -171,18 +178,29 @@ pub fn to_ast_statement<'a>(
                 "Unexpected Else statement - either in wrong place or bug in to_ast's If branch"
             );
         }
-        Some(pt::Statement::While(cond, body)) => Some(ast::Statement::WhileLoop(
-            to_ast_expr(cond, func_name),
-            to_ast_statements(body, func_name),
-        )),
+        Some(pt::Statement::While(cond, body)) => {
+            ast_statements.push(ast::Statement::WhileLoop(
+                to_ast_expr(cond, func_name),
+                to_ast_statements(body, func_name),
+            ));
+        }
         Some(pt::Statement::Return(opt_val)) => {
             let val = opt_val
                 .map(|v| to_ast_expr(v, func_name))
                 .unwrap_or(ast::Expr::Constant(Value::None));
 
-            Some(ast::Statement::Return(val))
+            ast_statements.push(ast::Statement::Return(val));
         }
-        None => None,
+        Some(pt::Statement::For(init, cond, incr, mut body)) => {
+            body.push(*incr);
+
+            ast_statements.extend(to_ast_statements(vec![*init], func_name));
+            ast_statements.push(ast::Statement::WhileLoop(
+                to_ast_expr(cond, func_name),
+                to_ast_statements(body, func_name),
+            ));
+        }
+        None => {}
     }
 }
 
@@ -190,8 +208,8 @@ fn to_ast_statements(body: Vec<pt::Statement>, func_name: &Identifier) -> Vec<as
     let mut pt_iter = body.into_iter().peekable();
 
     let mut statements = vec![];
-    while let Some(s) = to_ast_statement(&mut pt_iter, func_name) {
-        statements.push(s);
+    while let Some(_) = pt_iter.peek() {
+        to_ast_statement(&mut pt_iter, func_name, &mut statements);
     }
 
     statements

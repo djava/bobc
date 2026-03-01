@@ -46,6 +46,7 @@ pub enum Statement<'a> {
     Else(Vec<Statement<'a>>),
     While(Expr<'a>, Vec<Statement<'a>>),
     Return(Option<Expr<'a>>),
+    For(Box<Statement<'a>>, Expr<'a>, Box<Statement<'a>>, Vec<Statement<'a>>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -180,7 +181,7 @@ parser! {
 
         pub rule statement_body() -> Vec<Statement<'t>> =
             [Token::OpenCurly] [Token::Newline]*
-            ss:(if_chain() / (s:simple_statement() { vec![s] })) ** ([Token::Newline]+)
+            ss:(if_chain() / (s:(while_statement() / for_statement() / simple_statement()) { vec![s] })) ** ([Token::Newline]+)
             [Token::Newline]* [Token::CloseCurly] {
                 ss.into_iter().flatten().collect()
             }
@@ -210,15 +211,23 @@ parser! {
             }
 
         pub rule while_statement() -> Statement<'t> =
-            [ Token::While ] cond:expr() body:statement_body() { Statement::While(cond, body) }
+            [Token::While] cond:expr() body:statement_body() { Statement::While(cond, body) }
+
+        pub rule for_statement() -> Statement<'t> =
+            [Token::For] [Token::OpenParen]
+                init:simple_statement() [Token::Semicolon]
+                cond:expr() [Token::Semicolon]
+                incr:simple_statement()
+            [Token::CloseParen] body:statement_body() {
+                Statement::For(Box::new(init), cond, Box::new(incr), body)
+            }
 
         pub rule return_statement() -> Statement<'t> =
-            [ Token::Return ] val:expr()? { Statement::Return(val) }
+            [Token::Return] val:expr()? { Statement::Return(val) }
 
         /// Simple statements (not if-chains)
         pub rule simple_statement() -> Statement<'t> =
-            assign() / subscript_assign() / return_statement() /
-            (e:expr() { Statement::Expr(e) }) / while_statement()
+            assign() / subscript_assign() / return_statement() / (e:expr() { Statement::Expr(e) })
 
         /// A param is a name with a type specifier
         pub rule param() -> (&'t str, ValueType) =
