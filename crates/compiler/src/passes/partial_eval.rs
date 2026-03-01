@@ -206,13 +206,9 @@ fn partial_eval_expr(e: &mut Expr) {
             }
         }
         Tuple(elems) | Expr::Array(elems) => elems.iter_mut().for_each(partial_eval_expr),
-        Subscript(tup, idx) => {
-            partial_eval_expr(tup.as_mut());
-            if let Tuple(elems) = &**tup {
-                if let Constant(elem_val) = &elems[*idx as usize] {
-                    *e = Constant(elem_val.clone());
-                }
-            }
+        Subscript(container, idx) => {
+            partial_eval_expr(container.as_mut());
+            partial_eval_expr(idx.as_mut());
         }
         GlobalSymbol(_) => {}
         Allocate(_, _) => {
@@ -372,9 +368,9 @@ mod tests {
             }
             Expr::Subscript(tup, idx) => {
                 check_expr_invariants(tup);
-                if let Expr::Tuple(elems) = &**tup {
+                if let (Expr::Tuple(elems), Expr::Constant(Value::I64(idx_val))) = (&**tup, &**idx) {
                     assert!(
-                        !matches!(&elems[*idx as usize], Expr::Constant(_)),
+                        !matches!(&elems[*idx_val as usize], Expr::Constant(_)),
                         "Subscript of Tuple with Constant element should have been folded: {e:?}"
                     );
                 }

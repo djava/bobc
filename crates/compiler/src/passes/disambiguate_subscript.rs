@@ -123,7 +123,7 @@ fn disambiguate_for_expr(e: &mut Expr, type_hint: Option<&ValueType>, type_env: 
             if let ValueType::ArrayType(_, _) = expr_type {
                 *e = Expr::Call(
                     Box::new(Expr::GlobalSymbol(global!(FN_SUBSCRIPT_ARRAY))),
-                    vec![*expr.clone(), Expr::Constant(Value::I64(*idx))],
+                    vec![*expr.clone(), *idx.clone()],
                 );
             }
         }

@@ -140,7 +140,7 @@ fn translate_assign(dest: AssignDest, expr: ir::Expr) -> Vec<Instr> {
         ir::Expr::BinaryOp(l, cmp_op, r) => translate_comparison(dest, cmp_op, l, r),
         ir::Expr::Call(func_id, args) => translate_call(Some(dest), func_id, args),
         ir::Expr::Allocate(bytes, value_type) => translate_allocation(dest, bytes, value_type),
-        ir::Expr::Subscript(atom, idx) => translate_subscript(dest, atom, idx),
+        ir::Expr::TupleSubscript(atom, idx) => translate_subscript(dest, atom, idx),
     });
 
     ret
@@ -297,7 +297,7 @@ fn translate_conditional(
             ]);
             call_instrs
         }
-        ir::Expr::Subscript(atom, idx) => {
+        ir::Expr::TupleSubscript(atom, idx) => {
             if let ir::Atom::Variable(var) = atom {
                 vec![
                     Instr::movq(x86::Arg::Variable(var), x86::Arg::Reg(x86::Register::rax)),

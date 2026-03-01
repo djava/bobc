@@ -112,7 +112,7 @@ fn interpret_expr(
             }
         }
         Expr::Allocate(n, _) => Value::Tuple(vec![Value::None; *n]),
-        Expr::Subscript(atom, idx) => {
+        Expr::TupleSubscript(atom, idx) => {
             if let Value::Tuple(elems) = interpret_atom(atom, val_env, func_env) {
                 elems[*idx as usize].clone()
             } else {

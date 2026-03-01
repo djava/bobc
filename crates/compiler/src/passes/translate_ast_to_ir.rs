@@ -281,9 +281,17 @@ fn generate_for_assign(
             ret
         }
         ast::Expr::Subscript(tup, idx) => {
+            let idx_i64 = {
+                if let ir::Atom::Constant(Value::I64(val)) = expr_to_atom(&*idx) {
+                    val
+                } else {
+                    panic!("Non-i64 index into tuple")
+                }
+            };
+
             let mut ret = vec![ir::Statement::Assign(
                 dest,
-                ir::Expr::Subscript(expr_to_atom(tup), *idx),
+                ir::Expr::TupleSubscript(expr_to_atom(tup), idx_i64),
             )];
             ret.extend(cont);
 
@@ -380,8 +388,15 @@ fn generate_for_predicate(
             )]
         }
         ast::Expr::Subscript(tup, idx) => {
+            let idx_i64 = {
+                if let ir::Atom::Constant(Value::I64(val)) = expr_to_atom(&*idx) {
+                    val
+                } else {
+                    panic!("Non-i64 index into tuple")
+                }
+            };
             vec![ir::Statement::If(
-                ir::Expr::Subscript(expr_to_atom(&*tup), *idx),
+                ir::Expr::TupleSubscript(expr_to_atom(&*tup), idx_i64),
                 pos_label,
                 neg_label,
             )]

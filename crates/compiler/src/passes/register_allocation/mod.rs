@@ -885,7 +885,7 @@ mod tests {
                         ),
                         Statement::Expr(Expr::Call(
                             Box::new(Expr::GlobalSymbol(t_global!("print_int"))),
-                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), 1)],
+                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(1))))],
                         )),
                     ],
                     types: TypeEnv::new(),
@@ -921,15 +921,15 @@ mod tests {
                         ),
                         Statement::Expr(Expr::Call(
                             Box::new(Expr::GlobalSymbol(t_global!("print_int"))),
-                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), 0)],
+                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(0))))],
                         )),
                         Statement::Expr(Expr::Call(
                             Box::new(Expr::GlobalSymbol(t_global!("print_int"))),
-                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), 1)],
+                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(1))))],
                         )),
                         Statement::Expr(Expr::Call(
                             Box::new(Expr::GlobalSymbol(t_global!("print_int"))),
-                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), 2)],
+                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(2))))],
                         )),
                     ],
                     types: TypeEnv::new(),
@@ -959,7 +959,7 @@ mod tests {
                         ),
                         Statement::Expr(Expr::Call(
                             Box::new(Expr::GlobalSymbol(t_global!("print_int"))),
-                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), 0)],
+                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(0))))],
                         )),
                     ],
                     types: TypeEnv::new(),
@@ -1002,9 +1002,9 @@ mod tests {
                         Statement::Expr(Expr::Call(
                             Box::new(Expr::GlobalSymbol(t_global!("print_int"))),
                             vec![Expr::BinaryOp(
-                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("t1"))), 0)),
+                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("t1"))), Box::new(Expr::Constant(Value::I64(0))))),
                                 BinaryOperator::Add,
-                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("t2"))), 1)),
+                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("t2"))), Box::new(Expr::Constant(Value::I64(1))))),
                             )],
                         )),
                     ],
@@ -1046,11 +1046,11 @@ mod tests {
                         ),
                         Statement::Expr(Expr::Call(
                             Box::new(Expr::GlobalSymbol(t_global!("print_int"))),
-                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), 0)],
+                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(0))))],
                         )),
                         Statement::Expr(Expr::Call(
                             Box::new(Expr::GlobalSymbol(t_global!("print_int"))),
-                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), 1)],
+                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(1))))],
                         )),
                     ],
                     types: TypeEnv::new(),
@@ -1085,9 +1085,9 @@ mod tests {
                         Statement::Assign(
                             AssignDest::Id(t_global!("x")),
                             Expr::BinaryOp(
-                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), 0)),
+                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(0))))),
                                 BinaryOperator::Add,
-                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), 1)),
+                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(1))))),
                             ),
                             None,
                         ),
@@ -1137,17 +1137,17 @@ mod tests {
                         Statement::Expr(Expr::Call(
                             Box::new(Expr::GlobalSymbol(t_global!("print_int"))),
                             vec![Expr::BinaryOp(
-                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), 0)),
+                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(0))))),
                                 BinaryOperator::Add,
                                 Box::new(Expr::BinaryOp(
                                     Box::new(Expr::Subscript(
                                         Box::new(Expr::Id(t_global!("tup"))),
-                                        1,
+                                        Box::new(Expr::Constant(Value::I64(1))),
                                     )),
                                     BinaryOperator::Add,
                                     Box::new(Expr::Subscript(
                                         Box::new(Expr::Id(t_global!("tup"))),
-                                        2,
+                                        Box::new(Expr::Constant(Value::I64(2))),
                                     )),
                                 )),
                             )],
@@ -1200,7 +1200,7 @@ mod tests {
         sum_expr = Expr::BinaryOp(
             Box::new(sum_expr),
             BinaryOperator::Add,
-            Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), 0)),
+            Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(0))))),
         );
 
         body.push(Statement::Expr(Expr::Call(
@@ -1263,12 +1263,12 @@ mod tests {
                                     vec![Expr::BinaryOp(
                                         Box::new(Expr::Subscript(
                                             Box::new(Expr::Id(t_global!("tup"))),
-                                            0,
+                                            Box::new(Expr::Constant(Value::I64(0))),
                                         )),
                                         BinaryOperator::Add,
                                         Box::new(Expr::Subscript(
                                             Box::new(Expr::Id(t_global!("tup"))),
-                                            1,
+                                            Box::new(Expr::Constant(Value::I64(1))),
                                         )),
                                     )],
                                 )),
@@ -1336,17 +1336,17 @@ mod tests {
                         Statement::Expr(Expr::Call(
                             Box::new(Expr::GlobalSymbol(t_global!("print_int"))),
                             vec![Expr::BinaryOp(
-                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("t1"))), 0)),
+                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("t1"))), Box::new(Expr::Constant(Value::I64(0))))),
                                 BinaryOperator::Add,
                                 Box::new(Expr::BinaryOp(
                                     Box::new(Expr::Subscript(
                                         Box::new(Expr::Id(t_global!("t2"))),
-                                        1,
+                                        Box::new(Expr::Constant(Value::I64(1))),
                                     )),
                                     BinaryOperator::Add,
                                     Box::new(Expr::Subscript(
                                         Box::new(Expr::Id(t_global!("t3"))),
-                                        2,
+                                        Box::new(Expr::Constant(Value::I64(2))),
                                     )),
                                 )),
                             )],
@@ -1389,32 +1389,32 @@ mod tests {
                         Statement::Assign(
                             AssignDest::Subscript(t_global!("tup"), 0),
                             Expr::BinaryOp(
-                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), 1)),
+                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(1))))),
                                 BinaryOperator::Add,
-                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), 2)),
+                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(2))))),
                             ),
                             None,
                         ),
                         Statement::Assign(
                             AssignDest::Subscript(t_global!("tup"), 1),
                             Expr::BinaryOp(
-                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), 0)),
+                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(0))))),
                                 BinaryOperator::Add,
-                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), 2)),
+                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(2))))),
                             ),
                             None,
                         ),
                         Statement::Expr(Expr::Call(
                             Box::new(Expr::GlobalSymbol(t_global!("print_int"))),
-                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), 0)],
+                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(0))))],
                         )),
                         Statement::Expr(Expr::Call(
                             Box::new(Expr::GlobalSymbol(t_global!("print_int"))),
-                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), 1)],
+                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(1))))],
                         )),
                         Statement::Expr(Expr::Call(
                             Box::new(Expr::GlobalSymbol(t_global!("print_int"))),
-                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), 2)],
+                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(2))))],
                         )),
                     ],
                     types: TypeEnv::new(),

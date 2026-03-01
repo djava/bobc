@@ -62,13 +62,16 @@ fn declosurize_for_expr(e: &mut Expr) {
                     vec![
                         Statement::Assign(
                             AssignDest::Id(fn_ptr_id.clone()),
-                            Expr::Subscript(Box::new(Expr::Id(clos_id.clone())), 0),
+                            Expr::Subscript(
+                                Box::new(Expr::Id(clos_id.clone())),
+                                Box::new(Expr::Constant(Value::I64(0))),
+                            ),
                             None,
                         ),
                         Statement::Assign(
                             AssignDest::Id(result_id.clone()),
                             Expr::Call(Box::new(Expr::Id(fn_ptr_id.clone())), args_with_capture),
-                            None
+                            None,
                         ),
                     ],
                     Box::new(Expr::Id(result_id.clone())),

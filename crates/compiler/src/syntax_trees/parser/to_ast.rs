@@ -66,9 +66,10 @@ fn to_ast_expr(pte: pt::Expr, func_id: &Identifier) -> ast::Expr {
 
             ast::Expr::Array(ast_elems)
         }
-        pt::Expr::Subscript(expr, idx) => {
-            ast::Expr::Subscript(Box::new(to_ast_expr(*expr, func_id)), idx)
-        }
+        pt::Expr::Subscript(expr, idx) => ast::Expr::Subscript(
+            Box::new(to_ast_expr(*expr, func_id)),
+            Box::new(to_ast_expr(*idx, func_id)),
+        ),
         pt::Expr::Lambda(args, body) => {
             let lambda_id = Identifier::new_lambda_name();
 

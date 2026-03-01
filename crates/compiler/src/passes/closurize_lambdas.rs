@@ -327,7 +327,7 @@ fn replace_captures_with_tup_reference_for_expr(
             if let Some(capture_idx) = captures.iter().position(|i| i == id) {
                 *e = Expr::Subscript(
                     Box::new(Expr::Id(captures_id.clone())),
-                    (capture_idx + 1) as _,
+                    Box::new(Expr::Constant(Value::I64((capture_idx + 1) as _))),
                 );
             }
         }
@@ -437,7 +437,7 @@ mod tests {
         let captures_id = extracted_closure.params.get_index(0).unwrap().0.clone();
         assert_eq!(
             extracted_closure.body[0],
-            Statement::Expr(Expr::Subscript(Box::new(Expr::Id(captures_id)), 1))
+            Statement::Expr(Expr::Subscript(Box::new(Expr::Id(captures_id)), Box::new(Expr::Constant(Value::I64(1)))))
         );
 
         // global_types reflects the new signature with the captures-tuple param;
@@ -582,11 +582,11 @@ mod tests {
         let captures_id = lam.params.get_index(0).unwrap().0.clone();
         assert_eq!(
             lam.body[0],
-            Statement::Expr(Expr::Subscript(Box::new(Expr::Id(captures_id.clone())), 1))
+            Statement::Expr(Expr::Subscript(Box::new(Expr::Id(captures_id.clone())), Box::new(Expr::Constant(Value::I64(1)))))
         );
         assert_eq!(
             lam.body[1],
-            Statement::Expr(Expr::Subscript(Box::new(Expr::Id(captures_id)), 2))
+            Statement::Expr(Expr::Subscript(Box::new(Expr::Id(captures_id)), Box::new(Expr::Constant(Value::I64(2)))))
         );
 
         assert_eq!(
@@ -660,7 +660,7 @@ mod tests {
         assert_eq!(
             lam.body[0],
             Statement::Return(Expr::BinaryOp(
-                Box::new(Expr::Subscript(Box::new(Expr::Id(captures_id)), 1)),
+                Box::new(Expr::Subscript(Box::new(Expr::Id(captures_id)), Box::new(Expr::Constant(Value::I64(1))))),
                 BinaryOperator::Add,
                 Box::new(Expr::Constant(Value::I64(1))),
             ))
@@ -743,7 +743,7 @@ mod tests {
         let captures_id = lam.params.get_index(0).unwrap().0.clone();
         assert_eq!(
             lam.body[0],
-            Statement::Expr(Expr::Subscript(Box::new(Expr::Id(captures_id)), 1))
+            Statement::Expr(Expr::Subscript(Box::new(Expr::Id(captures_id)), Box::new(Expr::Constant(Value::I64(1)))))
         );
     }
 
@@ -828,7 +828,7 @@ mod tests {
             let captures_id = lam.params.get_index(0).unwrap().0.clone();
             assert_eq!(
                 lam.body[0],
-                Statement::Expr(Expr::Subscript(Box::new(Expr::Id(captures_id)), 1))
+                Statement::Expr(Expr::Subscript(Box::new(Expr::Id(captures_id)), Box::new(Expr::Constant(Value::I64(1)))))
             );
         }
 

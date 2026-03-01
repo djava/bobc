@@ -44,8 +44,7 @@ impl ASTPass for TupleizeExcessArgs {
                 f.params = new_params;
 
                 // Update global_types map for the new type
-                if let ValueType::FunctionType(old_args_types, ret_type) =
-                    &m.global_types[&f.name]
+                if let ValueType::FunctionType(old_args_types, ret_type) = &m.global_types[&f.name]
                 {
                     let mut new_args_types: Vec<_> = old_args_types
                         .iter()
@@ -137,7 +136,10 @@ fn replace_excess_use_for_expr(
     match expr {
         Expr::Id(id) => {
             if let Some(subscript_idx) = excess_names.iter().position(|x| *x == id) {
-                *expr = Expr::Subscript(Box::new(Expr::Id(tuple_id.clone())), subscript_idx as i64);
+                *expr = Expr::Subscript(
+                    Box::new(Expr::Id(tuple_id.clone())),
+                    Box::new(Expr::Constant(Value::I64(subscript_idx as i64))),
+                );
             }
         }
         Expr::BinaryOp(l, _, r) => {
@@ -163,7 +165,7 @@ fn replace_excess_use_for_expr(
             }
             replace_excess_use_for_expr(expr, excess_names, tuple_id);
         }
-        Expr::Tuple(elems)| Expr::Array(elems) => {
+        Expr::Tuple(elems) | Expr::Array(elems) => {
             for e in elems {
                 replace_excess_use_for_expr(e, excess_names, tuple_id);
             }
@@ -247,8 +249,12 @@ fn replace_excess_calls_for_expr(e: &mut Expr) {
             replace_excess_calls_for_expr(expr);
         }
 
-        Expr::Closure(..) | Expr::Id(_) | Expr::Allocate(_, _) | Expr::Constant(_) | Expr::GlobalSymbol(_) => {}
-        Expr::Lambda(_) => panic!("Should've been removed by now")
+        Expr::Closure(..)
+        | Expr::Id(_)
+        | Expr::Allocate(_, _)
+        | Expr::Constant(_)
+        | Expr::GlobalSymbol(_) => {}
+        Expr::Lambda(_) => panic!("Should've been removed by now"),
     }
 }
 
@@ -314,7 +320,7 @@ mod tests {
                 if let Some(subscript_idx) = map.get(b_id) {
                     assert_eq!(
                         after,
-                        &Expr::Subscript(Box::new(Expr::Id(tup_id.clone())), *subscript_idx)
+                        &Expr::Subscript(Box::new(Expr::Id(tup_id.clone())), Box::new(Expr::Constant(Value::I64(*subscript_idx))))
                     );
                 }
             }

@@ -148,15 +148,22 @@ impl ast::Expr {
             Subscript(exp, idx) => {
                 let exp_type = exp.type_check(env, &None);
                 if let ValueType::TupleType(elems) = exp_type {
+                    let const_idx = {
+                        if let ast::Expr::Constant(Value::I64(val)) = &**idx {
+                            val
+                        } else {
+                            panic!("Indexing tuple with non-const-i64");
+                        }
+                    };
                     assert!(
-                        *idx >= 0 && *idx < elems.len() as i64,
+                        *const_idx >= 0 && *const_idx < elems.len() as i64,
                         "Indexed tuple out of bounds"
                     );
-                    elems[*idx as usize].clone()
-                } else if let ValueType::ArrayType(elems, len) = exp_type {
-                    assert!(
-                        *idx >= 0 && *idx < len as i64,
-                        "Indexed array out of bounds"
+                    elems[*const_idx as usize].clone()
+                } else if let ValueType::ArrayType(elems, _) = exp_type {
+                    assert_eq!(
+                        idx.type_check(env, &Some(ValueType::IntType)),
+                        ValueType::IntType
                     );
                     *elems
                 } else {

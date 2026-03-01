@@ -2158,7 +2158,7 @@ else { 5 }
 
                     statements: vec![pt::Statement::Expr(pt::Expr::Subscript(
                         Box::new(pt::Expr::Id("x")),
-                        0,
+                        Box::new(pt::Expr::Int(0)),
                     ))],
                 }],
             },
@@ -2167,7 +2167,7 @@ else { 5 }
                     name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Subscript(
                         Box::new(ast::Expr::Id(main_local!("x"))),
-                        0,
+                        Box::new(ast::Expr::Constant(Value::I64(0))),
                     ))],
                     types: HashMap::new(),
                     params: IndexMap::new(),
@@ -2205,7 +2205,7 @@ else { 5 }
 
                     statements: vec![pt::Statement::Expr(pt::Expr::Subscript(
                         Box::new(pt::Expr::Id("myvar")),
-                        2,
+                        Box::new(pt::Expr::Int(2)),
                     ))],
                 }],
             },
@@ -2214,7 +2214,7 @@ else { 5 }
                     name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Subscript(
                         Box::new(ast::Expr::Id(main_local!("myvar"))),
-                        2,
+                        Box::new(ast::Expr::Constant(Value::I64(2))),
                     ))],
                     types: HashMap::new(),
                     params: IndexMap::new(),
@@ -2252,7 +2252,7 @@ else { 5 }
 
                     statements: vec![pt::Statement::Expr(pt::Expr::Subscript(
                         Box::new(pt::Expr::Id("x")),
-                        -1,
+                        Box::new(pt::Expr::Int(-1)),
                     ))],
                 }],
             },
@@ -2261,7 +2261,7 @@ else { 5 }
                     name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Expr(ast::Expr::Subscript(
                         Box::new(ast::Expr::Id(main_local!("x"))),
-                        -1,
+                        Box::new(ast::Expr::Constant(Value::I64(-1))),
                     ))],
                     types: HashMap::new(),
                     params: IndexMap::new(),
@@ -2302,8 +2302,8 @@ else { 5 }
                     return_type: ValueType::IntType,
 
                     statements: vec![pt::Statement::Expr(pt::Expr::Subscript(
-                        Box::new(pt::Expr::Subscript(Box::new(pt::Expr::Id("x")), 0)),
-                        1,
+                        Box::new(pt::Expr::Subscript(Box::new(pt::Expr::Id("x")), Box::new(pt::Expr::Int(0)))),
+                        Box::new(pt::Expr::Int(1)),
                     ))],
                 }],
             },
@@ -2313,9 +2313,9 @@ else { 5 }
                     body: vec![ast::Statement::Expr(ast::Expr::Subscript(
                         Box::new(ast::Expr::Subscript(
                             Box::new(ast::Expr::Id(main_local!("x"))),
-                            0,
+                            Box::new(ast::Expr::Constant(Value::I64(0))),
                         )),
-                        1,
+                        Box::new(ast::Expr::Constant(Value::I64(1))),
                     ))],
                     types: HashMap::new(),
                     params: IndexMap::new(),
@@ -2356,7 +2356,7 @@ else { 5 }
 
                     statements: vec![pt::Statement::Expr(pt::Expr::Subscript(
                         Box::new(pt::Expr::Call(Box::new(pt::Expr::Id("foo")), vec![])),
-                        0,
+                        Box::new(pt::Expr::Int(0)),
                     ))],
                 }],
             },
@@ -2368,7 +2368,7 @@ else { 5 }
                             Box::new(ast::Expr::Id(main_local!("foo"))),
                             vec![],
                         )),
-                        0,
+                        Box::new(ast::Expr::Constant(Value::I64(0))),
                     ))],
                     types: HashMap::new(),
                     params: IndexMap::new(),
@@ -2408,7 +2408,7 @@ else { 5 }
                     return_type: ValueType::IntType,
 
                     statements: vec![pt::Statement::Expr(pt::Expr::Binary(
-                        Box::new(pt::Expr::Subscript(Box::new(pt::Expr::Id("x")), 0)),
+                        Box::new(pt::Expr::Subscript(Box::new(pt::Expr::Id("x")), Box::new(pt::Expr::Int(0)))),
                         pt::Operator::Plus,
                         Box::new(pt::Expr::Int(1)),
                     ))],
@@ -2420,7 +2420,7 @@ else { 5 }
                     body: vec![ast::Statement::Expr(ast::Expr::BinaryOp(
                         Box::new(ast::Expr::Subscript(
                             Box::new(ast::Expr::Id(main_local!("x"))),
-                            0,
+                            Box::new(ast::Expr::Constant(Value::I64(0))),
                         )),
                         BinaryOperator::Add,
                         Box::new(ast::Expr::Constant(Value::I64(1))),
@@ -2471,7 +2471,7 @@ else { 5 }
                             pt::Expr::Int(1),
                             pt::Expr::Int(2),
                         ])))),
-                        0,
+                        Box::new(pt::Expr::Int(0)),
                     ))],
                 }],
             },
@@ -2483,7 +2483,7 @@ else { 5 }
                             ast::Expr::Constant(Value::I64(1)),
                             ast::Expr::Constant(Value::I64(2)),
                         ])),
-                        0,
+                        Box::new(ast::Expr::Constant(Value::I64(0))),
                     ))],
                     types: HashMap::new(),
                     params: IndexMap::new(),
@@ -2525,7 +2525,7 @@ else { 5 }
                     return_type: ValueType::IntType,
 
                     statements: vec![pt::Statement::Expr(pt::Expr::Ternary(
-                        Box::new(pt::Expr::Subscript(Box::new(pt::Expr::Id("x")), 0)),
+                        Box::new(pt::Expr::Subscript(Box::new(pt::Expr::Id("x")), Box::new(pt::Expr::Int(0)))),
                         Box::new(pt::Expr::Int(1)),
                         Box::new(pt::Expr::Int(2)),
                     ))],
@@ -2537,7 +2537,7 @@ else { 5 }
                     body: vec![ast::Statement::Expr(ast::Expr::Ternary(
                         Box::new(ast::Expr::Subscript(
                             Box::new(ast::Expr::Id(main_local!("x"))),
-                            0,
+                            Box::new(ast::Expr::Constant(Value::I64(0))),
                         )),
                         Box::new(ast::Expr::Constant(Value::I64(1))),
                         Box::new(ast::Expr::Constant(Value::I64(2))),
@@ -2907,7 +2907,7 @@ else { 5 }
                     statements: vec![pt::Statement::SubscriptAssign(
                         "x",
                         0,
-                        pt::Expr::Subscript(Box::new(pt::Expr::Id("y")), 1),
+                        pt::Expr::Subscript(Box::new(pt::Expr::Id("y")), Box::new(pt::Expr::Int(1))),
                     )],
                 }],
             },
@@ -2916,7 +2916,7 @@ else { 5 }
                     name: t_global!(LABEL_MAIN),
                     body: vec![ast::Statement::Assign(
                         AssignDest::Subscript(main_local!("x"), 0),
-                        ast::Expr::Subscript(Box::new(ast::Expr::Id(main_local!("y"))), 1),
+                        ast::Expr::Subscript(Box::new(ast::Expr::Id(main_local!("y"))), Box::new(ast::Expr::Constant(Value::I64(1)))),
                         None,
                     )],
                     types: HashMap::new(),
@@ -3603,7 +3603,7 @@ x[0] = 42
 
                     statements: vec![pt::Statement::Expr(pt::Expr::Subscript(
                         Box::new(pt::Expr::Id("p")),
-                        0,
+                        Box::new(pt::Expr::Int(0)),
                     ))],
                 }],
             },
@@ -3612,7 +3612,7 @@ x[0] = 42
                     name: first_id.clone(),
                     body: vec![ast::Statement::Expr(ast::Expr::Subscript(
                         Box::new(ast::Expr::Id(t_local!("p", first_id.clone()))),
-                        0,
+                        Box::new(ast::Expr::Constant(Value::I64(0))),
                     ))],
                     types: HashMap::new(),
                     params: IndexMap::from([(
@@ -3802,8 +3802,8 @@ x[0] = 42
                     return_type: ValueType::IntType,
 
                     statements: vec![pt::Statement::Expr(pt::Expr::Subscript(
-                        Box::new(pt::Expr::Subscript(Box::new(pt::Expr::Id("t")), 0)),
-                        0,
+                        Box::new(pt::Expr::Subscript(Box::new(pt::Expr::Id("t")), Box::new(pt::Expr::Int(0)))),
+                        Box::new(pt::Expr::Int(0)),
                     ))],
                 }],
             },
@@ -3813,9 +3813,9 @@ x[0] = 42
                     body: vec![ast::Statement::Expr(ast::Expr::Subscript(
                         Box::new(ast::Expr::Subscript(
                             Box::new(ast::Expr::Id(t_local!("t", deep_id.clone()))),
-                            0,
+                            Box::new(ast::Expr::Constant(Value::I64(0))),
                         )),
-                        0,
+                        Box::new(ast::Expr::Constant(Value::I64(0))),
                     ))],
                     types: HashMap::new(),
                     params: IndexMap::from([(
@@ -3934,7 +3934,7 @@ x[0] = 42
                     return_type: ValueType::IntType,
 
                     statements: vec![pt::Statement::Expr(pt::Expr::Call(
-                        Box::new(pt::Expr::Subscript(Box::new(pt::Expr::Id("t")), 0)),
+                        Box::new(pt::Expr::Subscript(Box::new(pt::Expr::Id("t")), Box::new(pt::Expr::Int(0)))),
                         vec![pt::Expr::Int(10)],
                     ))],
                 }],
@@ -3945,7 +3945,7 @@ x[0] = 42
                     body: vec![ast::Statement::Expr(ast::Expr::Call(
                         Box::new(ast::Expr::Subscript(
                             Box::new(ast::Expr::Id(main_local!("t"))),
-                            0,
+                            Box::new(ast::Expr::Constant(Value::I64(0))),
                         )),
                         vec![ast::Expr::Constant(Value::I64(10))],
                     ))],

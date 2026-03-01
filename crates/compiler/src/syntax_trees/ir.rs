@@ -15,7 +15,7 @@ pub enum Expr {
     BinaryOp(Atom, BinaryOperator, Atom),
     Call(Atom, Vec<Atom>),
     Allocate(usize, ValueType),
-    Subscript(Atom, i64),
+    TupleSubscript(Atom, i64),
 }
 
 #[derive(Debug, Clone)]

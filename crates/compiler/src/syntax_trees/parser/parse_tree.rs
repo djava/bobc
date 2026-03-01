@@ -32,7 +32,7 @@ pub enum Expr<'a> {
     Ternary(Box<Expr<'a>>, Box<Expr<'a>>, Box<Expr<'a>>),
     Tuple(Vec<Expr<'a>>),
     Array(Vec<Expr<'a>>),
-    Subscript(Box<Expr<'a>>, i64),
+    Subscript(Box<Expr<'a>>, Box<Expr<'a>>),
     Lambda(Vec<&'a str>, Vec<Statement<'a>>),
 }
 
@@ -156,7 +156,7 @@ parser! {
             l:(@) op:operator() r:@ { Expr::Binary(Box::new(l), op, Box::new(r)) }
             --
             // Postfix operators
-            e:@ [Token::OpenBracket] [Token::Int(idx)] [Token::CloseBracket] { Expr::Subscript(Box::new(e), idx) }
+            e:(@) [Token::OpenBracket] idx:expr() [Token::CloseBracket] { Expr::Subscript(Box::new(e), Box::new(idx)) }
             func:@ [Token::OpenParen] args:(expr() ** [Token::Comma]) [Token::CloseParen] { Expr::Call(Box::new(func), args) }
             --
             // Prefix operators

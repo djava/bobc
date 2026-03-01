@@ -13,7 +13,7 @@ pub enum Expr {
     StatementBlock(Vec<Statement>, Box<Expr>),
     Tuple(Vec<Expr>),
     Array(Vec<Expr>),
-    Subscript(Box<Expr>, i64),
+    Subscript(Box<Expr>, Box<Expr>),
     Allocate(usize, ValueType),
     GlobalSymbol(Identifier),
     Lambda(Function),
