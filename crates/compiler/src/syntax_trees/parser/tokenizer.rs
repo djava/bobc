@@ -6,6 +6,7 @@ use nom::{
     bytes::complete::{is_a, is_not, tag, take_while},
     combinator::{all_consuming, eof, peek, recognize},
     multi::many0,
+    sequence::terminated,
 };
 use nom_locate::LocatedSpan;
 
@@ -64,13 +65,7 @@ pub struct Token<'a> {
 const ID_START_CHARS: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_";
 const WORD_CHARS: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_";
 
-macro_rules! keyword_token {
-    ($string: expr, $tok: expr) => {
-        (tag($string), peek(word_delimiter)).map(|(s, _)| (s, $tok))
-    };
-}
-
-macro_rules! punctuation_token {
+macro_rules! token_map {
     ($string: expr, $tok: expr) => {
         tag($string).map(|s| (s, $tok))
     };
@@ -99,86 +94,109 @@ fn whitespace(input: LocatedSpan<&str>) -> IResult<LocatedSpan<&str>, ()> {
 fn keyword_parser<'a>(rem: LocatedSpan<&'a str>) -> IResult<LocatedSpan<&'a str>, Token<'a>> {
     use TokenValue::*;
 
-    // let (rem, _) = position(input)?;
-    let (rem, (span, token)) = alt((
-        keyword_token!("true", Bool(true)),
-        keyword_token!("false", Bool(false)),
-        keyword_token!("if", If),
-        keyword_token!("else", Else),
-        keyword_token!("while", While),
-        keyword_token!("for", For),
-        keyword_token!("and", And),
-        keyword_token!("or", Or),
-        keyword_token!("not", Not),
-        keyword_token!("is", Is),
-        keyword_token!("fn", Fn),
-        keyword_token!("int", IntType),
-        keyword_token!("bool", BoolType),
-        keyword_token!("tuple", TupleType),
-        keyword_token!("array", ArrayType),
-        keyword_token!("callable", CallableType),
-        keyword_token!("none", NoneType),
-        keyword_token!("return", Return),
-        keyword_token!("lambda", Lambda),
-    ))
+    let (rem, (span, token)) = terminated(
+        alt((
+            token_map!("true", Bool(true)),
+            token_map!("false", Bool(false)),
+            token_map!("if", If),
+            token_map!("else", Else),
+            token_map!("while", While),
+            token_map!("for", For),
+            token_map!("and", And),
+            token_map!("or", Or),
+            token_map!("not", Not),
+            token_map!("is", Is),
+            token_map!("fn", Fn),
+            token_map!("int", IntType),
+            token_map!("bool", BoolType),
+            token_map!("tuple", TupleType),
+            token_map!("array", ArrayType),
+            token_map!("callable", CallableType),
+            token_map!("none", NoneType),
+            token_map!("return", Return),
+            token_map!("lambda", Lambda),
+        )),
+        word_delimiter,
+    )
     .parse(rem)?;
 
-    Ok((rem, Token { token, position: span }))
+    Ok((
+        rem,
+        Token {
+            token,
+            position: span,
+        },
+    ))
 }
 
 fn punctuation_parser<'a>(rem: LocatedSpan<&'a str>) -> IResult<LocatedSpan<&'a str>, Token<'a>> {
     use TokenValue::*;
-    
+
     // let (rem, _) = position(input)?;
     let (rem, (span, token)) = alt((
         alt((
-            punctuation_token!("->", RightArrow),
-            punctuation_token!("==", DoubleEquals),
-            punctuation_token!("!=", NotEquals),
-            punctuation_token!(">=", GreaterEquals),
-            punctuation_token!("<=", LessEquals),
-            punctuation_token!(">", Greater),
-            punctuation_token!("<", Less),
-            punctuation_token!("&&", And),
-            punctuation_token!("||", Or),
-            punctuation_token!("!", Not),
-            punctuation_token!("(", OpenParen),
-            punctuation_token!(")", CloseParen),
-            punctuation_token!("=", Equals),
-            punctuation_token!("+", Plus),
-            punctuation_token!("-", Minus),
-            punctuation_token!(",", Comma),
-            punctuation_token!("{", OpenCurly),
-            punctuation_token!("}", CloseCurly),
-            punctuation_token!("[", OpenBracket),
-            punctuation_token!("]", CloseBracket),
-            punctuation_token!("?", QuestionMark),
+            token_map!("->", RightArrow),
+            token_map!("==", DoubleEquals),
+            token_map!("!=", NotEquals),
+            token_map!(">=", GreaterEquals),
+            token_map!("<=", LessEquals),
+            token_map!(">", Greater),
+            token_map!("<", Less),
+            token_map!("&&", And),
+            token_map!("||", Or),
+            token_map!("!", Not),
+            token_map!("(", OpenParen),
+            token_map!(")", CloseParen),
+            token_map!("=", Equals),
+            token_map!("+", Plus),
+            token_map!("-", Minus),
+            token_map!(",", Comma),
+            token_map!("{", OpenCurly),
+            token_map!("}", CloseCurly),
+            token_map!("[", OpenBracket),
+            token_map!("]", CloseBracket),
+            token_map!("?", QuestionMark),
         )), // Each `alt` supports a max of 21 choices
         alt((
-            punctuation_token!(":", Colon),
-            punctuation_token!("*", Asterisk),
-            punctuation_token!(";", Semicolon),
+            token_map!(":", Colon),
+            token_map!("*", Asterisk),
+            token_map!(";", Semicolon),
         )),
     ))
     .parse(rem)?;
 
-
-    Ok((rem, Token { token, position: span }))
+    Ok((
+        rem,
+        Token {
+            token,
+            position: span,
+        },
+    ))
 }
 
 fn int_parser(rem: LocatedSpan<&'_ str>) -> IResult<LocatedSpan<&'_ str>, Token<'_>> {
-    let (rem, token_span) = recognize(nom::character::complete::i64)
-        .parse(rem)?;
+    let (rem, token_span) =
+        recognize(terminated(nom::character::complete::i64, word_delimiter)).parse(rem)?;
 
-    let int_val = token_span.clone().into_fragment().parse::<i64>().expect("Couldn't parse i64");
+    let int_val = token_span
+        .clone()
+        .into_fragment()
+        .parse::<i64>()
+        .expect("Couldn't parse i64");
     let token = TokenValue::Int(int_val);
 
-    Ok((rem, Token { token, position: token_span }))
+    Ok((
+        rem,
+        Token {
+            token,
+            position: token_span,
+        },
+    ))
 }
 
 fn id_parser(rem: LocatedSpan<&'_ str>) -> IResult<LocatedSpan<&'_ str>, Token<'_>> {
-    let (rem, id_span) = take_while(|c| WORD_CHARS.contains(c))(rem)?;
-
+    let (rem, id_span) =
+        terminated(take_while(|c| WORD_CHARS.contains(c)), word_delimiter).parse(rem)?;
 
     // Make sure the first char is a valid start char
     let _ = is_a(ID_START_CHARS)(id_span)?;
