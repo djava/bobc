@@ -1,8 +1,16 @@
-use super::ParserError;
 use peg::*;
 
+use nom::{
+    IResult, Parser,
+    branch::alt,
+    bytes::complete::{is_a, is_not, tag, take_while},
+    combinator::{all_consuming, eof, peek, recognize},
+    multi::many0,
+};
+use nom_locate::LocatedSpan;
+
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Token<'a> {
+pub enum TokenValue<'a> {
     Identifier(&'a str),
     Int(i64),
     Bool(bool),
@@ -44,98 +52,173 @@ pub enum Token<'a> {
     Return,
     Lambda,
     For,
-    Semicolon
+    Semicolon,
 }
 
-parser! {
-    grammar tokenizer() for str {
-        rule _ = [' ' | '\t']* // Whitespace
-        rule __ = !['A'..='Z' | 'a'..='z' | '_' | '0'..='9'] // Word token boundary
-        rule end_of_file() = _ ![_] // Whitespace then EOF
+#[derive(Debug)]
+pub struct Token<'a> {
+    pub token: TokenValue<'a>,
+    pub position: LocatedSpan<&'a str>,
+}
 
-        rule identifier() -> Token<'input>
-            = name:$(['A'..='Z' | 'a'..='z' | '_']['A'..='Z' | 'a'..='z' | '_' | '0'..='9']*)
-            { Token::Identifier(name) }
+const ID_START_CHARS: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_";
+const WORD_CHARS: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_";
 
-        rule int() -> Token<'input>
-            = n:$("-"?['0'..='9']+)
-            {? n.parse().or(Err("int")).and_then(|val| Ok(Token::Int(val))) }
+macro_rules! keyword_token {
+    ($string: expr, $tok: expr) => {
+        (tag($string), peek(word_delimiter)).map(|(s, _)| (s, $tok))
+    };
+}
 
-        rule _true() -> Token<'input> = "true" &__ { Token::Bool(true) }
-        rule _false() -> Token<'input> = "false" &__ { Token::Bool(false) }
-        rule bool() -> Token<'input> = _true() / _false()
+macro_rules! punctuation_token {
+    ($string: expr, $tok: expr) => {
+        tag($string).map(|s| (s, $tok))
+    };
+}
 
-        rule _if() -> Token<'input> = "if" &__ { Token::If }
-        rule _else() -> Token<'input> = "else" &__ { Token::Else }
-        rule _while() -> Token <'input> = "while" &__ { Token::While }
-        rule _for() -> Token <'input> = "for" &__ { Token::For }
-        rule and_word() -> Token<'input> = "and"&__ { Token::And }
-        rule or_word() -> Token<'input> = "or" &__ { Token::Or }
-        rule not_word() -> Token<'input> = "not" &__ { Token::Not }
-        rule is() -> Token<'input> = "is" &__ { Token::Is }
-        rule _fn() -> Token<'input> = "fn" &__ { Token::Fn }
-        rule int_type() -> Token<'input> = "int" &__ { Token::IntType }
-        rule bool_type() -> Token<'input> = "bool" &__ { Token::BoolType }
-        rule tuple_type() -> Token<'input> = "tuple" &__ { Token::TupleType }
-        rule array_type() -> Token<'input> = "array" &__ { Token::ArrayType }
-        rule callable_type() -> Token<'input> = "callable" &__ { Token::CallableType }
-        rule none_type() -> Token<'input> = "none" &__ { Token::NoneType }
-        rule _return() -> Token<'input> = "return" &__ { Token::Return }
-        rule lambda() -> Token<'input> = "lambda" &__ { Token::Lambda }
+fn word_delimiter(rem: LocatedSpan<&str>) -> IResult<LocatedSpan<&str>, ()> {
+    peek(is_not(WORD_CHARS)).map(|_| ()).parse(rem)
+}
 
-        rule double_equals() -> Token<'input> = "==" { Token::DoubleEquals }
-        rule not_equals() -> Token<'input> = "!=" { Token::NotEquals }
-        rule greater_equals() -> Token<'input> = ">=" { Token::GreaterEquals }
-        rule less_equals() -> Token<'input> = "<=" { Token::LessEquals }
-        rule greater() -> Token<'input> = ">" { Token::Greater }
-        rule less() -> Token<'input> = "<" { Token::Less }
-        rule and_sym() -> Token<'input> = "&&" { Token::And }
-        rule or_sym() -> Token<'input> = "||" { Token::Or }
-        rule not_sym() -> Token<'input> = "!" { Token::Not }
-        rule open_paren() -> Token<'input> = "(" { Token::OpenParen }
-        rule close_paren() -> Token<'input> = ")" { Token::CloseParen }
-        rule equals() -> Token<'input> = "=" { Token::Equals }
-        rule plus() -> Token<'input> = "+" { Token::Plus }
-        rule minus() -> Token<'input> = "-" { Token::Minus }
-        rule comma() -> Token<'input> = "," { Token::Comma }
-        rule newline() -> Token<'input> = "\r"? "\n" { Token::Newline }
-        rule open_curly() -> Token<'input> = "{" { Token::OpenCurly }
-        rule close_curly() -> Token<'input> = "}" { Token::CloseCurly }
-        rule open_bracket() -> Token<'input> = "[" { Token::OpenBracket }
-        rule close_bracket() -> Token<'input> = "]" { Token::CloseBracket }
-        rule question_mark() -> Token<'input> = "?" { Token::QuestionMark }
-        rule colon() -> Token<'input> = ":" { Token::Colon }
-        rule asterisk() -> Token<'input> = "*" { Token::Asterisk }
-        rule right_arrow() -> Token<'input> = "->" { Token::RightArrow }
-        rule semicolon() -> Token<'input> = ";" { Token::Semicolon }
+fn newline<'a>(rem: LocatedSpan<&'a str>) -> IResult<LocatedSpan<&'a str>, Token<'a>> {
+    let (rem, span) = is_a("\r\n").parse(rem)?;
 
-        /// A word token requires trailing whitespace/EOF/puncutation
-        rule word_token() -> Token<'input>
-            = t:(bool() / and_word() / or_word() / not_word() /_if() /
-                 _else() / _while() / is() / int() / _fn() / int_type() /
-                 bool_type() / tuple_type() / _return() / callable_type() /
-                 lambda() / none_type() / array_type() / _for() / identifier()) &__ {t}
+    Ok((
+        rem,
+        Token {
+            token: TokenValue::Newline,
+            position: span,
+        },
+    ))
+}
 
-        /// A punctuation token does not require trailing whitespace
-        rule punctuation_token() -> Token<'input>
-            = right_arrow() / double_equals() / not_equals() / greater_equals() /
-              less_equals() / greater() / less() / and_sym() / or_sym() / not_sym() /
-              open_paren() / close_paren() / equals() / plus() / minus() / comma() /
-              newline() / open_curly() / close_curly() / open_bracket() / close_bracket() /
-              question_mark() / colon() / asterisk() / semicolon()
+fn whitespace(input: LocatedSpan<&str>) -> IResult<LocatedSpan<&str>, ()> {
+    alt((tag(" "), tag("\t"))).map(|_| ()).parse(input)
+}
 
-        rule token() -> Token<'input> = word_token() / punctuation_token()
+fn keyword_parser<'a>(rem: LocatedSpan<&'a str>) -> IResult<LocatedSpan<&'a str>, Token<'a>> {
+    use TokenValue::*;
 
-        /// Optionally-whitespace-delimited Tokens
-        pub rule tokens() -> Vec<Token<'input>>
-            = _ ts:token() ** (_?) end_of_file() { ts }
+    // let (rem, _) = position(input)?;
+    let (rem, (span, token)) = alt((
+        keyword_token!("true", Bool(true)),
+        keyword_token!("false", Bool(false)),
+        keyword_token!("if", If),
+        keyword_token!("else", Else),
+        keyword_token!("while", While),
+        keyword_token!("for", For),
+        keyword_token!("and", And),
+        keyword_token!("or", Or),
+        keyword_token!("not", Not),
+        keyword_token!("is", Is),
+        keyword_token!("fn", Fn),
+        keyword_token!("int", IntType),
+        keyword_token!("bool", BoolType),
+        keyword_token!("tuple", TupleType),
+        keyword_token!("array", ArrayType),
+        keyword_token!("callable", CallableType),
+        keyword_token!("none", NoneType),
+        keyword_token!("return", Return),
+        keyword_token!("lambda", Lambda),
+    ))
+    .parse(rem)?;
+
+    Ok((rem, Token { token, position: span }))
+}
+
+fn punctuation_parser<'a>(rem: LocatedSpan<&'a str>) -> IResult<LocatedSpan<&'a str>, Token<'a>> {
+    use TokenValue::*;
+    
+    // let (rem, _) = position(input)?;
+    let (rem, (span, token)) = alt((
+        alt((
+            punctuation_token!("->", RightArrow),
+            punctuation_token!("==", DoubleEquals),
+            punctuation_token!("!=", NotEquals),
+            punctuation_token!(">=", GreaterEquals),
+            punctuation_token!("<=", LessEquals),
+            punctuation_token!(">", Greater),
+            punctuation_token!("<", Less),
+            punctuation_token!("&&", And),
+            punctuation_token!("||", Or),
+            punctuation_token!("!", Not),
+            punctuation_token!("(", OpenParen),
+            punctuation_token!(")", CloseParen),
+            punctuation_token!("=", Equals),
+            punctuation_token!("+", Plus),
+            punctuation_token!("-", Minus),
+            punctuation_token!(",", Comma),
+            punctuation_token!("{", OpenCurly),
+            punctuation_token!("}", CloseCurly),
+            punctuation_token!("[", OpenBracket),
+            punctuation_token!("]", CloseBracket),
+            punctuation_token!("?", QuestionMark),
+        )), // Each `alt` supports a max of 21 choices
+        alt((
+            punctuation_token!(":", Colon),
+            punctuation_token!("*", Asterisk),
+            punctuation_token!(";", Semicolon),
+        )),
+    ))
+    .parse(rem)?;
+
+
+    Ok((rem, Token { token, position: span }))
+}
+
+fn int_parser(rem: LocatedSpan<&'_ str>) -> IResult<LocatedSpan<&'_ str>, Token<'_>> {
+    let (rem, token_span) = recognize(nom::character::complete::i64)
+        .parse(rem)?;
+
+    let int_val = token_span.clone().into_fragment().parse::<i64>().expect("Couldn't parse i64");
+    let token = TokenValue::Int(int_val);
+
+    Ok((rem, Token { token, position: token_span }))
+}
+
+fn id_parser(rem: LocatedSpan<&'_ str>) -> IResult<LocatedSpan<&'_ str>, Token<'_>> {
+    let (rem, id_span) = take_while(|c| WORD_CHARS.contains(c))(rem)?;
+
+
+    // Make sure the first char is a valid start char
+    let _ = is_a(ID_START_CHARS)(id_span)?;
+
+    Ok((
+        rem,
+        Token {
+            token: TokenValue::Identifier(id_span.clone().into_fragment()),
+            position: id_span,
+        },
+    ))
+}
+
+fn token_parser(rem: LocatedSpan<&'_ str>) -> IResult<LocatedSpan<&'_ str>, Token<'_>> {
+    let (rem, _) = many0(whitespace).parse(rem)?;
+
+    let tok = alt((
+        newline,
+        keyword_parser,
+        int_parser,
+        punctuation_parser,
+        id_parser,
+    ))
+    .parse(rem);
+
+    tok
+}
+
+pub fn tokenize(
+    input: &'_ str,
+) -> Result<Vec<Token<'_>>, nom::Err<nom::error::Error<LocatedSpan<&'_ str>>>> {
+    let res = all_consuming((many0(token_parser), eof)).parse(LocatedSpan::new(input));
+
+    if let Ok((rem, (tokens, _))) = res {
+        assert!(rem.is_empty());
+        dbg!(&tokens);
+        Ok(tokens)
+    } else if let Err(err) = res {
+        Err(err)
+    } else {
+        unreachable!()
     }
-
-}
-
-pub fn tokenize<'a>(input: &'a str) -> Result<Vec<Token<'a>>, ParserError<'a>> {
-    tokenizer::tokens(input).map_err(|e| {
-        let got = input.chars().nth(e.location.offset).unwrap_or('~');
-        ParserError::Tokenizer(e, got)
-    })
 }

@@ -68,80 +68,80 @@ parser! {
     // long as whoever sliced them). The TOKENS themself have the same
     // lifetime as the source string, since their references are to the
     // names of the variables in the source
-    grammar parse_tree<'t>() for [Token<'t>] {
-        rule eof() = [Token::Newline]* ![_]
+    grammar parse_tree<'t>() for [TokenValue<'t>] {
+        rule eof() = [TokenValue::Newline]* ![_]
 
         rule operator() -> Operator =
-            op:[Token::Minus | Token::Plus | Token::And | Token::Or | Token::Not |
-                Token::DoubleEquals | Token::NotEquals | Token::Greater | Token::GreaterEquals
-                | Token::Less | Token::LessEquals | Token::Is | Token::Asterisk] {
+            op:[TokenValue::Minus | TokenValue::Plus | TokenValue::And | TokenValue::Or | TokenValue::Not |
+                TokenValue::DoubleEquals | TokenValue::NotEquals | TokenValue::Greater | TokenValue::GreaterEquals
+                | TokenValue::Less | TokenValue::LessEquals | TokenValue::Is | TokenValue::Asterisk] {
                 match op {
-                    Token::Minus         => Operator::Minus,
-                    Token::Plus          => Operator::Plus,
-                    Token::And           => Operator::And,
-                    Token::Or            => Operator::Or,
-                    Token::DoubleEquals  => Operator::Equals,
-                    Token::NotEquals     => Operator::NotEquals,
-                    Token::Greater       => Operator::Greater,
-                    Token::GreaterEquals => Operator::GreaterEquals,
-                    Token::Less          => Operator::Less,
-                    Token::LessEquals    => Operator::LessEquals,
-                    Token::Not           => Operator::Not,
-                    Token::Is            => Operator::Is,
-                    Token::Asterisk      => Operator::Asterisk,
+                    TokenValue::Minus         => Operator::Minus,
+                    TokenValue::Plus          => Operator::Plus,
+                    TokenValue::And           => Operator::And,
+                    TokenValue::Or            => Operator::Or,
+                    TokenValue::DoubleEquals  => Operator::Equals,
+                    TokenValue::NotEquals     => Operator::NotEquals,
+                    TokenValue::Greater       => Operator::Greater,
+                    TokenValue::GreaterEquals => Operator::GreaterEquals,
+                    TokenValue::Less          => Operator::Less,
+                    TokenValue::LessEquals    => Operator::LessEquals,
+                    TokenValue::Not           => Operator::Not,
+                    TokenValue::Is            => Operator::Is,
+                    TokenValue::Asterisk      => Operator::Asterisk,
                     _ => unreachable!()
                 }
             }
 
-        rule int_type() -> ValueType = [Token::IntType] { ValueType::IntType }
-        rule bool_type() -> ValueType = [Token::BoolType] { ValueType::BoolType }
+        rule int_type() -> ValueType = [TokenValue::IntType] { ValueType::IntType }
+        rule bool_type() -> ValueType = [TokenValue::BoolType] { ValueType::BoolType }
         rule primitive_type() -> ValueType = int_type() / bool_type()
 
         rule tuple_type() -> ValueType =
-            [Token::TupleType] [Token::Less] types:(_type() ++ [Token::Comma]) [Token::Greater]
+            [TokenValue::TupleType] [TokenValue::Less] types:(_type() ++ [TokenValue::Comma]) [TokenValue::Greater]
             { ValueType::TupleType(types) }
 
         rule array_type() -> ValueType =
-            [Token::ArrayType] [Token::Less] typ:_type() [Token::Comma] [Token::Int(len)] [Token::Greater]
+            [TokenValue::ArrayType] [TokenValue::Less] typ:_type() [TokenValue::Comma] [TokenValue::Int(len)] [TokenValue::Greater]
             { ValueType::ArrayType(Box::new(typ), len as usize) }
 
         rule callable_type() -> ValueType =
-            [Token::CallableType] [Token::Less]
-                [Token::OpenBracket] args:(_type() ** [Token::Comma]) [Token::CloseBracket]
-                return_type:([Token::Comma] ret:_type() {ret})?
-            [Token::Greater]
+            [TokenValue::CallableType] [TokenValue::Less]
+                [TokenValue::OpenBracket] args:(_type() ** [TokenValue::Comma]) [TokenValue::CloseBracket]
+                return_type:([TokenValue::Comma] ret:_type() {ret})?
+            [TokenValue::Greater]
             { ValueType::FunctionType(args, Box::new(return_type.unwrap_or(ValueType::NoneType)))}
 
-        rule none_type() -> ValueType = [Token::NoneType] { ValueType::NoneType }
+        rule none_type() -> ValueType = [TokenValue::NoneType] { ValueType::NoneType }
 
         rule _type() -> ValueType = array_type() / tuple_type() / primitive_type() / callable_type() / none_type()
 
         // Trailing comma is mandatory for one elem but optional for multiple
         rule tuple_elements() -> Vec<Expr<'t>> =
-            elems:((s:(expr() **<2,50> [Token::Comma]) [Token::Comma]? { s }) / (e:expr() [Token::Comma] { vec![e] }))
+            elems:((s:(expr() **<2,50> [TokenValue::Comma]) [TokenValue::Comma]? { s }) / (e:expr() [TokenValue::Comma] { vec![e] }))
             { elems }
 
         rule tuple() -> Expr<'t> =
-            [Token::OpenParen] elems:tuple_elements() [Token::CloseParen] { Expr::Tuple(elems) }
+            [TokenValue::OpenParen] elems:tuple_elements() [TokenValue::CloseParen] { Expr::Tuple(elems) }
 
         rule array_elements() -> Vec<Expr<'t>> =
-            s:(expr() ** [Token::Comma]) [Token::Comma]? { s }
+            s:(expr() ** [TokenValue::Comma]) [TokenValue::Comma]? { s }
 
         rule array() -> Expr<'t> =
-            [Token::OpenBracket] elems:array_elements() [Token::CloseBracket] { Expr::Array(elems) }
+            [TokenValue::OpenBracket] elems:array_elements() [TokenValue::CloseBracket] { Expr::Array(elems) }
 
         rule lambda_oneliner_body() -> Vec<Statement<'t>> = e:expr() {
             vec![Statement::Return(Some(e))]
         }
 
         rule lambda() -> Expr<'t> =
-            [Token::Lambda] args:(([Token::Identifier(id)] { id }) ** [Token::Comma])
-            [Token::Colon]
+            [TokenValue::Lambda] args:(([TokenValue::Identifier(id)] { id }) ** [TokenValue::Comma])
+            [TokenValue::Colon]
             body:(lambda_oneliner_body() / statement_body())
             { Expr::Lambda(args, body) }
 
         rule ternary() -> Expr<'t> =
-            cond:precedence_expr() [Token::QuestionMark] pos:expr() [Token::Colon] neg:expr() {
+            cond:precedence_expr() [TokenValue::QuestionMark] pos:expr() [TokenValue::Colon] neg:expr() {
                 Expr::Ternary(Box::new(cond), Box::new(pos), Box::new(neg))
             }
 
@@ -157,73 +157,73 @@ parser! {
             l:(@) op:operator() r:@ { Expr::Binary(Box::new(l), op, Box::new(r)) }
             --
             // Postfix operators
-            e:(@) [Token::OpenBracket] idx:expr() [Token::CloseBracket] { Expr::Subscript(Box::new(e), Box::new(idx)) }
-            func:@ [Token::OpenParen] args:(expr() ** [Token::Comma]) [Token::CloseParen] { Expr::Call(Box::new(func), args) }
+            e:(@) [TokenValue::OpenBracket] idx:expr() [TokenValue::CloseBracket] { Expr::Subscript(Box::new(e), Box::new(idx)) }
+            func:@ [TokenValue::OpenParen] args:(expr() ** [TokenValue::Comma]) [TokenValue::CloseParen] { Expr::Call(Box::new(func), args) }
             --
             // Prefix operators
             op:operator() val:@ { Expr::Unary(op, Box::new(val)) }
             --
             // Highest: Atoms
-            [Token::Identifier(id)] { Expr::Id(id) }
-            [Token::Int(val)] { Expr::Int(val) }
-            [Token::Bool(val)] { Expr::Bool(val) }
-            [Token::OpenParen] e:expr() [Token::CloseParen] { Expr::Parens(Box::new(e)) }
+            [TokenValue::Identifier(id)] { Expr::Id(id) }
+            [TokenValue::Int(val)] { Expr::Int(val) }
+            [TokenValue::Bool(val)] { Expr::Bool(val) }
+            [TokenValue::OpenParen] e:expr() [TokenValue::CloseParen] { Expr::Parens(Box::new(e)) }
         }
 
-        pub rule assign_type_hint() -> Option<ValueType> = ([Token::Colon] t:_type() { t })?
+        pub rule assign_type_hint() -> Option<ValueType> = ([TokenValue::Colon] t:_type() { t })?
 
         pub rule assign() -> Statement<'t> =
-            [Token::Identifier(id)] typ:assign_type_hint() [Token::Equals] e:expr() { Statement::Assign(id, e, typ) }
+            [TokenValue::Identifier(id)] typ:assign_type_hint() [TokenValue::Equals] e:expr() { Statement::Assign(id, e, typ) }
 
         pub rule subscript_assign() -> Statement<'t> =
-            [Token::Identifier(container)] [Token::OpenBracket] idx:expr() [Token::CloseBracket] [Token::Equals] e:expr()
+            [TokenValue::Identifier(container)] [TokenValue::OpenBracket] idx:expr() [TokenValue::CloseBracket] [TokenValue::Equals] e:expr()
             { Statement::SubscriptAssign(Expr::Id(container), idx, e) }
 
         pub rule statement_body() -> Vec<Statement<'t>> =
-            [Token::OpenCurly] [Token::Newline]*
-            ss:(if_chain() / (s:(while_statement() / for_statement() / simple_statement()) { vec![s] })) ** ([Token::Newline]+)
-            [Token::Newline]* [Token::CloseCurly] {
+            [TokenValue::OpenCurly] [TokenValue::Newline]*
+            ss:(if_chain() / (s:(while_statement() / for_statement() / simple_statement()) { vec![s] })) ** ([TokenValue::Newline]+)
+            [TokenValue::Newline]* [TokenValue::CloseCurly] {
                 ss.into_iter().flatten().collect()
             }
 
         pub rule if_statement() -> Statement<'t> =
-            [Token::If] cond:expr() body:statement_body() {
+            [TokenValue::If] cond:expr() body:statement_body() {
                 Statement::If(cond, body)
             }
 
         pub rule else_if_statement() -> Statement<'t> =
-            [Token::Else] [Token::If] cond:expr() body:statement_body() {
+            [TokenValue::Else] [TokenValue::If] cond:expr() body:statement_body() {
                 Statement::ElseIf(cond, body)
             }
 
         pub rule else_statement() -> Statement<'t> =
-            [Token::Else] body:statement_body() {
+            [TokenValue::Else] body:statement_body() {
                 Statement::Else(body)
             }
 
         /// An if-chain: if { } [else if { }]* [else { }]?
         /// No newlines required between parts
         pub rule if_chain() -> Vec<Statement<'t>> =
-            head:if_statement() rest:([Token::Newline]* s:(else_if_statement() / else_statement()) { s })* {
+            head:if_statement() rest:([TokenValue::Newline]* s:(else_if_statement() / else_statement()) { s })* {
             let mut v = vec![head];
                 v.extend(rest);
                 v
             }
 
         pub rule while_statement() -> Statement<'t> =
-            [Token::While] cond:expr() body:statement_body() { Statement::While(cond, body) }
+            [TokenValue::While] cond:expr() body:statement_body() { Statement::While(cond, body) }
 
         pub rule for_statement() -> Statement<'t> =
-            [Token::For] [Token::OpenParen]
-                init:simple_statement() [Token::Semicolon]
-                cond:expr() [Token::Semicolon]
+            [TokenValue::For] [TokenValue::OpenParen]
+                init:simple_statement() [TokenValue::Semicolon]
+                cond:expr() [TokenValue::Semicolon]
                 incr:simple_statement()
-            [Token::CloseParen] body:statement_body() {
+            [TokenValue::CloseParen] body:statement_body() {
                 Statement::For(Box::new(init), cond, Box::new(incr), body)
             }
 
         pub rule return_statement() -> Statement<'t> =
-            [Token::Return] val:expr()? { Statement::Return(val) }
+            [TokenValue::Return] val:expr()? { Statement::Return(val) }
 
         /// Simple statements (not if-chains)
         pub rule simple_statement() -> Statement<'t> =
@@ -231,28 +231,28 @@ parser! {
 
         /// A param is a name with a type specifier
         pub rule param() -> (&'t str, ValueType) =
-            [Token::Identifier(name)] [Token::Colon] t:_type() { (name, t) }
+            [TokenValue::Identifier(name)] [TokenValue::Colon] t:_type() { (name, t) }
 
         pub rule param_list() -> Vec<(&'t str, ValueType)> =
-            [Token::OpenParen] params:(param() ** [Token::Comma]) [Token::CloseParen] { params }
+            [TokenValue::OpenParen] params:(param() ** [TokenValue::Comma]) [TokenValue::CloseParen] { params }
 
         pub rule return_type() -> ValueType =
-            [Token::RightArrow] t:_type() { t }
+            [TokenValue::RightArrow] t:_type() { t }
 
         pub rule function() -> Function<'t> =
-            [Token::Fn] [Token::Identifier(name)] params:param_list() ret:(return_type()?) body:statement_body()
+            [TokenValue::Fn] [TokenValue::Identifier(name)] params:param_list() ret:(return_type()?) body:statement_body()
                 { Function { name, params, return_type: ret.unwrap_or(ValueType::NoneType), statements: body } }
 
         pub rule module() -> Module<'t> =
-            [Token::Newline]* functions:(function() ** ([Token::Newline]+)) eof() { Module { functions } }
+            [TokenValue::Newline]* functions:(function() ** ([TokenValue::Newline]+)) eof() { Module { functions } }
     }
 }
 
-pub fn parse_tokens<'t>(tokens: &[Token<'t>]) -> Result<Module<'t>, ParserError<'t>> {
+pub fn parse_tokens<'t>(tokens: &[TokenValue<'t>]) -> Result<Module<'t>, ParserError<'t>> {
     parse_tree::module(tokens).map_err(|e| {
         let got = (tokens
             .get(e.location)
-            .unwrap_or(&Token::Identifier("===EOF===")))
+            .unwrap_or(&TokenValue::Identifier("===EOF===")))
         .clone();
         ParserError::ParseTree(e, got)
     })
