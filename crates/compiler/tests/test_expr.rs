@@ -207,3 +207,120 @@ print_int(a + b + c + d + e + f)
         expected_outputs: VecDeque::from([6, 20, 42, 2 + 3 + 4 + 5 + 6 + 7]),
     });
 }
+
+// ── Shifts ──────────────────────────────────────────────────────
+
+#[test]
+fn test_left_shift_constants() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { print_int(1 << 3) }",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from([8]),
+    });
+}
+
+#[test]
+fn test_right_shift_constants() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { print_int(16 >> 2) }",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from([4]),
+    });
+}
+
+#[test]
+fn test_left_shift_variable() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { x = read_int()
+print_int(x << 4)
+}",
+        inputs: VecDeque::from([3]),
+        expected_outputs: VecDeque::from([48]),
+    });
+}
+
+#[test]
+fn test_right_shift_variable() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { x = read_int()
+print_int(x >> 3)
+}",
+        inputs: VecDeque::from([64]),
+        expected_outputs: VecDeque::from([8]),
+    });
+}
+
+#[test]
+fn test_left_shift_by_zero() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { x = read_int()
+print_int(x << 0)
+}",
+        inputs: VecDeque::from([42]),
+        expected_outputs: VecDeque::from([42]),
+    });
+}
+
+#[test]
+fn test_right_shift_by_zero() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { x = read_int()
+print_int(x >> 0)
+}",
+        inputs: VecDeque::from([42]),
+        expected_outputs: VecDeque::from([42]),
+    });
+}
+
+#[test]
+fn test_right_shift_arithmetic() {
+    // Right shift on a negative value should sign-extend (arithmetic shift)
+    execute_test_case(TestCase {
+        input: "fn main() -> int { x = read_int()
+print_int(x >> 1)
+}",
+        inputs: VecDeque::from([-8]),
+        expected_outputs: VecDeque::from([-4]),
+    });
+}
+
+#[test]
+fn test_left_shift_stored_in_variable() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { x = read_int()
+y = x << 2
+print_int(y)
+}",
+        inputs: VecDeque::from([5]),
+        expected_outputs: VecDeque::from([20]),
+    });
+}
+
+#[test]
+fn test_shift_in_expression() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { x = read_int()
+print_int((x << 3) + (x >> 1))
+}",
+        inputs: VecDeque::from([4]),
+        // (4 << 3) + (4 >> 1) = 32 + 2 = 34
+        expected_outputs: VecDeque::from([34]),
+    });
+}
+
+#[test]
+fn test_shift_register_pressure() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { a = read_int()
+b = read_int()
+c = read_int()
+d = read_int()
+print_int(a << 1)
+print_int(b >> 1)
+print_int(c << 2)
+print_int(d >> 2)
+}",
+        inputs: VecDeque::from([1, 8, 3, 32]),
+        expected_outputs: VecDeque::from([2, 4, 12, 8]),
+    });
+}
