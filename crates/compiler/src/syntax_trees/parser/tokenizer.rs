@@ -54,6 +54,7 @@ pub enum TokenValue<'a> {
     Lambda,
     For,
     Semicolon,
+    Divide,
 }
 
 #[derive(Debug)]
@@ -155,6 +156,7 @@ fn punctuation_parser<'a>(rem: LocatedSpan<&'a str>) -> IResult<LocatedSpan<&'a 
             token_map!(":", Colon),
             token_map!("*", Asterisk),
             token_map!(";", Semicolon),
+            token_map!("/", Divide),
         )),
     ))
     .parse(rem)?;

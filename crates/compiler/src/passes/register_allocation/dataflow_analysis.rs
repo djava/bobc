@@ -269,7 +269,7 @@ impl DataflowAnalysis {
                 }
                 Instr::mov(s, d) => {
                     let d_loc = Location::Reg(d.to_encompassing_64bit());
-                    if let Some(s_loc) = Location::try_from_arg(s) 
+                    if let Some(s_loc) = Location::try_from_arg(s)
                         && !matches!(s_loc, Location::Id(Identifier::Global(_)))
                     {
                         if !loc_to_node.contains_key(&s_loc) {
@@ -285,7 +285,7 @@ impl DataflowAnalysis {
                 }
                 Instr::movzbq(s, d) => {
                     let s_loc = Location::Reg(s.to_encompassing_64bit());
-                    if let Some(d_loc) = Location::try_from_arg(d) 
+                    if let Some(d_loc) = Location::try_from_arg(d)
                         && !matches!(d_loc, Location::Id(Identifier::Global(_)))
                     {
                         if !loc_to_node.contains_key(&d_loc) {
@@ -344,7 +344,8 @@ impl DataflowAnalysis {
                 | Instr::callq_ind(arg, _)
                 | Instr::movzbq(_, arg)
                 | Instr::mov(arg, _)
-                | Instr::jmp_tail(arg, _) => {
+                | Instr::jmp_tail(arg, _)
+                | Instr::idivq(arg) => {
                     count_for_arg(arg);
                 }
 
@@ -352,7 +353,8 @@ impl DataflowAnalysis {
                 | Instr::jmp(_)
                 | Instr::callq(_, _)
                 | Instr::jmpcc(_, _)
-                | Instr::retq => {}
+                | Instr::retq
+                | Instr::cqto => {}
             }
         }
 
@@ -430,6 +432,14 @@ fn locs_read(i: &Instr) -> Vec<Location> {
                     .map(|r| Location::Reg(*r)),
             );
         }
+        Instr::idivq(divisor) => {
+            if let Some(divisor_loc) = Location::try_from_arg(divisor) {
+                locations.push(divisor_loc)
+            }
+
+            locations.extend([Location::Reg(Register::rdx), Location::Reg(Register::rax)])
+        }
+        Instr::cqto => locations.push(Location::Reg(Register::rax)),
 
         Instr::popq(_) | Instr::retq | Instr::set(_, _) | Instr::jmp(_) | Instr::jmpcc(_, _) => {}
     };
@@ -473,6 +483,12 @@ fn locs_written(i: &Instr) -> Vec<Location> {
         }
         Instr::callq_ind(_, _) | Instr::jmp_tail(_, _) => {
             locations.extend(CALLER_SAVED_REGISTERS.iter().map(|r| Location::Reg(*r)));
+        }
+        Instr::idivq(_) => {
+            locations.extend([Location::Reg(Register::rax), Location::Reg(Register::rdx)])
+        }
+        Instr::cqto => {
+            locations.push(Location::Reg(Register::rdx))
         }
         Instr::pushq(_) | Instr::retq | Instr::cmpq(_, _) | Instr::jmp(_) | Instr::jmpcc(_, _) => {}
     };

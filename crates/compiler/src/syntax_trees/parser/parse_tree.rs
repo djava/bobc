@@ -19,7 +19,8 @@ pub enum Operator {
     Is,
     Asterisk,
     LeftShift,
-    RightShift
+    RightShift,
+    Divide,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -81,7 +82,7 @@ parser! {
             shift_operator() /
             op:[TokenValue::Minus | TokenValue::Plus | TokenValue::And | TokenValue::Or | TokenValue::Not |
                 TokenValue::DoubleEquals | TokenValue::NotEquals | TokenValue::Greater | TokenValue::GreaterEquals
-                | TokenValue::Less | TokenValue::LessEquals | TokenValue::Is | TokenValue::Asterisk] {
+                | TokenValue::Less | TokenValue::LessEquals | TokenValue::Is | TokenValue::Asterisk | TokenValue::Divide] {
                 match op {
                     TokenValue::Minus         => Operator::Minus,
                     TokenValue::Plus          => Operator::Plus,
@@ -96,6 +97,7 @@ parser! {
                     TokenValue::Not           => Operator::Not,
                     TokenValue::Is            => Operator::Is,
                     TokenValue::Asterisk      => Operator::Asterisk,
+                    TokenValue::Divide        => Operator::Divide,
                     _ => unreachable!()
                 }
             }

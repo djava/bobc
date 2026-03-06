@@ -160,6 +160,7 @@ fn translate_assign(dest: AssignDest<ir::Atom>, expr: ir::Expr) -> Vec<Instr> {
         ir::Expr::BinaryOp(l, BinaryOperator::RightShift, r) => {
             translate_bitshift(BitshiftDirection::Right, dest, l, r)
         }
+        ir::Expr::BinaryOp(l, BinaryOperator::Divide, r) => translate_divide(dest, l, r),
         ir::Expr::BinaryOp(l, cmp_op, r) => translate_comparison(dest, cmp_op, l, r),
         ir::Expr::Call(func_id, args) => translate_call(Some(dest), func_id, args),
         ir::Expr::Allocate(bytes, value_type) => translate_allocation(dest, bytes, value_type),
@@ -611,6 +612,32 @@ fn translate_bitshift(
     ret
 }
 
+fn translate_divide(dest: AssignDest<ir::Atom>, dividend: ir::Atom, divisor: ir::Atom) -> Vec<Instr> {
+    let mut ret = vec![];
+    if let AssignDest::Subscript(id, _idx) = &dest {
+        ret.push(Instr::movq(
+            x86::Arg::Variable(id.clone()),
+            x86::Arg::Reg(x86::Register::r11),
+        ));
+    }
+
+    // THe divisor argument cannot be an immediate, but we can't just
+    // use a PatchInstructions case to movq it to rax at the end because
+    // rax is also in use by idivq. It can be register or memory though,
+    // so give it an identifier that the register allocator will place.
+    let divisor_var = x86::Arg::Variable(Identifier::new_ephemeral());
+
+    ret.extend([
+        Instr::movq(atom_to_arg(dividend), x86::Arg::Reg(Register::rax)),
+        Instr::cqto,
+        Instr::movq(atom_to_arg(divisor), divisor_var.clone()),
+        Instr::idivq(divisor_var),
+        Instr::movq(x86::Arg::Reg(Register::rax), assigndest_to_arg(dest))
+    ]);
+
+    ret
+}
+
 const SPECIAL_FUNCTIONS: [(
     &'static str,
     usize,
@@ -728,7 +755,8 @@ fn try_binop_to_cc(op: BinaryOperator) -> Option<x86::Comparison> {
         | BinaryOperator::And
         | BinaryOperator::Or
         | BinaryOperator::LeftShift
-        | BinaryOperator::RightShift => None,
+        | BinaryOperator::RightShift
+        | BinaryOperator::Divide => None,
     }
 }
 

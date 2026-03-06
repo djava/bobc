@@ -102,7 +102,9 @@ pub enum Instr {
     leaq(Arg, Arg),
     callq_ind(Arg, u16),
     jmp_tail(Arg, u16),
-    mov(Arg, ByteReg)
+    mov(Arg, ByteReg),
+    idivq(Arg),
+    cqto
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -257,6 +259,8 @@ impl Display for Instr {
             Instr::callq_ind(arg, _) => write!(f, "callq {}", fmt_arg_for_jmp_call(arg)),
             Instr::jmp_tail(arg, _) => write!(f, "jmp {}", fmt_arg_for_jmp_call(arg)),
             Instr::mov(arg, arg1) => write!(f, "mov {arg}, {arg1}"),
+            Instr::idivq(arg) => write!(f, "idivq {arg}"),
+            Instr::cqto => write!(f, "cqto"),
         }
     }
 }

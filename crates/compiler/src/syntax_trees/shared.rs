@@ -188,7 +188,8 @@ pub enum BinaryOperator {
     Is,
     Multiply,
     LeftShift,
-    RightShift
+    RightShift,
+    Divide,
 }
 
 impl BinaryOperator {
@@ -203,6 +204,7 @@ impl BinaryOperator {
                 Multiply => Some(IntType),
                 LeftShift => Some(IntType),
                 RightShift => Some(IntType),
+                Divide => Some(IntType),
                 Equals => Some(BoolType),
                 NotEquals => Some(BoolType),
                 Greater => Some(BoolType),

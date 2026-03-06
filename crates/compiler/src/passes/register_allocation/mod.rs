@@ -152,11 +152,15 @@ fn run_for_block(instrs: &mut Vec<Instr>, id_to_storage: &HashMap<Identifier, St
             | Instr::mov(a, _) => {
                 replace_arg_with_allocated(a, id_to_storage);
             }
+            Instr::idivq(divisor) => {
+                replace_arg_with_allocated(divisor, id_to_storage);
+            }
             Instr::callq(_, _)
             | Instr::retq
             | Instr::jmpcc(_, _)
             | Instr::jmp(_)
-            | Instr::set(_, _) => {
+            | Instr::set(_, _)
+            | Instr::cqto => {
                 // No real args to replace
             }
         }

@@ -297,7 +297,10 @@ fn execute_special_functions(
         }
 
         let val = env.read_arg(&Arg::Reg(Register::rdx));
-        env.write_arg(&Arg::Deref(Register::rdi, (WORD_SIZE * (1 + idx)) as i32), val);
+        env.write_arg(
+            &Arg::Deref(Register::rdi, (WORD_SIZE * (1 + idx)) as i32),
+            val,
+        );
 
         return true;
     } else {
@@ -438,6 +441,28 @@ fn run_instr(
             } else {
                 Continuation::Jump(env.functions[func_idx].clone())
             }
+        }
+        Instr::idivq(divisor_arg) => {
+            let rax_val = env.read_arg(&Arg::Reg(Register::rax));
+            let rdx_val = env.read_arg(&Arg::Reg(Register::rdx));
+            let dividend: i128 = (rax_val as i128) << 64 | (rdx_val as i128);
+
+            let divisor = env.read_arg(divisor_arg) as i128;
+
+            let quotient = (dividend / divisor) as i64;
+            let remainder = (dividend % divisor) as i64;
+
+            env.write_arg(&Arg::Reg(Register::rax), quotient);
+            env.write_arg(&Arg::Reg(Register::rdx), remainder);
+
+            Continuation::Next
+        }
+        Instr::cqto => {
+            let rax_val = env.read_arg(&Arg::Reg(Register::rax));
+            let rax_sign_extension = if rax_val >= 0 { 0 } else { !0i64 };
+            env.write_arg(&Arg::Reg(Register::rdx), rax_sign_extension);
+
+            Continuation::Next
         }
     }
 }
