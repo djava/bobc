@@ -208,6 +208,128 @@ print_int(a + b + c + d + e + f)
     });
 }
 
+// ── Division ──────────────────────────────────────────────────────
+
+#[test]
+fn test_divide_constants() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { print_int(12 / 4) }",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from([3]),
+    });
+}
+
+#[test]
+fn test_divide_variable() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { x = read_int()
+print_int(x / 3)
+}",
+        inputs: VecDeque::from([21]),
+        expected_outputs: VecDeque::from([7]),
+    });
+}
+
+#[test]
+fn test_divide_two_variables() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { x = read_int()
+y = read_int()
+print_int(x / y)
+}",
+        inputs: VecDeque::from([100, 4]),
+        expected_outputs: VecDeque::from([25]),
+    });
+}
+
+#[test]
+fn test_divide_by_one() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { x = read_int()
+print_int(x / 1)
+}",
+        inputs: VecDeque::from([99]),
+        expected_outputs: VecDeque::from([99]),
+    });
+}
+
+#[test]
+fn test_divide_truncates() {
+    // Integer division truncates toward zero
+    execute_test_case(TestCase {
+        input: "fn main() -> int { print_int(7 / 2) }",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from([3]),
+    });
+}
+
+#[test]
+fn test_divide_negative_truncates() {
+    // -7 / 2 truncates toward zero => -3
+    execute_test_case(TestCase {
+        input: "fn main() -> int { x = read_int()
+print_int(x / 2)
+}",
+        inputs: VecDeque::from([-7]),
+        expected_outputs: VecDeque::from([-3]),
+    });
+}
+
+#[test]
+fn test_divide_both_negative() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { x = read_int()
+y = read_int()
+print_int(x / y)
+}",
+        inputs: VecDeque::from([-20, -4]),
+        expected_outputs: VecDeque::from([5]),
+    });
+}
+
+#[test]
+fn test_divide_stored_in_variable() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { x = read_int()
+y = x / 6
+print_int(y)
+}",
+        inputs: VecDeque::from([42]),
+        expected_outputs: VecDeque::from([7]),
+    });
+}
+
+#[test]
+fn test_divide_mixed_with_multiply() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { a = read_int()
+b = read_int()
+print_int(a * b / 2)
+}",
+        inputs: VecDeque::from([6, 4]),
+        // 6 * 4 / 2 = 12
+        expected_outputs: VecDeque::from([12]),
+    });
+}
+
+#[test]
+fn test_divide_register_pressure() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { a = read_int()
+b = read_int()
+c = read_int()
+d = read_int()
+e = read_int()
+f = read_int()
+print_int(a / b)
+print_int(c / d)
+print_int(e / f)
+}",
+        inputs: VecDeque::from([100, 5, 81, 9, 64, 8]),
+        expected_outputs: VecDeque::from([20, 9, 8]),
+    });
+}
+
 // ── Shifts ──────────────────────────────────────────────────────
 
 #[test]

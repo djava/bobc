@@ -443,14 +443,11 @@ fn run_instr(
             }
         }
         Instr::idivq(divisor_arg) => {
-            let rax_val = env.read_arg(&Arg::Reg(Register::rax));
-            let rdx_val = env.read_arg(&Arg::Reg(Register::rdx));
-            let dividend: i128 = (rax_val as i128) << 64 | (rdx_val as i128);
+            let dividend = env.read_arg(&Arg::Reg(Register::rax));
+            let divisor = env.read_arg(divisor_arg);
 
-            let divisor = env.read_arg(divisor_arg) as i128;
-
-            let quotient = (dividend / divisor) as i64;
-            let remainder = (dividend % divisor) as i64;
+            let quotient = dividend / divisor;
+            let remainder = dividend % divisor;
 
             env.write_arg(&Arg::Reg(Register::rax), quotient);
             env.write_arg(&Arg::Reg(Register::rdx), remainder);
