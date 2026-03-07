@@ -4,68 +4,291 @@ use super::shared::*;
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[repr(u8)]
 pub enum Register {
-    rax = 0u8,
-    rbx = 1u8,
-    rcx = 2u8,
-    rdx = 3u8,
-    rsi = 4u8,
-    rdi = 5u8,
-    rbp = 6u8,
-    rsp = 7u8,
-    r8 = 8u8,
-    r9 = 9u8,
-    r10 = 10u8,
-    r11 = 11u8,
-    r12 = 12u8,
-    r13 = 13u8,
-    r14 = 14u8,
-    r15 = 15u8,
-}
-
-#[allow(non_camel_case_types)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ByteReg {
-    ah,
+    // 64 bit registers
+    rax,
+    rbx,
+    rcx,
+    rdx,
+    rsi,
+    rdi,
+    rbp,
+    rsp,
+    r8,
+    r9,
+    r10,
+    r11,
+    r12,
+    r13,
+    r14,
+    r15,
+    // 32 bit registers
+    eax,
+    ebx,
+    ecx,
+    edx,
+    esi,
+    edi,
+    esp,
+    ebp,
+    r8d,
+    r9d,
+    r10d,
+    r11d,
+    r12d,
+    r13d,
+    r14d,
+    r15d,
+    // 16 bit registers
+    ax,
+    bx,
+    cx,
+    dx,
+    si,
+    di,
+    sp,
+    bp,
+    r8w,
+    r9w,
+    r10w,
+    r11w,
+    r12w,
+    r13w,
+    r14w,
+    r15w,
+    // 8 bit registers
     al,
-    bh,
+    ah,
     bl,
-    ch,
+    bh,
     cl,
-    dh,
+    ch,
     dl,
+    dh,
+    sil,
+    dil,
+    spl,
+    bpl,
+    r8b,
+    r9b,
+    r10b,
+    r11b,
+    r12b,
+    r13b,
+    r14b,
+    r15b,
 }
 
-impl ByteReg {
-    pub fn to_encompassing_64bit(&self) -> Register {
+impl Register {
+    pub fn to_quad(&self) -> Self {
+        use Register::*;
         match self {
-            ByteReg::ah | ByteReg::al => Register::rax,
-            ByteReg::bh | ByteReg::bl => Register::rbx,
-            ByteReg::ch | ByteReg::cl => Register::rcx,
-            ByteReg::dh | ByteReg::dl => Register::rdx,
+            rax | eax | ax | ah | al => rax,
+            rbx | ebx | bx | bh | bl => rbx,
+            rcx | ecx | cx | ch | cl => rcx,
+            rdx | edx | dx | dh | dl => rdx,
+            rsi | esi | si | sil => rsi,
+            rdi | edi | di | dil => rdi,
+            rsp | esp | sp | spl => rsp,
+            rbp | ebp | bp | bpl => rbp,
+            r8 | r8d | r8w | r8b => r8,
+            r9 | r9d | r9w | r9b => r9,
+            r10 | r10d | r10w | r10b => r10,
+            r11 | r11d | r11w | r11b => r11,
+            r12 | r12d | r12w | r12b => r12,
+            r13 | r13d | r13w | r13b => r13,
+            r14 | r14d | r14w | r14b => r14,
+            r15 | r15d | r15w | r15b => r15,
         }
     }
 
-    pub fn from_64bit_low(value: Register) -> Self {
-        match value {
-            Register::rax => Self::al,
-            Register::rbx => Self::bl,
-            Register::rcx => Self::cl,
-            Register::rdx => Self::dl,
-            other => panic!("Cannot convert {other} to ByteReg")
+    pub fn to_double(&self) -> Self {
+        use Register::*;
+        match self {
+            rax | eax | ax | ah | al => eax,
+            rbx | ebx | bx | bh | bl => ebx,
+            rcx | ecx | cx | ch | cl => ecx,
+            rdx | edx | dx | dh | dl => edx,
+            rsi | esi | si | sil => esi,
+            rdi | edi | di | dil => edi,
+            rsp | esp | sp | spl => esp,
+            rbp | ebp | bp | bpl => ebp,
+            r8 | r8d | r8w | r8b => r8d,
+            r9 | r9d | r9w | r9b => r9d,
+            r10 | r10d | r10w | r10b => r10d,
+            r11 | r11d | r11w | r11b => r11d,
+            r12 | r12d | r12w | r12b => r12d,
+            r13 | r13d | r13w | r13b => r13d,
+            r14 | r14d | r14w | r14b => r14d,
+            r15 | r15d | r15w | r15b => r15d,
+        }
+    }
+
+    pub fn to_word(&self) -> Self {
+        use Register::*;
+        match self {
+            rax | eax | ax | ah | al => ax,
+            rbx | ebx | bx | bh | bl => bx,
+            rcx | ecx | cx | ch | cl => cx,
+            rdx | edx | dx | dh | dl => dx,
+            rsi | esi | si | sil => si,
+            rdi | edi | di | dil => di,
+            rsp | esp | sp | spl => sp,
+            rbp | ebp | bp | bpl => bp,
+            r8 | r8d | r8w | r8b => r8w,
+            r9 | r9d | r9w | r9b => r9w,
+            r10 | r10d | r10w | r10b => r10w,
+            r11 | r11d | r11w | r11b => r11w,
+            r12 | r12d | r12w | r12b => r12w,
+            r13 | r13d | r13w | r13b => r13w,
+            r14 | r14d | r14w | r14b => r14w,
+            r15 | r15d | r15w | r15b => r15w,
+        }
+    }
+
+    pub fn to_byte_low(&self) -> Self {
+        use Register::*;
+        match self {
+            rax | eax | ax | ah | al => al,
+            rbx | ebx | bx | bh | bl => bl,
+            rcx | ecx | cx | ch | cl => cl,
+            rdx | edx | dx | dh | dl => dl,
+            rsi | esi | si | sil => sil,
+            rdi | edi | di | dil => dil,
+            rsp | esp | sp | spl => spl,
+            rbp | ebp | bp | bpl => bpl,
+            r8 | r8d | r8w | r8b => r8b,
+            r9 | r9d | r9w | r9b => r9b,
+            r10 | r10d | r10w | r10b => r10b,
+            r11 | r11d | r11w | r11b => r11b,
+            r12 | r12d | r12w | r12b => r12b,
+            r13 | r13d | r13w | r13b => r13b,
+            r14 | r14d | r14w | r14b => r14b,
+            r15 | r15d | r15w | r15b => r15b,
+        }
+    }
+
+    pub fn try_to_byte_high(&self) -> Option<Self> {
+        use Register::*;
+        match self {
+            rax | eax | ax => Some(ah),
+            rbx | ebx | bx => Some(bh),
+            rcx | ecx | cx => Some(ch),
+            rdx | edx | dx => Some(dh),
+            _ => None,
+        }
+    }
+
+    pub fn width(&self) -> Width {
+        use Register::*;
+        match self {
+            rax | rbx | rcx | rdx | rsi | rdi | rbp | rsp | r8 | r9 | r10 | r11 | r12 | r13
+            | r14 | r15 => Width::Quad,
+            eax | ebx | ecx | edx | esi | edi | esp | ebp | r8d | r9d | r10d | r11d | r12d
+            | r13d | r14d | r15d => Width::Double,
+            ax | bx | cx | dx | si | di | sp | bp | r8w | r9w | r10w | r11w | r12w | r13w
+            | r14w | r15w => Width::Word,
+            al | ah | bl | bh | cl | ch | dl | dh | sil | dil | spl | bpl | r8b | r9b | r10b
+            | r11b | r12b | r13b | r14b | r15b => Width::Byte,
+        }
+    }
+
+    pub fn convert_width(&self, width: Width) -> Self {
+        match width {
+            Width::Quad => self.to_quad(),
+            Width::Double => self.to_double(),
+            Width::Word => self.to_word(),
+            Width::Byte => self.to_byte_low(),
+        }
+    }
+
+    pub fn is_high_byte(&self) -> bool {
+        use Register::*;
+        match self {
+            ah | bh | ch | dh => true,
+            _ => false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Width {
+    Quad,
+    Double,
+    Word,
+    Byte,
+}
+
+impl Width {
+    pub fn mask(&self) -> i64 {
+        match self {
+            Width::Quad => !0,
+            Width::Double => 0x0000_0000_FFFF_FFFFi64,
+            Width::Word => 0x0000_0000_0000_FFFFi64,
+            Width::Byte => 0x0000_0000_0000_00FFi64,
+        }
+    }
+
+    pub fn bytes(&self) -> usize {
+        match self {
+            Width::Quad => 8,
+            Width::Double => 4,
+            Width::Word => 2,
+            Width::Byte => 1,
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Arg {
+pub enum ArgValue {
     Immediate(i64),
     Reg(Register),
-    ByteReg(ByteReg),
     Deref(Register, i32),
     Variable(Identifier),
     Global(Identifier),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Arg {
+    pub value: ArgValue,
+    pub width: Width,
+}
+
+impl Arg {
+    pub fn new_imm(n: i64) -> Self {
+        Self {
+            value: ArgValue::Immediate(n),
+            width: Width::Quad, // TODO: pass width
+        }
+    }
+
+    pub fn new_reg(r: Register) -> Self {
+        Self {
+            value: ArgValue::Reg(r),
+            width: r.width(),
+        }
+    }
+
+    pub fn new_deref(r: Register, offset: i32) -> Self {
+        Self {
+            value: ArgValue::Deref(r, offset),
+            width: Width::Quad, // TODO: pass width
+        }
+    }
+
+    pub fn new_variable(id: Identifier) -> Self {
+        Self {
+            value: ArgValue::Variable(id),
+            width: Width::Quad, // TODO: pass width
+        }
+    }
+
+    pub fn new_global(id: Identifier) -> Self {
+        Self {
+            value: ArgValue::Global(id),
+            width: Width::Quad, // TODO: pass width
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -91,8 +314,8 @@ pub enum Instr {
     retq,
     xorq(Arg, Arg),
     cmpq(Arg, Arg),
-    set(Comparison, ByteReg),
-    movzbq(ByteReg, Arg),
+    set(Comparison, Arg),
+    movzbq(Arg, Arg),
     jmp(Identifier),
     jmpcc(Comparison, Identifier),
     sarq(Arg, Arg),
@@ -102,9 +325,9 @@ pub enum Instr {
     leaq(Arg, Arg),
     callq_ind(Arg, u16),
     jmp_tail(Arg, u16),
-    mov(Arg, ByteReg),
+    mov(Arg, Arg),
     idivq(Arg),
-    cqto
+    cqto,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -142,50 +365,17 @@ pub struct X86Program {
 
 impl Display for Register {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Register::rax => write!(f, "%rax"),
-            Register::rbx => write!(f, "%rbx"),
-            Register::rcx => write!(f, "%rcx"),
-            Register::rdx => write!(f, "%rdx"),
-            Register::rsi => write!(f, "%rsi"),
-            Register::rdi => write!(f, "%rdi"),
-            Register::rbp => write!(f, "%rbp"),
-            Register::rsp => write!(f, "%rsp"),
-            Register::r8 => write!(f, "%r8"),
-            Register::r9 => write!(f, "%r9"),
-            Register::r10 => write!(f, "%r10"),
-            Register::r11 => write!(f, "%r11"),
-            Register::r12 => write!(f, "%r12"),
-            Register::r13 => write!(f, "%r13"),
-            Register::r14 => write!(f, "%r14"),
-            Register::r15 => write!(f, "%r15"),
-        }
-    }
-}
-
-impl Display for ByteReg {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ByteReg::ah => write!(f, "%ah"),
-            ByteReg::al => write!(f, "%al"),
-            ByteReg::bh => write!(f, "%bh"),
-            ByteReg::bl => write!(f, "%bl"),
-            ByteReg::ch => write!(f, "%ch"),
-            ByteReg::cl => write!(f, "%cl"),
-            ByteReg::dh => write!(f, "%dh"),
-            ByteReg::dl => write!(f, "%dl"),
-        }
+        write!(f, "%{:?}", self)
     }
 }
 
 impl Display for Arg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Arg::Immediate(val) => write!(f, "${}", val),
-            Arg::Reg(reg) => reg.fmt(f),
-            Arg::ByteReg(reg) => reg.fmt(f),
-            Arg::Deref(reg, offset) => write!(f, "{offset}({reg})"),
-            Arg::Variable(id) => match id {
+        match &self.value {
+            ArgValue::Immediate(val) => write!(f, "${}", val),
+            ArgValue::Reg(reg) => reg.fmt(f),
+            ArgValue::Deref(reg, offset) => write!(f, "{offset}({reg})"),
+            ArgValue::Variable(id) => match id {
                 Identifier::Global(name) => write!(f, "{name}"),
                 Identifier::Ephemeral(id) => write!(f, "@EE#{id}"),
                 Identifier::Local(id, func) => match &**func {
@@ -196,7 +386,7 @@ impl Display for Arg {
                     }
                 },
             },
-            Arg::Global(id) => match id {
+            ArgValue::Global(id) => match id {
                 Identifier::Global(name) => write!(f, "{name}(%rip)"),
                 Identifier::Ephemeral(id) => write!(f, "__EE_{id}(%rip)"),
                 Identifier::Local(..) => panic!("A local cannot be a global"),
@@ -227,9 +417,9 @@ fn fmt_label(label: &Identifier) -> String {
 }
 
 fn fmt_arg_for_jmp_call(arg: &Arg) -> String {
-    match arg {
-        Arg::Global(id) => fmt_label(id),
-        Arg::Reg(reg) => format!("*{reg}"),
+    match &arg.value {
+        ArgValue::Global(id) => fmt_label(id),
+        ArgValue::Reg(reg) => format!("*{reg}"),
         _ => panic!("Invalid arg for jmp/callq: {arg}"),
     }
 }

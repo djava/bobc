@@ -175,8 +175,8 @@ impl DataflowAnalysis {
                         graph.add_edge(loc_to_node[&d], loc_to_node[v], ());
                     }
                 }
-            } else if let Instr::movzbq(s_reg, d_arg) = i
-                && let Some(s) = Location::try_from_arg(&Arg::ByteReg(*s_reg))
+            } else if let Instr::movzbq(s_arg, d_arg) = i
+                && let Some(s) = Location::try_from_arg(s_arg)
                 && let Some(d) = Location::try_from_arg(d_arg)
             {
                 // If instruction is movzbq, for each v in L_after, if v
@@ -268,7 +268,11 @@ impl DataflowAnalysis {
                     }
                 }
                 Instr::mov(s, d) => {
-                    let d_loc = Location::Reg(d.to_encompassing_64bit());
+                    let d_loc = if let ArgValue::Reg(d_reg) = &d.value {
+                        Location::Reg(d_reg.to_quad())
+                    } else {
+                        unreachable!()
+                    };
                     if let Some(s_loc) = Location::try_from_arg(s)
                         && !matches!(s_loc, Location::Id(Identifier::Global(_)))
                     {
@@ -284,7 +288,11 @@ impl DataflowAnalysis {
                     }
                 }
                 Instr::movzbq(s, d) => {
-                    let s_loc = Location::Reg(s.to_encompassing_64bit());
+                    let s_loc = if let ArgValue::Reg(s_reg) = &s.value {
+                        Location::Reg(s_reg.to_quad())
+                    } else {
+                        unreachable!()
+                    };
                     if let Some(d_loc) = Location::try_from_arg(d)
                         && !matches!(d_loc, Location::Id(Identifier::Global(_)))
                     {
@@ -400,7 +408,7 @@ fn locs_read(i: &Instr) -> Vec<Location> {
             }
         }
         Instr::movzbq(r, _) => {
-            if let Some(loc) = Location::try_from_arg(&Arg::Reg(r.to_encompassing_64bit())) {
+            if let Some(loc) = Location::try_from_arg(r) {
                 locations.push(loc);
             }
         }
@@ -460,13 +468,10 @@ fn locs_written(i: &Instr) -> Vec<Location> {
         | Instr::andq(_, r)
         | Instr::sarq(_, r)
         | Instr::salq(_, r)
-        | Instr::leaq(_, r) => {
+        | Instr::leaq(_, r)
+        | Instr::mov(_, r)
+        | Instr::set(_, r) => {
             if let Some(loc) = Location::try_from_arg(r) {
-                locations.push(loc);
-            }
-        }
-        Instr::mov(_, r) | Instr::set(_, r) => {
-            if let Some(loc) = Location::try_from_arg(&Arg::Reg(r.to_encompassing_64bit())) {
                 locations.push(loc);
             }
         }
@@ -475,7 +480,7 @@ fn locs_written(i: &Instr) -> Vec<Location> {
 
             // Consider r15 to be written by a call to __gc_collect()
             // because it might do the GC copy and change the gc stack ptr
-            if let Arg::Global(Identifier::Global(name)) = func_id
+            if let ArgValue::Global(Identifier::Global(name)) = &func_id.value
                 && &**name == FN_GC_COLLECT
             {
                 locations.push(Location::Reg(Register::r15));

@@ -78,37 +78,37 @@ fn generate_prelude(f: &mut Function) -> Vec<Instr> {
 
     if f.stack_size > 0 {
         // Initialize stack
-        prelude_instrs.push(Instr::pushq(Arg::Reg(Register::rbp)));
+        prelude_instrs.push(Instr::pushq(Arg::new_reg(Register::rbp)));
     }
 
     // Push any used callee-saved registers onto the stack
     prelude_instrs.extend(
         f.callee_saved_used
             .iter()
-            .map(|reg| Instr::pushq(Arg::Reg(*reg))),
+            .map(|reg| Instr::pushq(Arg::new_reg(*reg))),
     );
 
     // Setup stack for function
     if f.stack_size > 0 {
         prelude_instrs.push(Instr::movq(
-            Arg::Reg(Register::rsp),
-            Arg::Reg(Register::rbp),
+            Arg::new_reg(Register::rsp),
+            Arg::new_reg(Register::rbp),
         ));
         prelude_instrs.push(Instr::subq(
-            Arg::Immediate(f.stack_size as _),
-            Arg::Reg(Register::rsp),
+            Arg::new_imm(f.stack_size as _),
+            Arg::new_reg(Register::rsp),
         ));
     }
 
     if f.name == global!(LABEL_MAIN) {
         // In main, we also have to initialize GC Stack/Heap
         prelude_instrs.extend([
-            Instr::movq(Arg::Immediate(GC_STACK_SIZE), Arg::Reg(Register::rdi)),
-            Instr::movq(Arg::Immediate(GC_HEAP_SIZE), Arg::Reg(Register::rsi)),
-            Instr::callq(Arg::Global(global!(FN_GC_INITIALIZE)), 2),
+            Instr::movq(Arg::new_imm(GC_STACK_SIZE), Arg::new_reg(Register::rdi)),
+            Instr::movq(Arg::new_imm(GC_HEAP_SIZE), Arg::new_reg(Register::rsi)),
+            Instr::callq(Arg::new_global(global!(FN_GC_INITIALIZE)), 2),
             Instr::movq(
-                Arg::Global(global!(GC_ROOTSTACK_BEGIN)),
-                Arg::Reg(Register::r15),
+                Arg::new_global(global!(GC_ROOTSTACK_BEGIN)),
+                Arg::new_reg(Register::r15),
             ),
         ]);
     }
@@ -116,16 +116,16 @@ fn generate_prelude(f: &mut Function) -> Vec<Instr> {
     // Allocate space for GC stack
     if f.gc_stack_size > 0 {
         prelude_instrs.push(Instr::addq(
-            Arg::Immediate(f.gc_stack_size as _),
-            Arg::Reg(Register::r15),
+            Arg::new_imm(f.gc_stack_size as _),
+            Arg::new_reg(Register::r15),
         ));
     }
 
     // Zero out GC Stack
     prelude_instrs.extend((0..(f.gc_stack_size / WORD_SIZE as usize) as _).map(|i| {
         Instr::movq(
-            Arg::Immediate(0),
-            Arg::Deref(Register::r15, (WORD_SIZE * i) as i32),
+            Arg::new_imm(0),
+            Arg::new_deref(Register::r15, (WORD_SIZE * i) as i32),
         )
     }));
 
@@ -146,8 +146,8 @@ fn generate_conclusion(
     // Move the stack pointer back up above this frame
     if *stack_size > 0 {
         conclusion_instrs.push(Instr::addq(
-            Arg::Immediate(*stack_size as _),
-            Arg::Reg(Register::rsp),
+            Arg::new_imm(*stack_size as _),
+            Arg::new_reg(Register::rsp),
         ));
     }
 
@@ -156,20 +156,20 @@ fn generate_conclusion(
         callee_saved_used
             .iter()
             .rev()
-            .map(|reg| Instr::popq(Arg::Reg(*reg))),
+            .map(|reg| Instr::popq(Arg::new_reg(*reg))),
     );
 
     // Move the GC-stack pointer back down
     if *gc_stack_size > 0 {
         conclusion_instrs.push(Instr::subq(
-            Arg::Immediate(*gc_stack_size as _),
-            Arg::Reg(Register::r15),
+            Arg::new_imm(*gc_stack_size as _),
+            Arg::new_reg(Register::r15),
         ));
     }
 
     // Restore rbp
     if *stack_size > 0 {
-        conclusion_instrs.push(Instr::popq(Arg::Reg(Register::rbp)));
+        conclusion_instrs.push(Instr::popq(Arg::new_reg(Register::rbp)));
     }
 
     // Handle tail-call: If the exit block ends with a jmp_tail then we

@@ -19,7 +19,7 @@ use x86::*;
 /// and register locations have interfering lifetimes, then uses graph
 /// coloring to assign storages to each variable, and replaces all uses
 /// of the variable in the instructions with that location.
-/// 
+///
 /// The graph coloring algorithm prioritizes assigning locations to
 /// register storage, but overflows to stack storage when needed.
 /// Additionally, location assignments are biased to attempt to keep
@@ -33,7 +33,7 @@ use x86::*;
 ///
 /// Pre-Conditions:
 /// - `TranslateIRtoX86` (obviously)
-/// 
+///
 /// Post-Conditions
 /// - No `Arg::Variable`
 /// - All location assignments, to registers or to stack locations, have
@@ -99,13 +99,16 @@ enum Location {
 
 impl Location {
     fn try_from_arg(arg: &Arg) -> Option<Self> {
-        match arg {
-            Arg::Deref(reg, _) => Some(Location::Reg(*reg)),
-            Arg::Variable(id) => Some(Location::Id(id.clone())),
-            Arg::Reg(reg) => Some(Location::Reg(*reg)),
-            Arg::ByteReg(bytereg) => Some(Location::Reg(bytereg.to_encompassing_64bit())),
-            Arg::Immediate(_) => None,
-            Arg::Global(_) => None,
+        // TODO: For now, just treating all registers as quad for
+        // regalloc purposes is easiest. In the future, there may be
+        // reason to split xl/xh into separate locations with some sort
+        // of register hierarchy system.. but probably not
+        match &arg.value {
+            ArgValue::Deref(reg, _) => Some(Location::Reg(reg.to_quad())),
+            ArgValue::Variable(id) => Some(Location::Id(id.clone())),
+            ArgValue::Reg(reg) => Some(Location::Reg(reg.to_quad())),
+            ArgValue::Immediate(_) => None,
+            ArgValue::Global(_) => None,
         }
     }
 }
@@ -120,9 +123,9 @@ enum Storage {
 impl Storage {
     pub fn to_arg(self) -> Arg {
         match self {
-            Storage::Stack(offset) => Arg::Deref(Register::rbp, offset),
-            Storage::GCStack(offset) => Arg::Deref(Register::r15, offset),
-            Storage::Reg(reg) => Arg::Reg(reg),
+            Storage::Stack(offset) => Arg::new_deref(Register::rbp, offset),
+            Storage::GCStack(offset) => Arg::new_deref(Register::r15, offset),
+            Storage::Reg(reg) => Arg::new_reg(reg),
         }
     }
 }
@@ -229,20 +232,19 @@ fn allocate_storage<'a>(dataflow: &'a DataflowAnalysis, types: &TypeEnv) -> Allo
 }
 
 fn replace_arg_with_allocated(arg: &mut Arg, id_to_stg: &HashMap<Identifier, Storage>) {
-    match arg {
-        Arg::Variable(Identifier::Global(_))
-        | Arg::Immediate(_)
-        | Arg::Reg(_)
-        | Arg::ByteReg(_)
-        | Arg::Global(_)
-        | Arg::Deref(_, _) => {
+    match &mut arg.value {
+        ArgValue::Variable(Identifier::Global(_))
+        | ArgValue::Immediate(_)
+        | ArgValue::Reg(_)
+        | ArgValue::Global(_)
+        | ArgValue::Deref(_, _) => {
             // All of these argument forms should've been *unchanged* by
             // register allocation, as they all refer to absolute
             // things. They do *participate* in regalloc for graph
             // coloring purposes, but they should NOT have been
             // reassigned to a different location
         }
-        Arg::Variable(id) => {
+        ArgValue::Variable(id) => {
             if let Some(storage) = id_to_stg.get(id) {
                 *arg = storage.to_arg()
             } else {
@@ -302,15 +304,23 @@ mod tests {
             .map(|x| &x.instrs)
             .flatten()
         {
-            use x86::{Arg, Instr};
+            use x86::{ArgValue, Instr};
             match i {
                 Instr::addq(s, d) | Instr::subq(s, d) | Instr::movq(s, d) | Instr::imulq(s, d) => {
                     for arg in [s, d] {
-                        assert!(!matches!(arg, Arg::Variable(Identifier::Local(_, _)) | Arg::Variable(Identifier::Ephemeral(_))));
+                        assert!(!matches!(
+                            arg.value,
+                            ArgValue::Variable(Identifier::Local(_, _))
+                                | ArgValue::Variable(Identifier::Ephemeral(_))
+                        ));
                     }
                 }
                 Instr::negq(arg) | Instr::pushq(arg) | Instr::popq(arg) => {
-                    assert!(!matches!(arg, Arg::Variable(Identifier::Local(_, _)) | Arg::Variable(Identifier::Ephemeral(_))));
+                    assert!(!matches!(
+                        arg.value,
+                        ArgValue::Variable(Identifier::Local(_, _))
+                            | ArgValue::Variable(Identifier::Ephemeral(_))
+                    ));
                 }
                 _ => {}
             }
@@ -918,7 +928,10 @@ mod tests {
                         ),
                         Statement::Expr(Expr::Call(
                             Box::new(Expr::GlobalSymbol(t_global!("print_int"))),
-                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(1))))],
+                            vec![Expr::Subscript(
+                                Box::new(Expr::Id(t_global!("tup"))),
+                                Box::new(Expr::Constant(Value::I64(1))),
+                            )],
                         )),
                     ],
                     types: TypeEnv::new(),
@@ -954,15 +967,24 @@ mod tests {
                         ),
                         Statement::Expr(Expr::Call(
                             Box::new(Expr::GlobalSymbol(t_global!("print_int"))),
-                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(0))))],
+                            vec![Expr::Subscript(
+                                Box::new(Expr::Id(t_global!("tup"))),
+                                Box::new(Expr::Constant(Value::I64(0))),
+                            )],
                         )),
                         Statement::Expr(Expr::Call(
                             Box::new(Expr::GlobalSymbol(t_global!("print_int"))),
-                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(1))))],
+                            vec![Expr::Subscript(
+                                Box::new(Expr::Id(t_global!("tup"))),
+                                Box::new(Expr::Constant(Value::I64(1))),
+                            )],
                         )),
                         Statement::Expr(Expr::Call(
                             Box::new(Expr::GlobalSymbol(t_global!("print_int"))),
-                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(2))))],
+                            vec![Expr::Subscript(
+                                Box::new(Expr::Id(t_global!("tup"))),
+                                Box::new(Expr::Constant(Value::I64(2))),
+                            )],
                         )),
                     ],
                     types: TypeEnv::new(),
@@ -992,7 +1014,10 @@ mod tests {
                         ),
                         Statement::Expr(Expr::Call(
                             Box::new(Expr::GlobalSymbol(t_global!("print_int"))),
-                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(0))))],
+                            vec![Expr::Subscript(
+                                Box::new(Expr::Id(t_global!("tup"))),
+                                Box::new(Expr::Constant(Value::I64(0))),
+                            )],
                         )),
                     ],
                     types: TypeEnv::new(),
@@ -1035,9 +1060,15 @@ mod tests {
                         Statement::Expr(Expr::Call(
                             Box::new(Expr::GlobalSymbol(t_global!("print_int"))),
                             vec![Expr::BinaryOp(
-                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("t1"))), Box::new(Expr::Constant(Value::I64(0))))),
+                                Box::new(Expr::Subscript(
+                                    Box::new(Expr::Id(t_global!("t1"))),
+                                    Box::new(Expr::Constant(Value::I64(0))),
+                                )),
                                 BinaryOperator::Add,
-                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("t2"))), Box::new(Expr::Constant(Value::I64(1))))),
+                                Box::new(Expr::Subscript(
+                                    Box::new(Expr::Id(t_global!("t2"))),
+                                    Box::new(Expr::Constant(Value::I64(1))),
+                                )),
                             )],
                         )),
                     ],
@@ -1079,11 +1110,17 @@ mod tests {
                         ),
                         Statement::Expr(Expr::Call(
                             Box::new(Expr::GlobalSymbol(t_global!("print_int"))),
-                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(0))))],
+                            vec![Expr::Subscript(
+                                Box::new(Expr::Id(t_global!("tup"))),
+                                Box::new(Expr::Constant(Value::I64(0))),
+                            )],
                         )),
                         Statement::Expr(Expr::Call(
                             Box::new(Expr::GlobalSymbol(t_global!("print_int"))),
-                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(1))))],
+                            vec![Expr::Subscript(
+                                Box::new(Expr::Id(t_global!("tup"))),
+                                Box::new(Expr::Constant(Value::I64(1))),
+                            )],
                         )),
                     ],
                     types: TypeEnv::new(),
@@ -1118,9 +1155,15 @@ mod tests {
                         Statement::Assign(
                             AssignDest::Id(t_global!("x")),
                             Expr::BinaryOp(
-                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(0))))),
+                                Box::new(Expr::Subscript(
+                                    Box::new(Expr::Id(t_global!("tup"))),
+                                    Box::new(Expr::Constant(Value::I64(0))),
+                                )),
                                 BinaryOperator::Add,
-                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(1))))),
+                                Box::new(Expr::Subscript(
+                                    Box::new(Expr::Id(t_global!("tup"))),
+                                    Box::new(Expr::Constant(Value::I64(1))),
+                                )),
                             ),
                             None,
                         ),
@@ -1170,7 +1213,10 @@ mod tests {
                         Statement::Expr(Expr::Call(
                             Box::new(Expr::GlobalSymbol(t_global!("print_int"))),
                             vec![Expr::BinaryOp(
-                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(0))))),
+                                Box::new(Expr::Subscript(
+                                    Box::new(Expr::Id(t_global!("tup"))),
+                                    Box::new(Expr::Constant(Value::I64(0))),
+                                )),
                                 BinaryOperator::Add,
                                 Box::new(Expr::BinaryOp(
                                     Box::new(Expr::Subscript(
@@ -1233,7 +1279,10 @@ mod tests {
         sum_expr = Expr::BinaryOp(
             Box::new(sum_expr),
             BinaryOperator::Add,
-            Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(0))))),
+            Box::new(Expr::Subscript(
+                Box::new(Expr::Id(t_global!("tup"))),
+                Box::new(Expr::Constant(Value::I64(0))),
+            )),
         );
 
         body.push(Statement::Expr(Expr::Call(
@@ -1369,7 +1418,10 @@ mod tests {
                         Statement::Expr(Expr::Call(
                             Box::new(Expr::GlobalSymbol(t_global!("print_int"))),
                             vec![Expr::BinaryOp(
-                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("t1"))), Box::new(Expr::Constant(Value::I64(0))))),
+                                Box::new(Expr::Subscript(
+                                    Box::new(Expr::Id(t_global!("t1"))),
+                                    Box::new(Expr::Constant(Value::I64(0))),
+                                )),
                                 BinaryOperator::Add,
                                 Box::new(Expr::BinaryOp(
                                     Box::new(Expr::Subscript(
@@ -1422,32 +1474,53 @@ mod tests {
                         Statement::Assign(
                             AssignDest::Subscript(t_global!("tup"), 0),
                             Expr::BinaryOp(
-                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(1))))),
+                                Box::new(Expr::Subscript(
+                                    Box::new(Expr::Id(t_global!("tup"))),
+                                    Box::new(Expr::Constant(Value::I64(1))),
+                                )),
                                 BinaryOperator::Add,
-                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(2))))),
+                                Box::new(Expr::Subscript(
+                                    Box::new(Expr::Id(t_global!("tup"))),
+                                    Box::new(Expr::Constant(Value::I64(2))),
+                                )),
                             ),
                             None,
                         ),
                         Statement::Assign(
                             AssignDest::Subscript(t_global!("tup"), 1),
                             Expr::BinaryOp(
-                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(0))))),
+                                Box::new(Expr::Subscript(
+                                    Box::new(Expr::Id(t_global!("tup"))),
+                                    Box::new(Expr::Constant(Value::I64(0))),
+                                )),
                                 BinaryOperator::Add,
-                                Box::new(Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(2))))),
+                                Box::new(Expr::Subscript(
+                                    Box::new(Expr::Id(t_global!("tup"))),
+                                    Box::new(Expr::Constant(Value::I64(2))),
+                                )),
                             ),
                             None,
                         ),
                         Statement::Expr(Expr::Call(
                             Box::new(Expr::GlobalSymbol(t_global!("print_int"))),
-                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(0))))],
+                            vec![Expr::Subscript(
+                                Box::new(Expr::Id(t_global!("tup"))),
+                                Box::new(Expr::Constant(Value::I64(0))),
+                            )],
                         )),
                         Statement::Expr(Expr::Call(
                             Box::new(Expr::GlobalSymbol(t_global!("print_int"))),
-                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(1))))],
+                            vec![Expr::Subscript(
+                                Box::new(Expr::Id(t_global!("tup"))),
+                                Box::new(Expr::Constant(Value::I64(1))),
+                            )],
                         )),
                         Statement::Expr(Expr::Call(
                             Box::new(Expr::GlobalSymbol(t_global!("print_int"))),
-                            vec![Expr::Subscript(Box::new(Expr::Id(t_global!("tup"))), Box::new(Expr::Constant(Value::I64(2))))],
+                            vec![Expr::Subscript(
+                                Box::new(Expr::Id(t_global!("tup"))),
+                                Box::new(Expr::Constant(Value::I64(2))),
+                            )],
                         )),
                     ],
                     types: TypeEnv::new(),

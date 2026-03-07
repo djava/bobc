@@ -80,14 +80,28 @@ impl X86Env {
     }
 
     fn write_arg(&mut self, arg: &Arg, value: i64) {
-        match arg {
-            Arg::Reg(n) => {
-                self.regs[*n as usize] = value;
+        match &arg.value {
+            ArgValue::Reg(reg) => {
+                let slot = &mut self.regs[reg.to_quad() as usize];
+
+                let mask_lshift = if reg.is_high_byte() { 8 } else { 0 };
+                let mask = arg.width.mask() << mask_lshift;
+                let masked_value = (value << mask_lshift) & mask;
+
+                if arg.width == Width::Double {
+                    // Writing to a double-word register zeroes out the
+                    // upper 32 bits as well. Not true for other widths
+                    *slot = 0;
+                } else {
+                    *slot &= !mask;
+                }
+                *slot |= masked_value;
             }
-            Arg::Variable(id) => {
-                self.vars.insert(id.clone(), Value::I64(value));
+            ArgValue::Variable(id) => {
+                self.vars
+                    .insert(id.clone(), Value::I64(value & arg.width.mask()));
             }
-            Arg::Deref(reg, offset) => {
+            ArgValue::Deref(reg, offset) => {
                 let base = self.regs[*reg as usize];
                 let mut addr: usize = (base + (*offset as i64)).try_into().unwrap();
 
@@ -103,42 +117,19 @@ impl X86Env {
                 addr &= !HEAP_OFFSET;
 
                 let bytes = value.to_le_bytes();
-                for (idx, byte) in bytes.iter().enumerate() {
+                for (idx, byte) in bytes.iter().enumerate().take(arg.width.bytes()) {
                     if addr + idx >= memory.len() {
                         __breakpoint_target();
                     }
                     memory[addr + idx] = *byte;
                 }
             }
-            Arg::ByteReg(reg) => match reg {
-                ByteReg::ah => {
-                    self.write_high_byte(Register::rax, value);
-                }
-                ByteReg::al => {
-                    self.write_low_byte(Register::rax, value);
-                }
-                ByteReg::bh => {
-                    self.write_high_byte(Register::rbx, value);
-                }
-                ByteReg::bl => {
-                    self.write_low_byte(Register::rbx, value);
-                }
-                ByteReg::ch => {
-                    self.write_high_byte(Register::rcx, value);
-                }
-                ByteReg::cl => {
-                    self.write_low_byte(Register::rcx, value);
-                }
-                ByteReg::dh => {
-                    self.write_high_byte(Register::rdx, value);
-                }
-                ByteReg::dl => {
-                    self.write_low_byte(Register::rdx, value);
-                }
-            },
-            Arg::Immediate(_) => panic!("Can't write to an intermediate"),
-            Arg::Global(name) => {
+            ArgValue::Immediate(_) => panic!("Can't write to an intermediate"),
+            ArgValue::Global(name) => {
                 if name == &global!(GC_FREE_PTR) {
+                    if arg.width != Width::Quad {
+                        panic!("Writing to {GC_FREE_PTR} with non-quadword width?")
+                    }
                     self.gc_free_ptr = value;
                 }
                 // No other globals should matter in sim?
@@ -147,14 +138,22 @@ impl X86Env {
     }
 
     fn read_arg(&self, arg: &Arg) -> i64 {
-        match arg {
-            Arg::Reg(n) => self.regs[*n as usize],
-            Arg::Variable(id) => self
+        match &arg.value {
+            ArgValue::Reg(reg) => {
+                let slot_value = self.regs[reg.to_quad() as usize];
+
+                if reg.is_high_byte() {
+                    (slot_value >> 8) & arg.width.mask() 
+                } else {
+                    slot_value & arg.width.mask()
+                }
+            },
+            ArgValue::Variable(id) => self
                 .vars
                 .get(id)
-                .map(|val| i64::from(val))
+                .map(|val| i64::from(val) & arg.width.mask())
                 .expect(format!("Unknown x86var identifier: {id:?}").as_str()),
-            Arg::Deref(reg, offset) => {
+            ArgValue::Deref(reg, offset) => {
                 let base = self.regs[*reg as usize];
                 let mut addr: usize = (base + (*offset as i64)).try_into().unwrap();
 
@@ -167,40 +166,14 @@ impl X86Env {
 
                 addr &= !HEAP_OFFSET;
 
-                for (idx, byte) in bytes.iter_mut().enumerate() {
+                for (idx, byte) in bytes.iter_mut().enumerate().take(arg.width.bytes()) {
                     *byte = memory[addr + idx];
                 }
 
                 i64::from_le_bytes(bytes)
             }
-            Arg::Immediate(val) => *val as i64,
-            Arg::ByteReg(reg) => match reg {
-                ByteReg::ah => {
-                    (self.regs[Register::rax as usize] & 0x0000_0000_0000_FF00u64 as i64) >> 8
-                }
-                ByteReg::al => {
-                    (self.regs[Register::rax as usize] & 0x0000_0000_0000_00FFu64 as i64) >> 0
-                }
-                ByteReg::bh => {
-                    (self.regs[Register::rbx as usize] & 0x0000_0000_0000_FF00u64 as i64) >> 8
-                }
-                ByteReg::bl => {
-                    (self.regs[Register::rbx as usize] & 0x0000_0000_0000_00FFu64 as i64) >> 0
-                }
-                ByteReg::ch => {
-                    (self.regs[Register::rcx as usize] & 0x0000_0000_0000_FF00u64 as i64) >> 8
-                }
-                ByteReg::cl => {
-                    (self.regs[Register::rcx as usize] & 0x0000_0000_0000_00FFu64 as i64) >> 0
-                }
-                ByteReg::dh => {
-                    (self.regs[Register::rdx as usize] & 0x0000_0000_0000_FF00u64 as i64) >> 8
-                }
-                ByteReg::dl => {
-                    (self.regs[Register::rdx as usize] & 0x0000_0000_0000_00FFu64 as i64) >> 0
-                }
-            },
-            Arg::Global(name) => {
+            ArgValue::Immediate(val) => *val & arg.width.mask(),
+            ArgValue::Global(name) => {
                 // I think its ok for these all to just be 0 - it'll
                 // trigger __gc_collect() every time but whatever
                 let zeroable_gc_vars = [
@@ -263,12 +236,12 @@ fn execute_special_functions(
     let label = SPECIAL_FUNCTIONS[arr_idx];
 
     if label == FN_PRINT_INT {
-        let int = env.read_arg(&Arg::Reg(Register::rdi));
+        let int = env.read_arg(&Arg::new_reg(Register::rdi));
         outputs.push_back(int);
         return true;
     } else if label == FN_READ_INT {
         let int = inputs.pop_front().expect("Overflowed input values");
-        env.write_arg(&Arg::Reg(Register::rax), int);
+        env.write_arg(&Arg::new_reg(Register::rax), int);
         return true;
     } else if label == FN_GC_INITIALIZE {
         // Don't need to do anything in sim
@@ -277,28 +250,28 @@ fn execute_special_functions(
         // Don't need to do anything in sim
         return true;
     } else if label == FN_SUBSCRIPT_ARRAY {
-        let idx = env.read_arg(&Arg::Reg(Register::rsi));
+        let idx = env.read_arg(&Arg::new_reg(Register::rsi));
 
-        let tag = ArrayTag::from(env.read_arg(&Arg::Deref(Register::rdi, 0)));
+        let tag = ArrayTag::from(env.read_arg(&Arg::new_deref(Register::rdi, 0)));
         if idx >= tag.length() as _ {
             panic!("Tried to index past end of array");
         }
 
-        let val = env.read_arg(&Arg::Deref(Register::rdi, (WORD_SIZE * (1 + idx)) as i32));
-        env.write_arg(&Arg::Reg(Register::rax), val);
+        let val = env.read_arg(&Arg::new_deref(Register::rdi, (WORD_SIZE * (1 + idx)) as i32));
+        env.write_arg(&Arg::new_reg(Register::rax), val);
 
         return true;
     } else if label == FN_ASSIGN_TO_ARRAY_ELEM {
-        let idx = env.read_arg(&Arg::Reg(Register::rsi));
+        let idx = env.read_arg(&Arg::new_reg(Register::rsi));
 
-        let tag = ArrayTag::from(env.read_arg(&Arg::Deref(Register::rdi, 0)));
+        let tag = ArrayTag::from(env.read_arg(&Arg::new_deref(Register::rdi, 0)));
         if idx >= tag.length() as _ {
             panic!("Tried to index past end of array");
         }
 
-        let val = env.read_arg(&Arg::Reg(Register::rdx));
+        let val = env.read_arg(&Arg::new_reg(Register::rdx));
         env.write_arg(
-            &Arg::Deref(Register::rdi, (WORD_SIZE * (1 + idx)) as i32),
+            &Arg::new_deref(Register::rdi, (WORD_SIZE * (1 + idx)) as i32),
             val,
         );
 
@@ -346,17 +319,17 @@ fn run_instr(
         }
         Instr::pushq(s) => {
             env.write_arg(
-                &Arg::Reg(Register::rsp),
-                env.read_arg(&Arg::Reg(Register::rsp)) - 8,
+                &Arg::new_reg(Register::rsp),
+                env.read_arg(&Arg::new_reg(Register::rsp)) - 8,
             );
-            env.write_arg(&Arg::Deref(Register::rsp, 0), env.read_arg(s));
+            env.write_arg(&Arg::new_deref(Register::rsp, 0), env.read_arg(s));
             Continuation::Next
         }
         Instr::popq(d) => {
-            env.write_arg(d, env.read_arg(&Arg::Deref(Register::rsp, 0)));
+            env.write_arg(d, env.read_arg(&Arg::new_deref(Register::rsp, 0)));
             env.write_arg(
-                &Arg::Reg(Register::rsp),
-                env.read_arg(&Arg::Reg(Register::rsp)) + 8,
+                &Arg::new_reg(Register::rsp),
+                env.read_arg(&Arg::new_reg(Register::rsp)) + 8,
             );
             Continuation::Next
         }
@@ -382,16 +355,16 @@ fn run_instr(
             Continuation::Next
         }
         Instr::set(cc, d) => {
-            env.write_arg(&Arg::ByteReg(*d), env.get_comparison(cc) as i64);
+            env.write_arg(d, env.get_comparison(cc) as i64);
             Continuation::Next
         }
         Instr::movzbq(s, d) => {
-            assert!(matches!(d, Arg::Reg(_)));
-            env.write_arg(d, env.read_arg(&Arg::ByteReg(*s)));
+            assert!(matches!(d.value, ArgValue::Reg(_)));
+            env.write_arg(d, env.read_arg(s));
             Continuation::Next
         }
         Instr::mov(s, d) => {
-            env.write_arg(&Arg::ByteReg(*d), env.read_arg(s));
+            env.write_arg(d, env.read_arg(s));
             Continuation::Next
         }
         Instr::jmp(label) => Continuation::Jump(label.clone()),
@@ -443,21 +416,21 @@ fn run_instr(
             }
         }
         Instr::idivq(divisor_arg) => {
-            let dividend = env.read_arg(&Arg::Reg(Register::rax));
+            let dividend = env.read_arg(&Arg::new_reg(Register::rax));
             let divisor = env.read_arg(divisor_arg);
 
             let quotient = dividend / divisor;
             let remainder = dividend % divisor;
 
-            env.write_arg(&Arg::Reg(Register::rax), quotient);
-            env.write_arg(&Arg::Reg(Register::rdx), remainder);
+            env.write_arg(&Arg::new_reg(Register::rax), quotient);
+            env.write_arg(&Arg::new_reg(Register::rdx), remainder);
 
             Continuation::Next
         }
         Instr::cqto => {
-            let rax_val = env.read_arg(&Arg::Reg(Register::rax));
+            let rax_val = env.read_arg(&Arg::new_reg(Register::rax));
             let rax_sign_extension = if rax_val >= 0 { 0 } else { !0i64 };
-            env.write_arg(&Arg::Reg(Register::rdx), rax_sign_extension);
+            env.write_arg(&Arg::new_reg(Register::rdx), rax_sign_extension);
 
             Continuation::Next
         }
