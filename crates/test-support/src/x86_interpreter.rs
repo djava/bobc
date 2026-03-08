@@ -363,6 +363,11 @@ fn run_instr(
             env.write_arg(d, env.read_arg(s));
             Continuation::Next
         }
+        Instr::movsx(s, d) => {
+            assert!(matches!(d.value, ArgValue::Reg(_)));
+            env.write_arg(d, env.read_arg(s));
+            Continuation::Next
+        }
         Instr::jmp(label) => Continuation::Jump(label.clone()),
         Instr::jmpcc(cc, label) => {
             if env.get_comparison(cc) {

@@ -321,6 +321,8 @@ impl DataflowAnalysis {
                 | Instr::sal(arg, arg1)
                 | Instr::and(arg, arg1)
                 | Instr::imul(arg, arg1)
+                | Instr::movzx(arg, arg1)
+                | Instr::movsx(arg, arg1)
                 | Instr::lea(arg, arg1) => {
                     count_for_arg(arg);
                     count_for_arg(arg1);
@@ -330,7 +332,6 @@ impl DataflowAnalysis {
                 | Instr::push(arg)
                 | Instr::pop(arg)
                 | Instr::call_ind(arg, _)
-                | Instr::movzx(_, arg)
                 | Instr::jmp_tail(arg, _)
                 | Instr::idiv(arg) => {
                     count_for_arg(arg);
@@ -380,12 +381,9 @@ fn locs_read(i: &Instr) -> Vec<Location> {
         Instr::neg(r)
         | Instr::mov(r, _)
         | Instr::push(r)
-        | Instr::lea(r, _) => {
-            if let Some(loc) = Location::try_from_arg(r) {
-                locations.push(loc);
-            }
-        }
-        Instr::movzx(r, _) => {
+        | Instr::lea(r, _)
+        | Instr::movzx(r, _)
+        | Instr::movsx(r, _) => {
             if let Some(loc) = Location::try_from_arg(r) {
                 locations.push(loc);
             }
@@ -441,6 +439,7 @@ fn locs_written(i: &Instr) -> Vec<Location> {
         | Instr::neg(r)
         | Instr::mov(_, r)
         | Instr::movzx(_, r)
+        | Instr::movsx(_, r)
         | Instr::pop(r)
         | Instr::xor(_, r)
         | Instr::and(_, r)
@@ -469,9 +468,7 @@ fn locs_written(i: &Instr) -> Vec<Location> {
         Instr::idiv(_) => {
             locations.extend([Location::Reg(Register::rax), Location::Reg(Register::rdx)])
         }
-        Instr::cqto => {
-            locations.push(Location::Reg(Register::rdx))
-        }
+        Instr::cqto => locations.push(Location::Reg(Register::rdx)),
         Instr::push(_) | Instr::ret | Instr::cmp(_, _) | Instr::jmp(_) | Instr::jmpcc(_, _) => {}
     };
 

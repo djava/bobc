@@ -142,6 +142,8 @@ fn run_for_block(instrs: &mut Vec<Instr>, id_to_storage: &HashMap<Identifier, St
             | Instr::and(s, d)
             | Instr::sar(s, d)
             | Instr::sal(s, d)
+            | Instr::movzx(s, d)
+            | Instr::movsx(s, d)
             | Instr::lea(s, d) => {
                 replace_arg_with_allocated(s, id_to_storage);
                 replace_arg_with_allocated(d, id_to_storage);
@@ -149,7 +151,6 @@ fn run_for_block(instrs: &mut Vec<Instr>, id_to_storage: &HashMap<Identifier, St
             Instr::neg(a)
             | Instr::push(a)
             | Instr::pop(a)
-            | Instr::movzx(_, a)
             | Instr::call_ind(a, _)
             | Instr::jmp_tail(a, _) => {
                 replace_arg_with_allocated(a, id_to_storage);
