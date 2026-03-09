@@ -53,7 +53,7 @@ pub static EXTERNED_VARIABLES: LazyLock<Vec<Identifier>> = LazyLock::new(|| {
 });
 
 // Size of a machine word in bytes (= size of i64)
-pub const WORD_SIZE: i64 = 8;
+pub const POINTER_SIZE: i64 = 8;
 
 // Maximum number of elements in a tuple.
 // Also determines the width of the pointer_mask field in TupleTag.

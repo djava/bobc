@@ -16,10 +16,10 @@ enum Continuation {
 }
 
 fn interpret_atom(atom: &Atom, env: &mut ValueEnv, func_env: &Vec<Function>) -> Value {
-    match atom {
-        Atom::Constant(value) => value.clone(),
-        Atom::Variable(id) => env[id].clone(),
-        Atom::GlobalSymbol(id) => {
+    match &atom.value {
+        AtomValue::Constant(value) => value.clone(),
+        AtomValue::Variable(id) => env[id].clone(),
+        AtomValue::GlobalSymbol(id) => {
             if let Some(func) = func_env.iter().find(|f| f.name == *id) {
                 Value::Function(
                     id.clone(),
@@ -63,7 +63,7 @@ fn interpret_expr(
             op.try_eval(&l_val, &r_val).unwrap()
         }
         Expr::Call(func_name, args) => {
-            if func_name == &Atom::GlobalSymbol(global!("print_int")) {
+            if func_name.value == AtomValue::GlobalSymbol(global!("print_int")) {
                 if args.len() != 1 {
                     panic!("Wrong number of arguments to print_int()");
                 }
@@ -75,7 +75,7 @@ fn interpret_expr(
                 }
 
                 Value::None
-            } else if func_name == &Atom::GlobalSymbol(global!("read_int")) {
+            } else if func_name.value == AtomValue::GlobalSymbol(global!("read_int")) {
                 if args.len() != 0 {
                     panic!("Wrong number of args to read_int()");
                 }
@@ -88,9 +88,9 @@ fn interpret_expr(
             } else {
                 // Resolve the function name — either directly from a GlobalSymbol,
                 // or indirectly through a Variable holding a Function value
-                let resolved_name = match func_name {
-                    Atom::GlobalSymbol(id) => id.clone(),
-                    Atom::Variable(id) => {
+                let resolved_name = match &func_name.value {
+                    AtomValue::GlobalSymbol(id) => id.clone(),
+                    AtomValue::Variable(id) => {
                         if let Value::Function(name, _, _) = &val_env[id] {
                             name.clone()
                         } else {
@@ -136,7 +136,7 @@ fn interpret_statement(
         }
         Statement::Assign(dest, expr) => {
             let value = interpret_expr(expr, inputs, outputs, val_env, func_env);
-            match &dest {
+            match &dest.value {
                 AssignDest::Id(identifier) => {
                     val_env.insert(identifier.clone(), value);
                 }

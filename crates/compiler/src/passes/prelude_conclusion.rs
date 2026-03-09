@@ -37,7 +37,7 @@ impl X86Pass for PreludeConclusion {
 }
 
 fn add_prelude_conclusion(f: &mut Function) {
-    f.header.push(Directive::Align(WORD_SIZE as u8));
+    f.header.push(Directive::Align(POINTER_SIZE as u8));
     if f.name == global!(LABEL_MAIN) {
         f.header.push(Directive::Globl(global!(LABEL_MAIN)));
     }
@@ -95,7 +95,7 @@ fn generate_prelude(f: &mut Function) -> Vec<Instr> {
             Arg::new_reg(Register::rbp),
         ));
         prelude_instrs.push(Instr::sub(
-            Arg::new_imm(f.stack_size as _),
+            Arg::new_imm(f.stack_size as _, Width::Quad),
             Arg::new_reg(Register::rsp),
         ));
     }
@@ -103,11 +103,11 @@ fn generate_prelude(f: &mut Function) -> Vec<Instr> {
     if f.name == global!(LABEL_MAIN) {
         // In main, we also have to initialize GC Stack/Heap
         prelude_instrs.extend([
-            Instr::mov(Arg::new_imm(GC_STACK_SIZE), Arg::new_reg(Register::rdi)),
-            Instr::mov(Arg::new_imm(GC_HEAP_SIZE), Arg::new_reg(Register::rsi)),
-            Instr::call(Arg::new_global(global!(FN_GC_INITIALIZE)), 2),
+            Instr::mov(Arg::new_imm(GC_STACK_SIZE, Width::Quad), Arg::new_reg(Register::rdi)),
+            Instr::mov(Arg::new_imm(GC_HEAP_SIZE, Width::Quad), Arg::new_reg(Register::rsi)),
+            Instr::call(Arg::new_global(global!(FN_GC_INITIALIZE), Width::Quad), 2),
             Instr::mov(
-                Arg::new_global(global!(GC_ROOTSTACK_BEGIN)),
+                Arg::new_global(global!(GC_ROOTSTACK_BEGIN), Width::Quad),
                 Arg::new_reg(Register::r15),
             ),
         ]);
@@ -116,16 +116,16 @@ fn generate_prelude(f: &mut Function) -> Vec<Instr> {
     // Allocate space for GC stack
     if f.gc_stack_size > 0 {
         prelude_instrs.push(Instr::add(
-            Arg::new_imm(f.gc_stack_size as _),
+            Arg::new_imm(f.gc_stack_size as _, Width::Quad),
             Arg::new_reg(Register::r15),
         ));
     }
 
     // Zero out GC Stack
-    prelude_instrs.extend((0..(f.gc_stack_size / WORD_SIZE as usize) as _).map(|i| {
+    prelude_instrs.extend((0..(f.gc_stack_size / POINTER_SIZE as usize) as _).map(|i| {
         Instr::mov(
-            Arg::new_imm(0),
-            Arg::new_deref(Register::r15, (WORD_SIZE * i) as i32),
+            Arg::new_imm(0, Width::Quad),
+            Arg::new_deref(Register::r15, (POINTER_SIZE * i) as i32, Width::Quad),
         )
     }));
 
@@ -146,7 +146,7 @@ fn generate_conclusion(
     // Move the stack pointer back up above this frame
     if *stack_size > 0 {
         conclusion_instrs.push(Instr::add(
-            Arg::new_imm(*stack_size as _),
+            Arg::new_imm(*stack_size as _, Width::Quad),
             Arg::new_reg(Register::rsp),
         ));
     }
@@ -162,7 +162,7 @@ fn generate_conclusion(
     // Move the GC-stack pointer back down
     if *gc_stack_size > 0 {
         conclusion_instrs.push(Instr::sub(
-            Arg::new_imm(*gc_stack_size as _),
+            Arg::new_imm(*gc_stack_size as _, Width::Quad),
             Arg::new_reg(Register::r15),
         ));
     }

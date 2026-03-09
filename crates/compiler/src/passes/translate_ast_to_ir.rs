@@ -1,10 +1,9 @@
 use crate::{
-    passes::ASTtoIRPass,
-    syntax_trees::{
+    constants::POINTER_SIZE, passes::ASTtoIRPass, syntax_trees::{
         ast,
         ir::{self, BlockMap},
         shared::*,
-    },
+    }
 };
 
 /// `TranslateASTtoIR` Pass
@@ -123,13 +122,16 @@ fn generate_for_tail(e: &ast::Expr, blocks: &mut BlockMap) -> Vec<ir::Statement>
             let pos_ir = generate_for_assign(
                 pos,
                 AssignDest::Id(ret_id.clone()),
-                vec![ir::Statement::Return(ir::Atom::Variable(ret_id.clone()))],
+                vec![ir::Statement::Return(ir::Atom::new_variable(
+                    ret_id.clone(),
+                    8,
+                ))], // TODO: propagate size
                 blocks,
             );
             let neg_ir = generate_for_assign(
                 neg,
                 AssignDest::Id(ret_id.clone()),
-                vec![ir::Statement::Return(ir::Atom::Variable(ret_id))],
+                vec![ir::Statement::Return(ir::Atom::new_variable(ret_id, 8))], // TODO: propagate size
                 blocks,
             );
 
@@ -158,7 +160,7 @@ fn generate_for_tail(e: &ast::Expr, blocks: &mut BlockMap) -> Vec<ir::Statement>
             generate_for_assign(
                 e,
                 AssignDest::Id(ret_var.clone()),
-                vec![ir::Statement::Return(ir::Atom::Variable(ret_var))],
+                vec![ir::Statement::Return(ir::Atom::new_variable(ret_var, 8))], // TODO: propagate size
                 blocks,
             )
         }
@@ -233,8 +235,8 @@ fn generate_for_assign(
     match e {
         ast::Expr::Constant(value) => {
             let mut ret = vec![ir::Statement::Assign(
-                ast_to_ir_assigndest(dest),
-                ir::Expr::Atom(ir::Atom::Constant(value.clone())),
+                ast_to_ir_assigndest(dest, ValueType::from(value).size()),
+                ir::Expr::Atom(ir::Atom::new_constant(value.clone(), 8)), // TODO: propagate size
             )];
             ret.extend(cont);
             ret
@@ -244,7 +246,7 @@ fn generate_for_assign(
             let r_atom = expr_to_atom(&*right);
 
             let mut ret = vec![ir::Statement::Assign(
-                ast_to_ir_assigndest(dest),
+                ast_to_ir_assigndest(dest, 8), // TODO: propagate size
                 ir::Expr::BinaryOp(l_atom, *op, r_atom),
             )];
             ret.extend(cont);
@@ -253,7 +255,10 @@ fn generate_for_assign(
         ast::Expr::UnaryOp(op, expr) => {
             let atom = expr_to_atom(&*expr);
 
-            let mut ret = vec![ir::Statement::Assign(ast_to_ir_assigndest(dest), ir::Expr::UnaryOp(*op, atom))];
+            let mut ret = vec![ir::Statement::Assign(
+                ast_to_ir_assigndest(dest, 8), // TODO: propagate size
+                ir::Expr::UnaryOp(*op, atom),
+            )];
             ret.extend(cont);
             ret
         }
@@ -261,7 +266,7 @@ fn generate_for_assign(
             let args = exprs.iter().map(expr_to_atom).collect();
 
             let mut ret = vec![ir::Statement::Assign(
-                ast_to_ir_assigndest(dest),
+                ast_to_ir_assigndest(dest, 8), // TODO: propagate size
                 ir::Expr::Call(expr_to_atom(&**func), args),
             )];
             ret.extend(cont);
@@ -269,8 +274,8 @@ fn generate_for_assign(
         }
         ast::Expr::Id(src_id) => {
             let mut ret = vec![ir::Statement::Assign(
-                ast_to_ir_assigndest(dest),
-                ir::Expr::Atom(ir::Atom::Variable(src_id.clone())),
+                ast_to_ir_assigndest(dest, 8), // TODO: propagate size
+                ir::Expr::Atom(ir::Atom::new_variable(src_id.clone(), 8)), // TODO: propagate size
             )];
             ret.extend(cont);
             ret
@@ -300,7 +305,7 @@ fn generate_for_assign(
         }
         ast::Expr::Subscript(tup, idx) => {
             let idx_i64 = {
-                if let ir::Atom::Constant(Value::I64(val)) = expr_to_atom(&*idx) {
+                if let ir::AtomValue::Constant(Value::I64(val)) = expr_to_atom(&*idx).value {
                     val
                 } else {
                     panic!("Non-i64 index into tuple")
@@ -308,7 +313,7 @@ fn generate_for_assign(
             };
 
             let mut ret = vec![ir::Statement::Assign(
-                ast_to_ir_assigndest(dest),
+                ast_to_ir_assigndest(dest, 8), // TODO: propagate size
                 ir::Expr::TupleSubscript(expr_to_atom(tup), idx_i64),
             )];
             ret.extend(cont);
@@ -317,7 +322,7 @@ fn generate_for_assign(
         }
         ast::Expr::Allocate(bytes, value_type) => {
             let mut ret = vec![ir::Statement::Assign(
-                ast_to_ir_assigndest(dest),
+                ast_to_ir_assigndest(dest, POINTER_SIZE as _),
                 ir::Expr::Allocate(*bytes, value_type.clone()),
             )];
             ret.extend(cont);
@@ -325,8 +330,8 @@ fn generate_for_assign(
         }
         ast::Expr::GlobalSymbol(name) => {
             let mut ret = vec![ir::Statement::Assign(
-                ast_to_ir_assigndest(dest),
-                ir::Expr::Atom(ir::Atom::GlobalSymbol(name.clone())),
+                ast_to_ir_assigndest(dest, 8),  // TODO: propagate size
+                ir::Expr::Atom(ir::Atom::new_global(name.clone(), 8)), // TODO: propagate size
             )];
             ret.extend(cont);
             ret
@@ -400,14 +405,14 @@ fn generate_for_predicate(
         }
         ast::Expr::Id(identifier) => {
             vec![ir::Statement::If(
-                ir::Expr::Atom(ir::Atom::Variable(identifier.clone())),
+                ir::Expr::Atom(ir::Atom::new_variable(identifier.clone(), 8)), // TODO: propagate size
                 pos_label,
                 neg_label,
             )]
         }
         ast::Expr::Subscript(tup, idx) => {
             let idx_i64 = {
-                if let ir::Atom::Constant(Value::I64(val)) = expr_to_atom(&*idx) {
+                if let ir::AtomValue::Constant(Value::I64(val)) = expr_to_atom(&*idx).value {
                     val
                 } else {
                     panic!("Non-i64 index into tuple")
@@ -421,7 +426,7 @@ fn generate_for_predicate(
         }
         ast::Expr::GlobalSymbol(name) => {
             vec![ir::Statement::If(
-                ir::Expr::Atom(ir::Atom::GlobalSymbol(name.clone())),
+                ir::Expr::Atom(ir::Atom::new_global(name.clone(), 8)), // TODO: propagate size
                 pos_label,
                 neg_label,
             )]
@@ -436,9 +441,9 @@ fn generate_for_predicate(
 
 fn expr_to_atom(e: &ast::Expr) -> ir::Atom {
     match e {
-        ast::Expr::Constant(value) => ir::Atom::Constant(value.clone()),
-        ast::Expr::Id(id) => ir::Atom::Variable(id.clone()),
-        ast::Expr::GlobalSymbol(name) => ir::Atom::GlobalSymbol(name.clone()),
+        ast::Expr::Constant(value) => ir::Atom::new_constant(value.clone(), 8), // TODO: propagate size
+        ast::Expr::Id(id) => ir::Atom::new_variable(id.clone(), 8), // TODO: propagate size
+        ast::Expr::GlobalSymbol(name) => ir::Atom::new_global(name.clone(), 8), // TODO: propagate size
         _ => panic!("Expr `{e:?}` cannot be converted to atom"),
     }
 }
@@ -455,13 +460,19 @@ fn new_block(statements: Vec<ir::Statement>, blocks: &mut BlockMap) -> Identifie
     label
 }
 
-fn ast_to_ir_assigndest(dest: AssignDest<ast::Expr>) -> AssignDest<ir::Atom> {
+fn ast_to_ir_assigndest(dest: AssignDest<ast::Expr>, size: usize) -> SizedAssignDest<()> {
     match dest {
-        AssignDest::Id(id) => AssignDest::Id(id),
-        AssignDest::Subscript(id, idx) => AssignDest::Subscript(id, idx),
-        AssignDest::ComplexSubscript(_) => panic!(
-            "Complex subscripts should've been removed by DisambiguateSubscripts"
-        ),
+        AssignDest::Id(id) => SizedAssignDest {
+            value: AssignDest::Id(id),
+            size,
+        },
+        AssignDest::Subscript(id, idx) => SizedAssignDest {
+            value: AssignDest::Subscript(id, idx),
+            size,
+        },
+        AssignDest::ComplexSubscript(_) => {
+            panic!("Complex subscripts should've been removed by DisambiguateSubscripts")
+        }
     }
 }
 

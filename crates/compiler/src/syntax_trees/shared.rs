@@ -2,6 +2,8 @@ use bitfield_struct::bitfield;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+use crate::constants::POINTER_SIZE;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Identifier {
     Ephemeral(u64),
@@ -55,6 +57,21 @@ pub enum ValueType {
     PointerType(Box<ValueType>),
     NoneType,
     Indeterminate,
+}
+
+impl ValueType {
+    pub fn size(&self) -> usize {
+        match self {
+            ValueType::IntType => 8,
+            ValueType::FunctionType(_, _) => POINTER_SIZE as _,
+            ValueType::BoolType => 8,
+            ValueType::TupleType(_) => POINTER_SIZE as _,
+            ValueType::ArrayType(_, _) => POINTER_SIZE as _,
+            ValueType::PointerType(_) => POINTER_SIZE as _,
+            ValueType::NoneType => 0,
+            ValueType::Indeterminate => panic!("Size of indeterminate value type"),
+        }
+    }
 }
 
 impl From<&Value> for ValueType {
@@ -269,6 +286,12 @@ pub enum AssignDest<E> {
     Id(Identifier),
     Subscript(Identifier, i64),
     ComplexSubscript(ComplexSubscript<E>)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct SizedAssignDest<E> {
+    pub value: AssignDest<E>,
+    pub size: usize
 }
 
 #[bitfield(u64, order = Lsb)]

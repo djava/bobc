@@ -143,11 +143,11 @@ impl X86Env {
                 let slot_value = self.regs[reg.to_quad() as usize];
 
                 if reg.is_high_byte() {
-                    (slot_value >> 8) & arg.width.mask() 
+                    (slot_value >> 8) & arg.width.mask()
                 } else {
                     slot_value & arg.width.mask()
                 }
-            },
+            }
             ArgValue::Variable(id) => self
                 .vars
                 .get(id)
@@ -252,26 +252,30 @@ fn execute_special_functions(
     } else if label == FN_SUBSCRIPT_ARRAY {
         let idx = env.read_arg(&Arg::new_reg(Register::rsi));
 
-        let tag = ArrayTag::from(env.read_arg(&Arg::new_deref(Register::rdi, 0)));
+        let tag = ArrayTag::from(env.read_arg(&Arg::new_deref(Register::rdi, 0, Width::Quad)));
         if idx >= tag.length() as _ {
             panic!("Tried to index past end of array");
         }
 
-        let val = env.read_arg(&Arg::new_deref(Register::rdi, (WORD_SIZE * (1 + idx)) as i32));
+        let val = env.read_arg(&Arg::new_deref(
+            Register::rdi,
+            (POINTER_SIZE * (1 + idx)) as i32,
+            Width::Quad,
+        ));
         env.write_arg(&Arg::new_reg(Register::rax), val);
 
         return true;
     } else if label == FN_ASSIGN_TO_ARRAY_ELEM {
         let idx = env.read_arg(&Arg::new_reg(Register::rsi));
 
-        let tag = ArrayTag::from(env.read_arg(&Arg::new_deref(Register::rdi, 0)));
+        let tag = ArrayTag::from(env.read_arg(&Arg::new_deref(Register::rdi, 0, Width::Quad)));
         if idx >= tag.length() as _ {
             panic!("Tried to index past end of array");
         }
 
         let val = env.read_arg(&Arg::new_reg(Register::rdx));
         env.write_arg(
-            &Arg::new_deref(Register::rdi, (WORD_SIZE * (1 + idx)) as i32),
+            &Arg::new_deref(Register::rdi, (POINTER_SIZE * (1 + idx)) as i32, Width::Quad),
             val,
         );
 
@@ -322,11 +326,11 @@ fn run_instr(
                 &Arg::new_reg(Register::rsp),
                 env.read_arg(&Arg::new_reg(Register::rsp)) - 8,
             );
-            env.write_arg(&Arg::new_deref(Register::rsp, 0), env.read_arg(s));
+            env.write_arg(&Arg::new_deref(Register::rsp, 0, s.width), env.read_arg(s));
             Continuation::Next
         }
         Instr::pop(d) => {
-            env.write_arg(d, env.read_arg(&Arg::new_deref(Register::rsp, 0)));
+            env.write_arg(d, env.read_arg(&Arg::new_deref(Register::rsp, 0, d.width)));
             env.write_arg(
                 &Arg::new_reg(Register::rsp),
                 env.read_arg(&Arg::new_reg(Register::rsp)) + 8,

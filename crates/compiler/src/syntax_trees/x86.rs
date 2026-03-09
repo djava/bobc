@@ -237,6 +237,18 @@ impl Width {
     }
 }
 
+impl From<usize> for Width {
+    fn from(size: usize) -> Self {
+        match size {
+            1 => Width::Byte,
+            2 => Width::Word,
+            4 => Width::Double,
+            8 => Width::Quad,
+            _ => panic!("Invalid size to width: {size}")
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ArgValue {
     Immediate(i64),
@@ -253,10 +265,10 @@ pub struct Arg {
 }
 
 impl Arg {
-    pub fn new_imm(n: i64) -> Self {
+    pub fn new_imm(n: i64, width: Width) -> Self {
         Self {
             value: ArgValue::Immediate(n),
-            width: Width::Quad, // TODO: pass width
+            width
         }
     }
 
@@ -267,24 +279,24 @@ impl Arg {
         }
     }
 
-    pub fn new_deref(r: Register, offset: i32) -> Self {
+    pub fn new_deref(r: Register, offset: i32, width: Width) -> Self {
         Self {
             value: ArgValue::Deref(r, offset),
-            width: Width::Quad, // TODO: pass width
+            width
         }
     }
 
-    pub fn new_variable(id: Identifier) -> Self {
+    pub fn new_variable(id: Identifier, width: Width) -> Self {
         Self {
             value: ArgValue::Variable(id),
-            width: Width::Quad, // TODO: pass width
+            width
         }
     }
 
-    pub fn new_global(id: Identifier) -> Self {
+    pub fn new_global(id: Identifier, width: Width) -> Self {
         Self {
             value: ArgValue::Global(id),
-            width: Width::Quad, // TODO: pass width
+            width
         }
     }
 }

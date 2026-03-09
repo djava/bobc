@@ -2,10 +2,39 @@ use super::shared::*;
 use indexmap::IndexMap;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Atom {
+pub enum AtomValue {
     Constant(Value),
     Variable(Identifier),
     GlobalSymbol(Identifier),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Atom {
+    pub value: AtomValue,
+    pub size: usize
+}
+
+impl Atom {
+    pub fn new_constant(value: Value, size: usize) -> Self {
+        Self {
+            value: AtomValue::Constant(value),
+            size,
+        }
+    }
+
+    pub fn new_variable(id: Identifier, size: usize) -> Self {
+        Self {
+            value: AtomValue::Variable(id),
+            size
+        }
+    }
+
+    pub fn new_global(id: Identifier, size: usize) -> Self {
+        Self {
+            value: AtomValue::GlobalSymbol(id),
+            size
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -21,7 +50,7 @@ pub enum Expr {
 #[derive(Debug, Clone)]
 pub enum Statement {
     Expr(Expr),
-    Assign(AssignDest<Atom>, Expr),
+    Assign(SizedAssignDest<()>, Expr),
     Return(Atom),
     Goto(Identifier),
     If(Expr, Identifier, Identifier),

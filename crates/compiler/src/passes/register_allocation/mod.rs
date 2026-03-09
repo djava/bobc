@@ -115,16 +115,20 @@ impl Location {
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 enum Storage {
-    Stack(i32),
-    GCStack(i32),
+    Stack(i32, usize),
+    GCStack(i32, usize),
     Reg(Register),
 }
 
 impl Storage {
     pub fn to_arg(self) -> Arg {
         match self {
-            Storage::Stack(offset) => Arg::new_deref(Register::rbp, offset),
-            Storage::GCStack(offset) => Arg::new_deref(Register::r15, offset),
+            Storage::Stack(offset, size) => {
+                Arg::new_deref(Register::rbp, offset, Width::from(size))
+            }
+            Storage::GCStack(offset, size) => {
+                Arg::new_deref(Register::r15, offset, Width::from(size))
+            }
             Storage::Reg(reg) => Arg::new_reg(reg),
         }
     }
@@ -197,12 +201,13 @@ fn allocate_storage<'a>(dataflow: &'a DataflowAnalysis, types: &TypeEnv) -> Allo
                 // register colors. Allocate it a new stack storage (or
                 // GC stack storage if its a tuple)
                 let s = if let Some(ValueType::TupleType(_)) = types.get(id) {
-                    let stg = Storage::GCStack(curr_gc_stack_offset);
-                    curr_gc_stack_offset += WORD_SIZE as i32;
+                    let stg = Storage::GCStack(curr_gc_stack_offset, POINTER_SIZE as _);
+                    curr_gc_stack_offset += POINTER_SIZE as i32;
                     stg
                 } else {
-                    curr_stack_offset -= WORD_SIZE as i32;
-                    Storage::Stack(curr_stack_offset)
+                    // TODO: Propagate size through Location
+                    curr_stack_offset -= POINTER_SIZE as i32;
+                    Storage::Stack(curr_stack_offset, POINTER_SIZE as _)
                 };
 
                 color_to_storage.insert(*color, s);

@@ -6,7 +6,7 @@ use crate::{
     syntax_trees::{
         ir,
         shared::*,
-        x86::{self, Instr, Register, X86Program},
+        x86::{self, Instr, Register, Width, X86Program},
     },
     utils::global,
 };
@@ -111,7 +111,7 @@ fn translate_statement(s: ir::Statement, exit_block: &Identifier) -> Vec<Instr> 
             if SPECIAL_FUNCTIONS
                 .iter()
                 .map(|(name, _, _)| name)
-                .find(|n| &ir::Atom::GlobalSymbol(global!(**n)) == &func)
+                .find(|n| &ir::AtomValue::GlobalSymbol(global!(**n)) == &func.value)
                 .is_some()
             {
                 return translate_call(None, func, args);
@@ -126,24 +126,24 @@ fn translate_statement(s: ir::Statement, exit_block: &Identifier) -> Vec<Instr> 
             }
 
             // Jump to the function
-            match func {
-                ir::Atom::Variable(_) => {
+            match func.value {
+                ir::AtomValue::Variable(_) => {
                     instrs.extend([
                         Instr::mov(atom_to_arg(func), x86::Arg::new_reg(Register::rax)),
                         Instr::jmp_tail(x86::Arg::new_reg(Register::rax), num_args as _),
                     ]);
                 }
-                ir::Atom::GlobalSymbol(id) => {
-                    instrs.push(Instr::jmp_tail(x86::Arg::new_global(id), num_args as _));
+                ir::AtomValue::GlobalSymbol(id) => {
+                    instrs.push(Instr::jmp_tail(x86::Arg::new_global(id, Width::from(func.size)), num_args as _));
                 }
-                ir::Atom::Constant(_) => panic!("func was Atom::Constant??"),
+                ir::AtomValue::Constant(_) => panic!("func was Atom::Constant??"),
             }
             instrs
         }
     }
 }
 
-fn translate_assign(dest: AssignDest<ir::Atom>, expr: ir::Expr) -> Vec<Instr> {
+fn translate_assign(dest: SizedAssignDest<()>, expr: ir::Expr) -> Vec<Instr> {
     let mut ret = vec![];
 
     ret.extend(match expr {
@@ -170,11 +170,11 @@ fn translate_assign(dest: AssignDest<ir::Atom>, expr: ir::Expr) -> Vec<Instr> {
     ret
 }
 
-fn translate_subscript(dest: AssignDest<ir::Atom>, atom: ir::Atom, idx: i64) -> Vec<Instr> {
+fn translate_subscript(dest: SizedAssignDest<()>, atom: ir::Atom, idx: i64) -> Vec<Instr> {
     let mut ret = vec![];
-    if let AssignDest::Subscript(id, _idx) = &dest {
+    if let AssignDest::Subscript(id, _idx) = &dest.value {
         ret.push(Instr::mov(
-            x86::Arg::new_variable(id.clone()),
+            x86::Arg::new_variable(id.clone(), Width::from(POINTER_SIZE as usize)),
             x86::Arg::new_reg(x86::Register::r11),
         ));
     }
@@ -182,7 +182,11 @@ fn translate_subscript(dest: AssignDest<ir::Atom>, atom: ir::Atom, idx: i64) -> 
     ret.extend([
         Instr::mov(atom_to_arg(atom), x86::Arg::new_reg(Register::rax)),
         Instr::mov(
-            x86::Arg::new_deref(Register::rax, (WORD_SIZE + (WORD_SIZE * idx)) as i32),
+            x86::Arg::new_deref(
+                Register::rax,
+                (POINTER_SIZE + (POINTER_SIZE * idx)) as i32,
+                Width::from(dest.size),
+            ),
             assigndest_to_arg(dest),
         ),
     ]);
@@ -190,16 +194,16 @@ fn translate_subscript(dest: AssignDest<ir::Atom>, atom: ir::Atom, idx: i64) -> 
     ret
 }
 
-fn translate_atom(dest: AssignDest<ir::Atom>, atom: ir::Atom) -> Vec<Instr> {
+fn translate_atom(dest: SizedAssignDest<()>, atom: ir::Atom) -> Vec<Instr> {
     let mut ret = vec![];
-    if let AssignDest::Subscript(id, _idx) = &dest {
+    if let AssignDest::Subscript(id, _idx) = &dest.value {
         ret.push(Instr::mov(
-            x86::Arg::new_variable(id.clone()),
+            x86::Arg::new_variable(id.clone(), Width::from(POINTER_SIZE as usize)),
             x86::Arg::new_reg(x86::Register::r11),
         ));
     }
 
-    if let ir::Atom::GlobalSymbol(_) = &atom {
+    if let ir::AtomValue::GlobalSymbol(_) = &atom.value {
         // Global symbols (functions) must be leaq'd, not just mov'd from
         ret.push(Instr::lea(atom_to_arg(atom), assigndest_to_arg(dest)));
     } else {
@@ -210,7 +214,7 @@ fn translate_atom(dest: AssignDest<ir::Atom>, atom: ir::Atom) -> Vec<Instr> {
 }
 
 fn translate_allocation(
-    dest: AssignDest<ir::Atom>,
+    dest: SizedAssignDest<()>,
     bytes: usize,
     value_type: ValueType,
 ) -> Vec<Instr> {
@@ -219,27 +223,31 @@ fn translate_allocation(
     // Bump allocator pointer, write tag. pointer is in r11
     let mut ret = vec![
         Instr::mov(
-            x86::Arg::new_global(global!(GC_FREE_PTR)),
+            x86::Arg::new_global(global!(GC_FREE_PTR), Width::Quad),
             x86::Arg::new_reg(Register::r11),
         ),
         Instr::add(
-            x86::Arg::new_imm(bytes as i64),
-            x86::Arg::new_global(global!(GC_FREE_PTR)),
+            x86::Arg::new_imm(bytes as i64, Width::from(POINTER_SIZE as usize)),
+            x86::Arg::new_global(global!(GC_FREE_PTR), Width::Quad),
         ),
-        Instr::mov(x86::Arg::new_imm(tag), x86::Arg::new_deref(Register::r11, 0)),
+        Instr::mov(
+            x86::Arg::new_imm(tag, Width::Quad),
+            x86::Arg::new_deref(Register::r11, 0, Width::Quad),
+        ),
     ];
 
-    if let AssignDest::Subscript(id, idx) = &dest {
+    if let AssignDest::Subscript(id, idx) = &dest.value {
         ret.extend([
             Instr::mov(
-                x86::Arg::new_variable(id.clone()),
+                x86::Arg::new_variable(id.clone(), Width::from(POINTER_SIZE as usize)),
                 x86::Arg::new_reg(x86::Register::rax),
             ),
             Instr::mov(
                 x86::Arg::new_reg(x86::Register::r11),
                 x86::Arg::new_deref(
                     Register::rax,
-                    (WORD_SIZE + (idx * WORD_SIZE)).try_into().unwrap(),
+                    (POINTER_SIZE + (idx * POINTER_SIZE)).try_into().unwrap(),
+                    Width::from(POINTER_SIZE as usize)
                 ),
             ),
         ]);
@@ -292,12 +300,18 @@ fn translate_conditional(
         | ir::Expr::UnaryOp(UnaryOperator::Plus, atom)
         | ir::Expr::UnaryOp(UnaryOperator::Minus, atom) => {
             vec![
-                Instr::cmp(x86::Arg::new_imm(0), atom_to_arg(atom)),
+                Instr::cmp(
+                    x86::Arg::new_imm(0, Width::from(atom.size)),
+                    atom_to_arg(atom),
+                ),
                 Instr::jmpcc(x86::Comparison::NotEquals, pos_label),
             ]
         }
         ir::Expr::UnaryOp(UnaryOperator::Not, atom) => vec![
-            Instr::cmp(x86::Arg::new_imm(0), atom_to_arg(atom)),
+            Instr::cmp(
+                x86::Arg::new_imm(0, Width::from(atom.size)),
+                atom_to_arg(atom),
+            ),
             Instr::jmpcc(x86::Comparison::Equals, pos_label),
         ],
         ir::Expr::BinaryOp(left, op, right) => {
@@ -307,11 +321,22 @@ fn translate_conditional(
                     Instr::jmpcc(cc, pos_label),
                 ]
             } else {
+                let result_size = std::cmp::max(left.size, right.size);
+
                 let temp_id = Identifier::new_ephemeral();
                 let cond = ir::Expr::BinaryOp(left, op, right);
-                let mut asgn_instrs = translate_assign(AssignDest::Id(temp_id.clone()), cond);
+
+                let sdest = SizedAssignDest {
+                    value: AssignDest::Id(temp_id.clone()),
+                    size: result_size,
+                };
+                let mut asgn_instrs = translate_assign(sdest, cond);
+
                 asgn_instrs.extend([
-                    Instr::cmp(x86::Arg::new_imm(0), x86::Arg::new_variable(temp_id)),
+                    Instr::cmp(
+                        x86::Arg::new_imm(0, Width::from(result_size)),
+                        x86::Arg::new_variable(temp_id, Width::from(result_size)),
+                    ),
                     Instr::jmpcc(x86::Comparison::NotEquals, pos_label),
                 ]);
                 asgn_instrs
@@ -320,18 +345,28 @@ fn translate_conditional(
         ir::Expr::Call(func_id, args) => {
             let mut call_instrs = translate_call(None, func_id, args);
             call_instrs.extend([
-                Instr::cmp(x86::Arg::new_imm(0), x86::Arg::new_reg(x86::Register::rax)),
+                Instr::cmp(
+                    x86::Arg::new_imm(0, Width::Quad),
+                    x86::Arg::new_reg(x86::Register::rax),
+                ),
                 Instr::jmpcc(x86::Comparison::NotEquals, pos_label),
             ]);
             call_instrs
         }
         ir::Expr::TupleSubscript(atom, idx) => {
-            if let ir::Atom::Variable(var) = atom {
+            if let ir::AtomValue::Variable(var) = atom.value {
                 vec![
-                    Instr::mov(x86::Arg::new_variable(var), x86::Arg::new_reg(x86::Register::rax)),
+                    Instr::mov(
+                        x86::Arg::new_variable(var, Width::from(atom.size)),
+                        x86::Arg::new_reg(x86::Register::rax),
+                    ),
                     Instr::cmp(
-                        x86::Arg::new_imm(0),
-                        x86::Arg::new_deref(Register::rax, (WORD_SIZE + (WORD_SIZE * idx)) as i32),
+                        x86::Arg::new_imm(0, Width::Quad),
+                        x86::Arg::new_deref(
+                            Register::rax,
+                            (POINTER_SIZE + (POINTER_SIZE * idx)) as i32,
+                            Width::Quad,
+                        ),
                     ),
                     Instr::jmpcc(x86::Comparison::NotEquals, pos_label),
                 ]
@@ -347,7 +382,7 @@ fn translate_conditional(
 }
 
 fn translate_comparison(
-    dest: AssignDest<ir::Atom>,
+    dest: SizedAssignDest<()>,
     cmp_op: BinaryOperator,
     l: ir::Atom,
     r: ir::Atom,
@@ -361,9 +396,9 @@ fn translate_comparison(
     };
 
     let mut ret = vec![];
-    if let AssignDest::Subscript(id, _idx) = &dest {
+    if let AssignDest::Subscript(id, _idx) = &dest.value {
         ret.push(Instr::mov(
-            x86::Arg::new_variable(id.clone()),
+            x86::Arg::new_variable(id.clone(), Width::from(POINTER_SIZE as usize)),
             x86::Arg::new_reg(x86::Register::r11),
         ));
     }
@@ -371,29 +406,32 @@ fn translate_comparison(
     ret.extend([
         Instr::cmp(atom_to_arg(r), atom_to_arg(l)),
         Instr::set(cc, x86::Arg::new_reg(x86::Register::al)),
-        Instr::movzx(x86::Arg::new_reg(x86::Register::al), assigndest_to_arg(dest)),
+        Instr::movzx(
+            x86::Arg::new_reg(x86::Register::al),
+            assigndest_to_arg(dest),
+        ),
     ]);
     ret
 }
 
-fn translate_add(dest: AssignDest<ir::Atom>, left: ir::Atom, right: ir::Atom) -> Vec<Instr> {
+fn translate_add(dest: SizedAssignDest<()>, left: ir::Atom, right: ir::Atom) -> Vec<Instr> {
     let mut ret = vec![];
-    if let AssignDest::Subscript(id, _idx) = &dest {
+    if let AssignDest::Subscript(id, _idx) = &dest.value {
         ret.push(Instr::mov(
-            x86::Arg::new_variable(id.clone()),
+            x86::Arg::new_variable(id.clone(), Width::from(POINTER_SIZE as usize)),
             x86::Arg::new_reg(x86::Register::r11),
         ));
     }
 
-    if let ir::Atom::Variable(left_id) = &left
-        && let AssignDest::Id(dest_id) = &dest
+    if let ir::AtomValue::Variable(left_id) = &left.value
+        && let AssignDest::Id(dest_id) = &dest.value
         && left_id == dest_id
     {
         // Expression can be calculated in 1 instr, dest
         // is the same as the left arg (x = x + 1)
         ret.push(Instr::add(atom_to_arg(right), assigndest_to_arg(dest)));
-    } else if let ir::Atom::Variable(right_id) = &right
-        && let AssignDest::Id(dest_id) = &dest
+    } else if let ir::AtomValue::Variable(right_id) = &right.value
+        && let AssignDest::Id(dest_id) = &dest.value
         && right_id == dest_id
     {
         // Expression can be calculated in 1 instr, dest
@@ -411,17 +449,17 @@ fn translate_add(dest: AssignDest<ir::Atom>, left: ir::Atom, right: ir::Atom) ->
     ret
 }
 
-fn translate_subtract(dest: AssignDest<ir::Atom>, left: ir::Atom, right: ir::Atom) -> Vec<Instr> {
+fn translate_subtract(dest: SizedAssignDest<()>, left: ir::Atom, right: ir::Atom) -> Vec<Instr> {
     let mut ret = vec![];
-    if let AssignDest::Subscript(id, _idx) = &dest {
+    if let AssignDest::Subscript(id, _idx) = &dest.value {
         ret.push(Instr::mov(
-            x86::Arg::new_variable(id.clone()),
+            x86::Arg::new_variable(id.clone(), Width::from(POINTER_SIZE as usize)),
             x86::Arg::new_reg(x86::Register::r11),
         ));
     }
 
-    if let ir::Atom::Variable(left_id) = &left
-        && let AssignDest::Id(dest_id) = &dest
+    if let ir::AtomValue::Variable(left_id) = &left.value
+        && let AssignDest::Id(dest_id) = &dest.value
         && left_id == dest_id
     {
         // Expression can be calculated in 1 instr, dest
@@ -439,24 +477,24 @@ fn translate_subtract(dest: AssignDest<ir::Atom>, left: ir::Atom, right: ir::Ato
     ret
 }
 
-fn translate_multiply(dest: AssignDest<ir::Atom>, left: ir::Atom, right: ir::Atom) -> Vec<Instr> {
+fn translate_multiply(dest: SizedAssignDest<()>, left: ir::Atom, right: ir::Atom) -> Vec<Instr> {
     let mut ret = vec![];
-    if let AssignDest::Subscript(id, _idx) = &dest {
+    if let AssignDest::Subscript(id, _idx) = &dest.value {
         ret.push(Instr::mov(
-            x86::Arg::new_variable(id.clone()),
+            x86::Arg::new_variable(id.clone(), Width::from(POINTER_SIZE as usize)),
             x86::Arg::new_reg(x86::Register::r11),
         ));
     }
 
-    if let ir::Atom::Variable(left_id) = &left
-        && let AssignDest::Id(dest_id) = &dest
+    if let ir::AtomValue::Variable(left_id) = &left.value
+        && let AssignDest::Id(dest_id) = &dest.value
         && left_id == dest_id
     {
         // Expression can be calculated in 1 instr, dest
         // is the same as the left arg (x = x * y)
         ret.push(Instr::imul(atom_to_arg(right), assigndest_to_arg(dest)));
-    } else if let ir::Atom::Variable(right_id) = &right
-        && let AssignDest::Id(dest_id) = &dest
+    } else if let ir::AtomValue::Variable(right_id) = &right.value
+        && let AssignDest::Id(dest_id) = &dest.value
         && right_id == dest_id
     {
         // Expression can be calculated in 1 instr, dest
@@ -474,43 +512,48 @@ fn translate_multiply(dest: AssignDest<ir::Atom>, left: ir::Atom, right: ir::Ato
     ret
 }
 
-fn translate_not(dest: AssignDest<ir::Atom>, atom: ir::Atom) -> Vec<Instr> {
+fn translate_not(dest: SizedAssignDest<()>, atom: ir::Atom) -> Vec<Instr> {
     let mut ret = vec![];
-    if let AssignDest::Subscript(id, _idx) = &dest {
+    if let AssignDest::Subscript(id, _idx) = &dest.value {
         ret.push(Instr::mov(
-            x86::Arg::new_variable(id.clone()),
+            x86::Arg::new_variable(id.clone(), Width::from(POINTER_SIZE as usize)),
             x86::Arg::new_reg(x86::Register::r11),
         ));
     }
 
-    if let ir::Atom::Variable(val_id) = &atom
-        && let AssignDest::Id(dest_id) = &dest
+    let atom_width = Width::from(atom.size);
+
+    if let ir::AtomValue::Variable(val_id) = &atom.value
+        && let AssignDest::Id(dest_id) = &dest.value
         && val_id == dest_id
     {
         // Not on itself: 1 instr (x = !x)
-        ret.push(Instr::xor(x86::Arg::new_imm(1), assigndest_to_arg(dest)));
+        ret.push(Instr::xor(
+            x86::Arg::new_imm(1, atom_width),
+            assigndest_to_arg(dest),
+        ));
     } else {
         // x = !y
         ret.extend([
             Instr::mov(atom_to_arg(atom), assigndest_to_arg(dest.clone())),
-            Instr::xor(x86::Arg::new_imm(1), assigndest_to_arg(dest)),
+            Instr::xor(x86::Arg::new_imm(1, atom_width), assigndest_to_arg(dest)),
         ]);
     }
 
     ret
 }
 
-fn translate_unary_minus(dest: AssignDest<ir::Atom>, atom: ir::Atom) -> Vec<Instr> {
+fn translate_unary_minus(dest: SizedAssignDest<()>, atom: ir::Atom) -> Vec<Instr> {
     let mut ret = vec![];
-    if let AssignDest::Subscript(id, _idx) = &dest {
+    if let AssignDest::Subscript(id, _idx) = &dest.value {
         ret.push(Instr::mov(
-            x86::Arg::new_variable(id.clone()),
+            x86::Arg::new_variable(id.clone(), Width::from(POINTER_SIZE as usize)),
             x86::Arg::new_reg(x86::Register::r11),
         ));
     }
 
-    if let ir::Atom::Variable(val_id) = &atom
-        && let AssignDest::Id(dest_id) = &dest
+    if let ir::AtomValue::Variable(val_id) = &atom.value
+        && let AssignDest::Id(dest_id) = &dest.value
         && val_id == dest_id
     {
         // Minus on itself: 1 instr (x = -x)
@@ -526,9 +569,9 @@ fn translate_unary_minus(dest: AssignDest<ir::Atom>, atom: ir::Atom) -> Vec<Inst
     ret
 }
 
-fn translate_unary_plus(dest: AssignDest<ir::Atom>, atom: ir::Atom) -> Vec<Instr> {
-    if let ir::Atom::Variable(val_id) = &atom
-        && let AssignDest::Id(dest_id) = &dest
+fn translate_unary_plus(dest: SizedAssignDest<()>, atom: ir::Atom) -> Vec<Instr> {
+    if let ir::AtomValue::Variable(val_id) = &atom.value
+        && let AssignDest::Id(dest_id) = &dest.value
         && val_id == dest_id
     {
         // Plus on itself? No-op! (x = +x)
@@ -536,9 +579,9 @@ fn translate_unary_plus(dest: AssignDest<ir::Atom>, atom: ir::Atom) -> Vec<Instr
     } else {
         // Just a mov? (x = +y)
         let mut ret = vec![];
-        if let AssignDest::Subscript(id, _idx) = &dest {
+        if let AssignDest::Subscript(id, _idx) = &dest.value {
             ret.push(Instr::mov(
-                x86::Arg::new_variable(id.clone()),
+                x86::Arg::new_variable(id.clone(), Width::from(POINTER_SIZE as usize)),
                 x86::Arg::new_reg(x86::Register::r11),
             ));
         }
@@ -556,32 +599,35 @@ enum BitshiftDirection {
 
 fn translate_bitshift(
     dir: BitshiftDirection,
-    dest: AssignDest<ir::Atom>,
+    dest: SizedAssignDest<()>,
     left: ir::Atom,
     right: ir::Atom,
 ) -> Vec<Instr> {
     let mut ret = vec![];
-    if let AssignDest::Subscript(id, _idx) = &dest {
+    if let AssignDest::Subscript(id, _idx) = &dest.value {
         ret.push(Instr::mov(
-            x86::Arg::new_variable(id.clone()),
+            x86::Arg::new_variable(id.clone(), Width::from(POINTER_SIZE as usize)),
             x86::Arg::new_reg(x86::Register::r11),
         ));
     }
 
     let shift_arg = {
-        if let ir::Atom::Constant(_) = right {
+        if let ir::AtomValue::Constant(_) = right.value {
             // Shift by immediate, can just do the instruction
             atom_to_arg(right)
         } else {
             // Shift by non-constant, need to move RHS into %cl first,
             // and need to convert it a into bytereg first
-            ret.push(Instr::mov(atom_to_arg(right), x86::Arg::new_reg(x86::Register::cl)));
+            ret.push(Instr::mov(
+                atom_to_arg(right),
+                x86::Arg::new_reg(x86::Register::cl),
+            ));
             x86::Arg::new_reg(x86::Register::cl)
         }
     };
 
-    if let ir::Atom::Variable(left_id) = &left
-        && let AssignDest::Id(dest_id) = &dest
+    if let ir::AtomValue::Variable(left_id) = &left.value
+        && let AssignDest::Id(dest_id) = &dest.value
         && left_id == dest_id
     {
         // Expression can be calculated in 1 instr, dest
@@ -595,12 +641,8 @@ fn translate_bitshift(
         // Expression requires two instructions - load
         // left into dest, then add right into dest
         let shift_instr = match dir {
-            BitshiftDirection::Left => {
-                Instr::sal(shift_arg, assigndest_to_arg(dest.clone()))
-            }
-            BitshiftDirection::Right => {
-                Instr::sar(shift_arg, assigndest_to_arg(dest.clone()))
-            }
+            BitshiftDirection::Left => Instr::sal(shift_arg, assigndest_to_arg(dest.clone())),
+            BitshiftDirection::Right => Instr::sar(shift_arg, assigndest_to_arg(dest.clone())),
         };
 
         ret.extend([
@@ -612,27 +654,32 @@ fn translate_bitshift(
     ret
 }
 
-fn translate_divide(dest: AssignDest<ir::Atom>, dividend: ir::Atom, divisor: ir::Atom) -> Vec<Instr> {
+fn translate_divide(
+    dest: SizedAssignDest<()>,
+    dividend: ir::Atom,
+    divisor: ir::Atom,
+) -> Vec<Instr> {
     let mut ret = vec![];
-    if let AssignDest::Subscript(id, _idx) = &dest {
+    if let AssignDest::Subscript(id, _idx) = &dest.value {
         ret.push(Instr::mov(
-            x86::Arg::new_variable(id.clone()),
+            x86::Arg::new_variable(id.clone(), Width::from(POINTER_SIZE as usize)),
             x86::Arg::new_reg(x86::Register::r11),
         ));
     }
 
-    // THe divisor argument cannot be an immediate, but we can't just
+    // The divisor argument cannot be an immediate, but we can't just
     // use a PatchInstructions case to movq it to rax at the end because
     // rax is also in use by idivq. It can be register or memory though,
     // so give it an identifier that the register allocator will place.
-    let divisor_var = x86::Arg::new_variable(Identifier::new_ephemeral());
+    let divisor_var =
+        x86::Arg::new_variable(Identifier::new_ephemeral(), Width::from(divisor.size));
 
     ret.extend([
         Instr::mov(atom_to_arg(dividend), x86::Arg::new_reg(Register::rax)),
         Instr::cqto,
         Instr::mov(atom_to_arg(divisor), divisor_var.clone()),
         Instr::idiv(divisor_var),
-        Instr::mov(x86::Arg::new_reg(Register::rax), assigndest_to_arg(dest))
+        Instr::mov(x86::Arg::new_reg(Register::rax), assigndest_to_arg(dest)),
     ]);
 
     ret
@@ -641,18 +688,24 @@ fn translate_divide(dest: AssignDest<ir::Atom>, dividend: ir::Atom, divisor: ir:
 const SPECIAL_FUNCTIONS: [(
     &'static str,
     usize,
-    fn(Vec<ir::Atom>, Option<AssignDest<ir::Atom>>) -> Vec<Instr>,
+    fn(Vec<ir::Atom>, Option<SizedAssignDest<()>>) -> Vec<Instr>,
 ); 1] = [(FN_GC_COLLECT, 1, |mut args, _dest| {
     assert!(_dest.is_none());
     vec![
-        Instr::mov(x86::Arg::new_reg(Register::r15), x86::Arg::new_reg(Register::rdi)),
-        Instr::mov(atom_to_arg(args.remove(0)), x86::Arg::new_reg(Register::rsi)),
-        Instr::call(x86::Arg::new_global(global!(FN_GC_COLLECT)), 2),
+        Instr::mov(
+            x86::Arg::new_reg(Register::r15),
+            x86::Arg::new_reg(Register::rdi),
+        ),
+        Instr::mov(
+            atom_to_arg(args.remove(0)),
+            x86::Arg::new_reg(Register::rsi),
+        ),
+        Instr::call(x86::Arg::new_global(global!(FN_GC_COLLECT), Width::Quad), 2),
     ]
 })];
 
 fn translate_call(
-    dest_opt: Option<AssignDest<ir::Atom>>,
+    dest_opt: Option<SizedAssignDest<()>>,
     func: ir::Atom,
     args: Vec<ir::Atom>,
 ) -> Vec<Instr> {
@@ -661,7 +714,7 @@ fn translate_call(
     }
 
     for (name, num_args, instr_fn) in SPECIAL_FUNCTIONS {
-        if func == ir::Atom::Variable(global!(name)) {
+        if func.value == ir::AtomValue::Variable(global!(name)) {
             if args.len() != num_args {
                 panic!(
                     "Wrong number of args to special function `{name}` (Expected {num_args}, Got {}",
@@ -681,23 +734,23 @@ fn translate_call(
     }
 
     // Jump to the function
-    match func {
-        ir::Atom::Variable(_) => {
+    match func.value {
+        ir::AtomValue::Variable(_) => {
             instrs.extend([
                 Instr::mov(atom_to_arg(func), x86::Arg::new_reg(Register::rax)),
                 Instr::call(x86::Arg::new_reg(Register::rax), num_args as _),
             ]);
         }
-        ir::Atom::GlobalSymbol(id) => {
-            instrs.push(Instr::call(x86::Arg::new_global(id), num_args as _));
+        ir::AtomValue::GlobalSymbol(id) => {
+            instrs.push(Instr::call(x86::Arg::new_global(id, Width::from(func.size)), num_args as _));
         }
-        ir::Atom::Constant(_) => panic!("func was Atom::Constant??"),
+        ir::AtomValue::Constant(_) => panic!("func was Atom::Constant??"),
     }
 
     if let Some(dest) = dest_opt {
-        if let AssignDest::Subscript(id, _idx) = &dest {
+        if let AssignDest::Subscript(id, _idx) = &dest.value {
             instrs.push(Instr::mov(
-                x86::Arg::new_variable(id.clone()),
+                x86::Arg::new_variable(id.clone(), Width::from(POINTER_SIZE as usize)),
                 x86::Arg::new_reg(x86::Register::r11),
             ));
         }
@@ -721,7 +774,10 @@ fn translate_arg_passing(
 
     let mut instrs = vec![];
     for ((id, _), reg) in args.into_iter().zip(CALL_ARG_REGISTERS) {
-        instrs.push(Instr::mov(x86::Arg::new_reg(reg), x86::Arg::new_variable(id)))
+        instrs.push(Instr::mov(
+            x86::Arg::new_reg(reg),
+            x86::Arg::new_variable(id, Width::Quad), // TODO: Propagate proper size here somehow
+        ))
     }
 
     instrs.push(Instr::jmp(old_entry_point));
@@ -733,10 +789,10 @@ fn translate_arg_passing(
 }
 
 fn atom_to_arg(a: ir::Atom) -> x86::Arg {
-    match a {
-        ir::Atom::Constant(value) => x86::Arg::new_imm(value.into()),
-        ir::Atom::Variable(id) => x86::Arg::new_variable(id),
-        ir::Atom::GlobalSymbol(id) => x86::Arg::new_global(id),
+    match a.value {
+        ir::AtomValue::Constant(value) => x86::Arg::new_imm(value.into(), Width::from(a.size)),
+        ir::AtomValue::Variable(id) => x86::Arg::new_variable(id, Width::from(a.size)),
+        ir::AtomValue::GlobalSymbol(id) => x86::Arg::new_global(id, Width::from(a.size)),
     }
 }
 
@@ -760,15 +816,16 @@ fn try_binop_to_cc(op: BinaryOperator) -> Option<x86::Comparison> {
     }
 }
 
-fn assigndest_to_arg(dest: AssignDest<ir::Atom>) -> x86::Arg {
-    match dest {
-        AssignDest::Id(id) => x86::Arg::new_variable(id),
+fn assigndest_to_arg(dest: SizedAssignDest<()>) -> x86::Arg {
+    match dest.value {
+        AssignDest::Id(id) => x86::Arg::new_variable(id, Width::from(dest.size)),
         AssignDest::Subscript(_, offset) => {
             // Assumes that the id-ptr has already been moved into r11,
             // as is convention
             x86::Arg::new_deref(
                 Register::r11,
-                (WORD_SIZE + (offset * WORD_SIZE)).try_into().unwrap(),
+                (POINTER_SIZE + (offset * POINTER_SIZE)).try_into().unwrap(),
+                Width::from(dest.size)
             )
         }
         AssignDest::ComplexSubscript(_) => {
