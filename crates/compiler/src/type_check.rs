@@ -147,7 +147,11 @@ impl ast::Expr {
             }
             Subscript(exp, idx) => {
                 let exp_type = exp.type_check(env, &None);
-                if let ValueType::TupleType(elems) = exp_type {
+                let inner_type = match exp_type {
+                    ValueType::PointerType(inner) => *inner,
+                    t => t,
+                };
+                if let ValueType::TupleType(elems) = inner_type {
                     let const_idx = {
                         if let ast::Expr::Constant(Value::I64(val)) = &**idx {
                             val
@@ -160,7 +164,7 @@ impl ast::Expr {
                         "Indexed tuple out of bounds"
                     );
                     elems[*const_idx as usize].clone()
-                } else if let ValueType::ArrayType(elems, _) = exp_type {
+                } else if let ValueType::ArrayType(elems, _) = inner_type {
                     assert_eq!(
                         idx.type_check(env, &Some(ValueType::IntType)),
                         ValueType::IntType
@@ -265,17 +269,23 @@ impl ast::Expr {
                 ),
                 exprs.len(),
             ),
-            ast::Expr::Subscript(expr, idx) => match expr.get_type(env) {
-                ValueType::TupleType(mut elems) => {
-                    if let ast::Expr::Constant(Value::I64(idx_val)) = **idx {
-                        elems.remove(idx_val as usize)
-                    } else {
-                        panic!("Failed get_type - Indexed with non-constant")
+            ast::Expr::Subscript(expr, idx) => {
+                let inner = match expr.get_type(env) {
+                    ValueType::PointerType(inner) => *inner,
+                    t => t,
+                };
+                match inner {
+                    ValueType::TupleType(mut elems) => {
+                        if let ast::Expr::Constant(Value::I64(idx_val)) = **idx {
+                            elems.remove(idx_val as usize)
+                        } else {
+                            panic!("Failed get_type - Indexed with non-constant")
+                        }
                     }
+                    ValueType::ArrayType(elem, _) => *elem,
+                    _ => panic!("Failed get_type - Indexed invalid LHS"),
                 }
-                ValueType::ArrayType(elem, _) => *elem,
-                _ => panic!("Failed get_type - Indexed invalid LHS"),
-            },
+            }
             ast::Expr::Allocate(_, value_type) => {
                 ValueType::PointerType(Box::new(value_type.clone()))
             }
@@ -364,13 +374,18 @@ impl ast::Statement {
                         }
                     }
                     AssignDest::Subscript(tup_id, idx) => {
-                        if let Some(ValueType::TupleType(elems)) = env.get(tup_id) {
+                        let inner_type = match env.get(tup_id) {
+                            Some(ValueType::PointerType(inner)) => Some(inner.as_ref()),
+                            Some(t) => Some(t),
+                            None => None,
+                        };
+                        if let Some(ValueType::TupleType(elems)) = inner_type {
                             assert!(
                                 *idx >= 0 && *idx < elems.len() as i64,
                                 "Indexed tuple out of bounds"
                             );
                             assert_eq!(elems[*idx as usize], t);
-                        } else if let Some(ValueType::ArrayType(elem_type, len)) = env.get(tup_id) {
+                        } else if let Some(ValueType::ArrayType(elem_type, len)) = inner_type {
                             assert!(
                                 *idx >= 0 && *idx < *len as i64,
                                 "Indexed array out of bounds"
