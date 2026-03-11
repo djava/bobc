@@ -37,6 +37,7 @@ pub enum Expr<'a> {
     Array(Vec<Expr<'a>>),
     Subscript(Box<Expr<'a>>, Box<Expr<'a>>),
     Lambda(Vec<&'a str>, Vec<Statement<'a>>),
+    StringLiteral(&'a str),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -177,6 +178,7 @@ parser! {
             [TokenValue::Int(val)] { Expr::Int(val) }
             [TokenValue::Bool(val)] { Expr::Bool(val) }
             [TokenValue::OpenParen] e:expr() [TokenValue::CloseParen] { Expr::Parens(Box::new(e)) }
+            [TokenValue::StringLiteral(s)] { Expr::StringLiteral(s) }
         }
 
         pub rule assign_type_hint() -> Option<ValueType> = ([TokenValue::Colon] t:_type() { t })?

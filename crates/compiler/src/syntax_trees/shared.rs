@@ -55,6 +55,7 @@ pub enum ValueType {
     TupleType(Vec<ValueType>),
     ArrayType(Box<ValueType>),
     PointerType(Box<ValueType>),
+    CharType,
     NoneType,
     Indeterminate,
 }
@@ -68,6 +69,7 @@ impl ValueType {
             ValueType::TupleType(_) => POINTER_SIZE as _,
             ValueType::ArrayType(_) => POINTER_SIZE as _,
             ValueType::PointerType(_) => POINTER_SIZE as _,
+            ValueType::CharType => 1,
             ValueType::NoneType => 0,
             ValueType::Indeterminate => panic!("Size of indeterminate value type"),
         }
@@ -98,6 +100,7 @@ impl From<&Value> for ValueType {
             Value::Function(_, arg_types, ret_type) => {
                 Self::FunctionType(arg_types.clone(), Box::new(ret_type.clone()))
             }
+            Value::Char(_) => Self::CharType,
             Value::None => Self::NoneType,
         }
     }
@@ -143,6 +146,7 @@ pub enum Value {
     Tuple(Vec<Value>),
     Array(Vec<Value>),
     Function(Identifier, Vec<ValueType>, ValueType),
+    Char(char),
     None,
 }
 
@@ -151,6 +155,7 @@ impl Into<i64> for Value {
         match self {
             Value::I64(val) => val,
             Value::Bool(val) => val as _,
+            Value::Char(val) => val as _,
             Value::Tuple(_) => panic!("Cannot convert Value::Tuple into i64"),
             Value::Array(_) => panic!("Cannot convert Value::Array into i64"),
             Value::Function(_, _, _) => panic!("Cannot convert Value::Function into i64"),
@@ -164,6 +169,7 @@ impl Into<bool> for Value {
         match self {
             Value::I64(val) => val != 0,
             Value::Bool(val) => val,
+            Value::Char(val) => val != '\0',
             Value::Tuple(elems) | Value::Array(elems) => !elems.is_empty(),
             Value::Function(_, _, _) => panic!("Cannot convert Value::Function into bool"),
             Value::None => panic!("Cannot convert Value::None into bool"),
@@ -176,6 +182,7 @@ impl Into<bool> for &Value {
         match self {
             Value::I64(val) => *val != 0,
             Value::Bool(val) => *val,
+            Value::Char(val) => *val != '\0',
             Value::Tuple(elems) | Value::Array(elems) => !elems.is_empty(),
             Value::Function(_, _, _) => panic!("Cannot convert Value::Function into bool"),
             Value::None => panic!("Cannot convert Value::None into bool"),
@@ -188,6 +195,7 @@ impl From<&Value> for i64 {
         match value {
             Value::I64(val) => *val,
             Value::Bool(val) => *val as _,
+            Value::Char(val) => *val as _,
             Value::Tuple(_) => panic!("Cannot convert Value::Tuple into i64"),
             Value::Array(_) => panic!("Cannot convert Value::Array into i64"),
             Value::Function(_, _, _) => panic!("Cannot convert Value::Function into i64"),

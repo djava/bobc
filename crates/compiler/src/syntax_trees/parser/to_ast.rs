@@ -92,6 +92,14 @@ fn to_ast_expr(pte: pt::Expr, func_id: &Identifier) -> ast::Expr {
 
             ast::Expr::Lambda(func)
         }
+        pt::Expr::StringLiteral(s) => {
+            let c: Vec<_> = s
+                .chars()
+                .map(|c| ast::Expr::Constant(Value::Char(c)))
+                .collect();
+
+            ast::Expr::Array(c)
+        }
     }
 }
 

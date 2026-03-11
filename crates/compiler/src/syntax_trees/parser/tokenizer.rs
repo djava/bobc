@@ -3,7 +3,7 @@ use peg::*;
 use nom::{
     IResult, Parser,
     branch::alt,
-    bytes::complete::{is_a, is_not, tag, take_while},
+    bytes::complete::{is_a, is_not, tag, take_until, take_while},
     combinator::{all_consuming, eof, peek, recognize},
     multi::many0,
     sequence::terminated,
@@ -55,6 +55,7 @@ pub enum TokenValue<'a> {
     For,
     Semicolon,
     Divide,
+    StringLiteral(&'a str),
 }
 
 #[derive(Debug)]
@@ -200,6 +201,24 @@ fn id_parser(rem: LocatedSpan<&'_ str>) -> IResult<LocatedSpan<&'_ str>, Token<'
     ))
 }
 
+fn string_literal_parser(rem: LocatedSpan<&'_ str>) -> IResult<LocatedSpan<&'_ str>, Token<'_>> {
+    let (rem, string_literal_span) =
+        recognize((tag("\""), many0(is_not("\"")), tag("\""))).parse(rem)?;
+
+    let (_open, (_rem, contents)) =
+        (tag("\""), take_until("\"")).parse(string_literal_span)?;
+
+    Ok((
+        rem,
+        Token {
+            token: TokenValue::StringLiteral(
+                contents.into_fragment(),
+            ),
+            span: string_literal_span,
+        },
+    ))
+}
+
 fn token_parser(rem: LocatedSpan<&'_ str>) -> IResult<LocatedSpan<&'_ str>, Token<'_>> {
     let (rem, _) = many0(whitespace).parse(rem)?;
 
@@ -207,6 +226,7 @@ fn token_parser(rem: LocatedSpan<&'_ str>) -> IResult<LocatedSpan<&'_ str>, Toke
         newline,
         keyword_parser,
         int_parser,
+        string_literal_parser,
         punctuation_parser,
         id_parser,
     ))

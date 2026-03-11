@@ -4811,4 +4811,73 @@ x[0] = 42
             other => panic!("expected outer For, got {:?}", other),
         }
     }
+
+    #[test]
+    fn test_string() {
+        let tc = ParserTestCase {
+            input_str: "fn main() {
+                x = \"abc\"
+                y = \"bcdf\"
+            }",
+            expected_tokens: vec![
+                TokenValue::Fn,
+                TokenValue::Identifier("main"),
+                TokenValue::OpenParen,
+                TokenValue::CloseParen,
+                TokenValue::OpenCurly,
+                TokenValue::Newline,
+                TokenValue::Identifier("x"),
+                TokenValue::Equals,
+                TokenValue::StringLiteral("abc"),
+                TokenValue::Newline,
+                TokenValue::Identifier("y"),
+                TokenValue::Equals,
+                TokenValue::StringLiteral("bcdf"),
+                TokenValue::Newline,
+                TokenValue::CloseCurly,
+            ],
+            expected_parse_tree: pt::Module {
+                functions: vec![pt::Function {
+                    name: "main",
+                    params: vec![],
+                    return_type: ValueType::NoneType,
+                    statements: vec![
+                        pt::Statement::Assign("x", pt::Expr::StringLiteral("abc"), None),
+                        pt::Statement::Assign("y", pt::Expr::StringLiteral("bcdf"), None),
+                    ],
+                }],
+            },
+            expected_ast: ast::Program {
+                functions: vec![ast::Function {
+                    name: t_global!(LABEL_MAIN),
+                    body: vec![
+                        ast::Statement::Assign(
+                            AssignDest::Id(main_local!("x")),
+                            ast::Expr::Array(vec![
+                                ast::Expr::Constant(Value::Char('a')),
+                                ast::Expr::Constant(Value::Char('b')),
+                                ast::Expr::Constant(Value::Char('c')),
+                            ]),
+                            None,
+                        ),
+                        ast::Statement::Assign(
+                            AssignDest::Id(main_local!("y")),
+                            ast::Expr::Array(vec![
+                                ast::Expr::Constant(Value::Char('b')),
+                                ast::Expr::Constant(Value::Char('c')),
+                                ast::Expr::Constant(Value::Char('d')),
+                                ast::Expr::Constant(Value::Char('f')),
+                            ]),
+                            None,
+                        ),
+                    ],
+                    types: HashMap::new(),
+                    params: IndexMap::new(),
+                    return_type: ValueType::NoneType,
+                }],
+                global_types: HashMap::new(),
+            },
+        };
+        tc.run();
+    }
 }
