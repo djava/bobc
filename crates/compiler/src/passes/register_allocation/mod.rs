@@ -1,7 +1,6 @@
 mod dataflow_analysis;
 mod graph_coloring;
 
-use core::num;
 use std::collections::{HashMap, HashSet};
 
 use crate::{
