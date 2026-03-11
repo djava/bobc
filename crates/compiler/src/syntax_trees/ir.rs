@@ -45,6 +45,7 @@ pub enum Expr {
     Call(Atom, Vec<Atom>),
     Allocate(usize, ValueType),
     TupleSubscript(Atom, i64),
+    ArrayUncheckedSubscript(Atom, i64, usize),
 }
 
 #[derive(Debug, Clone)]

@@ -328,7 +328,7 @@ fn generate_for_assign(
             }
             ret
         }
-        ast::Expr::Subscript(tup, idx) => {
+        ast::Expr::Subscript(lhs, idx) => {
             let idx_i64 = {
                 if let ir::AtomValue::Constant(Value::I64(val)) = expr_to_atom(&*idx, env).value {
                     val
@@ -337,13 +337,28 @@ fn generate_for_assign(
                 }
             };
 
-            let mut ret = vec![ir::Statement::Assign(
-                ast_to_ir_assigndest(dest, expr_size),
-                ir::Expr::TupleSubscript(expr_to_atom(tup, env), idx_i64),
-            )];
-            ret.extend(cont);
+            let lhs_type = lhs.get_type(env).strip_pointer();
 
-            ret
+            if let ValueType::TupleType(_) = lhs_type {
+                let mut ret = vec![ir::Statement::Assign(
+                    ast_to_ir_assigndest(dest, expr_size),
+                    ir::Expr::TupleSubscript(expr_to_atom(lhs, env), idx_i64),
+                )];
+                ret.extend(cont);
+    
+                ret
+            } else if let ValueType::ArrayType(elems, _) = lhs_type {
+                // Array
+                let mut ret = vec![ir::Statement::Assign(
+                    ast_to_ir_assigndest(dest, expr_size),
+                    ir::Expr::ArrayUncheckedSubscript(expr_to_atom(lhs, env), idx_i64, elems.size()),
+                )];
+                ret.extend(cont);
+    
+                ret
+            } else {
+                panic!("Subscripted non-array/tuple")
+            }
         }
         ast::Expr::Allocate(bytes, value_type) => {
             let mut ret = vec![ir::Statement::Assign(

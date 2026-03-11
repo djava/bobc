@@ -150,6 +150,9 @@ fn get_initialize_allocation_expr(elems: &mut Vec<Expr>, tup_type: ValueType, ty
     let bytes = if let ValueType::ArrayType(elems, len) = &tup_type {
         (size_of::<ArrayTag>() + elems.size() * len) as i64
     } else {
+        // Tuples are padded to 8 bytes per elem regardless of the elem
+        // size so that the GC can work correctly without a bunch of
+        // refactoring
         (size_of::<TupleTag>() as i64 + POINTER_SIZE * elems.len() as i64) as i64
     };
 

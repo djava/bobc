@@ -119,6 +119,13 @@ fn interpret_expr(
                 panic!("Subscripted non-tuple")
             }
         }
+        Expr::ArrayUncheckedSubscript(atom, idx, _) => {
+            if let Value::Array(elems) = interpret_atom(atom, val_env, func_env) {
+                elems[*idx as usize].clone()
+            } else {
+                panic!("Subscripted non-tuple")
+            }
+        }
     }
 }
 

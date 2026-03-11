@@ -134,7 +134,10 @@ fn translate_statement(s: ir::Statement, exit_block: &Identifier) -> Vec<Instr> 
                     ]);
                 }
                 ir::AtomValue::GlobalSymbol(id) => {
-                    instrs.push(Instr::jmp_tail(x86::Arg::new_global(id, Width::from(func.size)), num_args as _));
+                    instrs.push(Instr::jmp_tail(
+                        x86::Arg::new_global(id, Width::from(func.size)),
+                        num_args as _,
+                    ));
                 }
                 ir::AtomValue::Constant(_) => panic!("func was Atom::Constant??"),
             }
@@ -164,13 +167,16 @@ fn translate_assign(dest: SizedAssignDest<()>, expr: ir::Expr) -> Vec<Instr> {
         ir::Expr::BinaryOp(l, cmp_op, r) => translate_comparison(dest, cmp_op, l, r),
         ir::Expr::Call(func_id, args) => translate_call(Some(dest), func_id, args),
         ir::Expr::Allocate(bytes, value_type) => translate_allocation(dest, bytes, value_type),
-        ir::Expr::TupleSubscript(atom, idx) => translate_subscript(dest, atom, idx),
+        ir::Expr::TupleSubscript(atom, idx) => translate_tuple_subscript(dest, atom, idx),
+        ir::Expr::ArrayUncheckedSubscript(atom, idx, elem_size) => {
+            translate_array_subscript(dest, atom, idx, elem_size)
+        }
     });
 
     ret
 }
 
-fn translate_subscript(dest: SizedAssignDest<()>, atom: ir::Atom, idx: i64) -> Vec<Instr> {
+fn translate_tuple_subscript(dest: SizedAssignDest<()>, atom: ir::Atom, idx: i64) -> Vec<Instr> {
     let mut ret = vec![];
     if let AssignDest::Subscript(id, _idx) = &dest.value {
         ret.push(Instr::mov(
@@ -186,6 +192,35 @@ fn translate_subscript(dest: SizedAssignDest<()>, atom: ir::Atom, idx: i64) -> V
                 Register::rax,
                 (POINTER_SIZE + (POINTER_SIZE * idx)) as i32,
                 Width::from(dest.size),
+            ),
+            assigndest_to_arg(dest),
+        ),
+    ]);
+
+    ret
+}
+
+fn translate_array_subscript(
+    dest: SizedAssignDest<()>,
+    atom: ir::Atom,
+    idx: i64,
+    elem_size: usize,
+) -> Vec<Instr> {
+    let mut ret = vec![];
+    if let AssignDest::Subscript(id, _idx) = &dest.value {
+        ret.push(Instr::mov(
+            x86::Arg::new_variable(id.clone(), Width::from(POINTER_SIZE as usize)),
+            x86::Arg::new_reg(x86::Register::r11),
+        ));
+    }
+
+    ret.extend([
+        Instr::mov(atom_to_arg(atom), x86::Arg::new_reg(Register::rax)),
+        Instr::mov(
+            x86::Arg::new_deref(
+                Register::rax,
+                (POINTER_SIZE + (elem_size as i64 * idx)) as i32,
+                Width::from(elem_size),
             ),
             assigndest_to_arg(dest),
         ),
@@ -247,7 +282,7 @@ fn translate_allocation(
                 x86::Arg::new_deref(
                     Register::rax,
                     (POINTER_SIZE + (idx * POINTER_SIZE)).try_into().unwrap(),
-                    Width::from(POINTER_SIZE as usize)
+                    Width::from(POINTER_SIZE as usize),
                 ),
             ),
         ]);
@@ -366,6 +401,27 @@ fn translate_conditional(
                         x86::Arg::new_deref(
                             Register::rax,
                             (POINTER_SIZE + (POINTER_SIZE * idx)) as i32,
+                            Width::Quad,
+                        ),
+                    ),
+                    Instr::jmpcc(x86::Comparison::NotEquals, pos_label),
+                ]
+            } else {
+                panic!("Doesn't make sense to subscript a constant or global")
+            }
+        }
+        ir::Expr::ArrayUncheckedSubscript(atom, idx, elem_size) => {
+            if let ir::AtomValue::Variable(var) = atom.value {
+                vec![
+                    Instr::mov(
+                        x86::Arg::new_variable(var, Width::from(atom.size)),
+                        x86::Arg::new_reg(x86::Register::rax),
+                    ),
+                    Instr::cmp(
+                        x86::Arg::new_imm(0, Width::Quad),
+                        x86::Arg::new_deref(
+                            Register::rax,
+                            (POINTER_SIZE + (elem_size as i64 * idx)) as i32,
                             Width::Quad,
                         ),
                     ),
@@ -743,7 +799,10 @@ fn translate_call(
             ]);
         }
         ir::AtomValue::GlobalSymbol(id) => {
-            instrs.push(Instr::call(x86::Arg::new_global(id, Width::from(func.size)), num_args as _));
+            instrs.push(Instr::call(
+                x86::Arg::new_global(id, Width::from(func.size)),
+                num_args as _,
+            ));
         }
         ir::AtomValue::Constant(_) => panic!("func was Atom::Constant??"),
     }
@@ -825,8 +884,10 @@ fn assigndest_to_arg(dest: SizedAssignDest<()>) -> x86::Arg {
             // as is convention
             x86::Arg::new_deref(
                 Register::r11,
-                (POINTER_SIZE + (offset * dest.size as i64)).try_into().unwrap(),
-                Width::from(dest.size)
+                (POINTER_SIZE + (offset * dest.size as i64))
+                    .try_into()
+                    .unwrap(),
+                Width::from(dest.size),
             )
         }
         AssignDest::ComplexSubscript(_) => {

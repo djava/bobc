@@ -72,6 +72,13 @@ impl ValueType {
             ValueType::Indeterminate => panic!("Size of indeterminate value type"),
         }
     }
+
+    pub fn strip_pointer(self) -> Self {
+        match self {
+            ValueType::PointerType(t) => *t,
+            t => t
+        }
+    }
 }
 
 impl From<&Value> for ValueType {
