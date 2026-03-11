@@ -157,7 +157,7 @@ impl X86Env {
                 let base = self.regs[*reg as usize];
                 let mut addr: usize = (base + (*offset as i64)).try_into().unwrap();
 
-                let mut bytes = [0xFF; 8];
+                let mut bytes = [0u8; 8];
                 let memory = if addr & HEAP_OFFSET != 0 {
                     self.heap.as_slice()
                 } else {
@@ -259,8 +259,8 @@ fn execute_special_functions(
 
         let val = env.read_arg(&Arg::new_deref(
             Register::rdi,
-            (POINTER_SIZE * (1 + idx)) as i32,
-            Width::Quad,
+            (POINTER_SIZE + (tag.elem_size() as i64 * idx)) as i32,
+            Width::from(tag.elem_size()),
         ));
         env.write_arg(&Arg::new_reg(Register::rax), val);
 
@@ -275,7 +275,11 @@ fn execute_special_functions(
 
         let val = env.read_arg(&Arg::new_reg(Register::rdx));
         env.write_arg(
-            &Arg::new_deref(Register::rdi, (POINTER_SIZE * (1 + idx)) as i32, Width::Quad),
+            &Arg::new_deref(
+                Register::rdi,
+                (POINTER_SIZE + (tag.elem_size() as i64 * idx)) as i32,
+                Width::from(tag.elem_size()),
+            ),
             val,
         );
 
