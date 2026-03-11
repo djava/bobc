@@ -52,28 +52,36 @@ pub fn execute_test_case(mut tc: TestCase) {
 fn run_assembler(p: X86Program) -> Result<(), String> {
     let asm = format!("{p}");
 
-    let out_file = NamedTempFile::new().map_err(|e| format!("failed to create temp file: {e}"))?;
-    
+    const TEMP_DIR: &str = "../../target/tmp";
+    let out_file =
+        NamedTempFile::new_in(TEMP_DIR).map_err(|e| format!("failed to create temp file: {e}"))?;
+
+    let linux_transformed_path = if cfg!(target_os = "windows") {
+        let windows_path = out_file.path().to_str().unwrap();
+        windows_path.replace("C:\\", "/mnt/c/").replace("\\", "/")
+    } else {
+        out_file.path().to_string_lossy().into_owned()
+    };
+
     let (program, args) = if cfg!(target_os = "linux") {
-        ("gcc", vec![
-            "-x",
-            "assembler",
-            "-c",
-            "-o",
-            out_file.path().to_str().unwrap(),
-            "-",
-        ])
+        (
+            "gcc",
+            vec!["-x", "assembler", "-c", "-o", &linux_transformed_path, "-"],
+        )
     } else if cfg!(target_os = "windows") {
         // Run in WSL if we're on windows
-        ("wsl", vec![
-            "gcc",
-            "-x",
-            "assembler",
-            "-c",
-            "-o",
-            out_file.path().to_str().unwrap(),
-            "-",
-        ])
+        (
+            "wsl",
+            vec![
+                "gcc",
+                "-x",
+                "assembler",
+                "-c",
+                "-o",
+                &linux_transformed_path,
+                "-",
+            ],
+        )
     } else {
         panic!("Running on unexpected OS")
     };
