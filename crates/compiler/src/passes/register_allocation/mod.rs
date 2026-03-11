@@ -1,6 +1,7 @@
 mod dataflow_analysis;
 mod graph_coloring;
 
+use core::num;
 use std::collections::{HashMap, HashSet};
 
 use crate::{
@@ -80,10 +81,12 @@ fn regalloc_function(f: &mut Function) {
         run_for_block(&mut b.instrs, &id_to_storage);
     }
 
-    let aligned_stack_size = if stack_size % STACK_ALIGNMENT == 0 {
+    let actual_stack_usage = stack_size + (POINTER_SIZE * callee_saved_used.len() as i64) as i32;
+    let aligned_stack_size = if actual_stack_usage % STACK_ALIGNMENT == 0 {
         stack_size
     } else {
-        stack_size + (STACK_ALIGNMENT - (stack_size % STACK_ALIGNMENT))
+        let adjustment_needed = STACK_ALIGNMENT - (actual_stack_usage % STACK_ALIGNMENT);
+        stack_size + adjustment_needed
     };
 
     f.stack_size = aligned_stack_size as usize;
