@@ -1,6 +1,6 @@
 use crate::{ValueEnv, interpreter_utils::*};
 use compiler::{
-    constants::{FN_PRINT_INT, FN_READ_INT, LABEL_MAIN},
+    constants::{FN_PRINT_INT, FN_PRINT_STR, FN_READ_INT, LABEL_MAIN},
     syntax_trees::{ast::*, shared::*},
 };
 use std::collections::VecDeque;
