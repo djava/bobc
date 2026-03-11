@@ -76,10 +76,8 @@ fn expand_tail_calls(f: &mut Function) {
 fn generate_prelude(f: &mut Function) -> Vec<Instr> {
     let mut prelude_instrs = vec![];
 
-    if f.stack_size > 0 {
-        // Initialize stack
-        prelude_instrs.push(Instr::push(Arg::new_reg(Register::rbp)));
-    }
+    // Initialize stack
+    prelude_instrs.push(Instr::push(Arg::new_reg(Register::rbp)));
 
     // Push any used callee-saved registers onto the stack
     prelude_instrs.extend(
@@ -168,9 +166,7 @@ fn generate_conclusion(
     }
 
     // Restore rbp
-    if *stack_size > 0 {
-        conclusion_instrs.push(Instr::pop(Arg::new_reg(Register::rbp)));
-    }
+    conclusion_instrs.push(Instr::pop(Arg::new_reg(Register::rbp)));
 
     // Handle tail-call: If the exit block ends with a jmp_tail then we
     // can do just do a tail call instead of retq. Otherwise, retq normally.
