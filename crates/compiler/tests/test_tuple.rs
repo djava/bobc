@@ -638,6 +638,214 @@ print_int(t[1])
     });
 }
 
+// ── Tuples of bools ──────────────────────────────────────────────
+
+#[test]
+fn test_bool_tuple_basic() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { t = (true, false)
+if t[0] { print_int(1) } else { print_int(0) }
+if t[1] { print_int(1) } else { print_int(0) }
+}",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![1, 0]),
+    });
+}
+
+#[test]
+fn test_bool_tuple_three_elements() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { t = (true, false, true)
+if t[0] { print_int(1) } else { print_int(0) }
+if t[1] { print_int(1) } else { print_int(0) }
+if t[2] { print_int(1) } else { print_int(0) }
+}",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![1, 0, 1]),
+    });
+}
+
+#[test]
+fn test_bool_tuple_all_true() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { t = (true, true, true)
+if t[0] { print_int(1) } else { print_int(0) }
+if t[1] { print_int(1) } else { print_int(0) }
+if t[2] { print_int(1) } else { print_int(0) }
+}",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![1, 1, 1]),
+    });
+}
+
+#[test]
+fn test_bool_tuple_all_false() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { t = (false, false, false)
+if t[0] { print_int(1) } else { print_int(0) }
+if t[1] { print_int(1) } else { print_int(0) }
+if t[2] { print_int(1) } else { print_int(0) }
+}",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![0, 0, 0]),
+    });
+}
+
+#[test]
+fn test_bool_tuple_write() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { t = (true, true)
+t[0] = false
+if t[0] { print_int(1) } else { print_int(0) }
+if t[1] { print_int(1) } else { print_int(0) }
+}",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![0, 1]),
+    });
+}
+
+#[test]
+fn test_bool_tuple_from_comparisons() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { x = 5
+t = (x > 0, x > 10)
+if t[0] { print_int(1) } else { print_int(0) }
+if t[1] { print_int(1) } else { print_int(0) }
+}",
+        inputs: VecDeque::new(),
+        // 5 > 0 is true, 5 > 10 is false
+        expected_outputs: VecDeque::from(vec![1, 0]),
+    });
+}
+
+#[test]
+fn test_bool_tuple_in_loop() {
+    // Count how many elements are true
+    execute_test_case(TestCase {
+        input: "fn main() -> int { t = (true, false, true, true, false)
+count = 0
+if t[0] { count = count + 1 }
+if t[1] { count = count + 1 }
+if t[2] { count = count + 1 }
+if t[3] { count = count + 1 }
+if t[4] { count = count + 1 }
+print_int(count)
+}",
+        inputs: VecDeque::new(),
+        // 3 trues
+        expected_outputs: VecDeque::from(vec![3]),
+    });
+}
+
+// ── Mixed-type tuples (int and bool) ─────────────────────────────
+
+#[test]
+fn test_mixed_int_then_bool() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { t = (42, true)
+print_int(t[0])
+if t[1] { print_int(1) } else { print_int(0) }
+}",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![42, 1]),
+    });
+}
+
+#[test]
+fn test_mixed_bool_then_int() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { t = (false, 99)
+if t[0] { print_int(1) } else { print_int(0) }
+print_int(t[1])
+}",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![0, 99]),
+    });
+}
+
+#[test]
+fn test_mixed_int_bool_int_bool() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { t = (10, true, 20, false)
+print_int(t[0])
+if t[1] { print_int(1) } else { print_int(0) }
+print_int(t[2])
+if t[3] { print_int(1) } else { print_int(0) }
+}",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![10, 1, 20, 0]),
+    });
+}
+
+#[test]
+fn test_mixed_bool_int_bool_int() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { t = (true, 100, false, 200)
+if t[0] { print_int(1) } else { print_int(0) }
+print_int(t[1])
+if t[2] { print_int(1) } else { print_int(0) }
+print_int(t[3])
+}",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![1, 100, 0, 200]),
+    });
+}
+
+#[test]
+fn test_mixed_write_int_element() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { t = (0, true)
+t[0] = 77
+print_int(t[0])
+if t[1] { print_int(1) } else { print_int(0) }
+}",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![77, 1]),
+    });
+}
+
+#[test]
+fn test_mixed_write_bool_element() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { t = (55, false)
+t[1] = true
+print_int(t[0])
+if t[1] { print_int(1) } else { print_int(0) }
+}",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![55, 1]),
+    });
+}
+
+#[test]
+fn test_mixed_bool_used_as_condition() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { x = read_int()
+t = (x > 0, x * 2)
+if t[0] {
+    print_int(t[1])
+} else {
+    print_int(0)
+}
+}",
+        inputs: VecDeque::from(vec![5]),
+        // 5 > 0 is true, so print 5*2 = 10
+        expected_outputs: VecDeque::from(vec![10]),
+    });
+}
+
+#[test]
+fn test_mixed_three_ints_one_bool() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { t = (1, 2, 3, true)
+print_int(t[0] + t[1] + t[2])
+if t[3] { print_int(1) } else { print_int(0) }
+}",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![6, 1]),
+    });
+}
+
 // ── Stress: many elements read back ──────────────────────────────
 
 #[test]
