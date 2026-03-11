@@ -313,9 +313,9 @@ pub struct TupleTag {
 pub struct ArrayTag {
     pub forwarding: bool,
     pub pointer_mask: bool,
-    #[bits(3)]
+    #[bits(4)]
     pub elem_size: usize,
-    #[bits(57)]
+    #[bits(56)]
     pub length: u64,
     #[bits(1, default = true)]
     pub is_array: bool,

@@ -851,11 +851,11 @@ int64_t proxy_vec_set(int64_t* vec, int i, int64_t arg) {
 #define TUPLE_LENGTH_TAG_SHIFT 1
 
 // Array tag field extraction constants (see ArrayTag in syntax_trees/shared.rs)
-#define ARRAY_LENGTH_TAG_SHIFT 5
-#define ARRAY_LENGTH_TAG_MASK 0x01FFFFFFFFFFFFFF
+#define ARRAY_LENGTH_TAG_SHIFT 6
+#define ARRAY_LENGTH_TAG_MASK 0x00FFFFFFFFFFFFFF
 
 #define ARRAY_ELEM_SIZE_TAG_SHIFT 2
-#define ARRAY_ELEM_SIZE_TAG_MASK 0x7
+#define ARRAY_ELEM_SIZE_TAG_MASK 0xF
 
 int64_t len(int64_t* ptr) {
   if ((*ptr >> TAG_IS_ARRAY_SHIFT) & TAG_IS_ARRAY_MASK) {
