@@ -2,6 +2,7 @@ pub use std::collections::VecDeque;
 use std::io::Write;
 use tempfile::NamedTempFile;
 
+pub use compiler::syntax_trees::Value;
 use compiler::syntax_trees::x86::X86Program;
 use test_support::{
     compiler::{pipeline::Pipeline, syntax_trees::parser},
@@ -11,8 +12,8 @@ use test_support::{
 #[derive(Debug, Clone)]
 pub struct TestCase<'a> {
     pub input: &'a str,
-    pub inputs: VecDeque<i64>,
-    pub expected_outputs: VecDeque<i64>,
+    pub inputs: VecDeque<Value>,
+    pub expected_outputs: VecDeque<Value>,
 }
 
 pub fn execute_test_case(mut tc: TestCase) {
@@ -28,7 +29,7 @@ pub fn execute_test_case(mut tc: TestCase) {
     println!("-- No Opt: -- \n{}\n", no_opt_x86);
 
     let mut no_opt_tc = tc.clone();
-    let mut no_opt_outputs = VecDeque::<i64>::new();
+    let mut no_opt_outputs = VecDeque::new();
     interpret_x86(&no_opt_x86, &mut no_opt_tc.inputs, &mut no_opt_outputs);
     assert_eq!(no_opt_outputs, no_opt_tc.expected_outputs);
     let no_opt_assembler_res = run_assembler(no_opt_x86);
@@ -40,7 +41,7 @@ pub fn execute_test_case(mut tc: TestCase) {
     let opt_x86 = opt_pipeline.run(ast);
     println!("-- With Opt: -- \n{}\n", opt_x86);
 
-    let mut opt_outputs = VecDeque::<i64>::new();
+    let mut opt_outputs = VecDeque::new();
     interpret_x86(&opt_x86, &mut tc.inputs, &mut opt_outputs);
     assert_eq!(opt_outputs, tc.expected_outputs, "Failed in optimized only");
     let opt_assembler_res = run_assembler(opt_x86);

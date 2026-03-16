@@ -7,8 +7,8 @@ use std::collections::VecDeque;
 
 fn interpret_expr(
     e: &Expr,
-    inputs: &mut VecDeque<i64>,
-    outputs: &mut VecDeque<i64>,
+    inputs: &mut VecDeque<Value>,
+    outputs: &mut VecDeque<Value>,
     val_env: &mut ValueEnv,
     func_env: &Vec<Function>,
 ) -> Option<Value> {
@@ -34,10 +34,12 @@ fn interpret_expr(
         Constant(v) => Some(v.clone()),
         Call(func, args) => {
             if **func == GlobalSymbol(global!(FN_READ_INT)) && args.is_empty() {
-                Some(Value::I64(inputs.pop_front().expect("Ran out of inputs")))
+                let input = inputs.pop_front().expect("Ran out of inputs");
+                assert!(matches!(input, Value::I64(..)), "Expected int input, got {input:?}");
+                Some(input)
             } else if **func == GlobalSymbol(global!(FN_PRINT_INT)) && args.len() == 1 {
                 let val = interpret_expr(&args[0], inputs, outputs, val_env, func_env).expect_int();
-                outputs.push_back(val);
+                outputs.push_back(Value::I64(val));
 
                 Some(Value::None)
             } else if **func == GlobalSymbol(global!(FN_PRINT_STR)) && args.len() == 1 {
@@ -136,8 +138,8 @@ fn interpret_expr(
 
 fn interpret_statement_chain<'a>(
     statements: &mut dyn Iterator<Item = &'a Statement>,
-    inputs: &mut VecDeque<i64>,
-    outputs: &mut VecDeque<i64>,
+    inputs: &mut VecDeque<Value>,
+    outputs: &mut VecDeque<Value>,
     val_env: &mut ValueEnv,
     func_env: &Vec<Function>,
 ) -> Option<Value> {
@@ -208,7 +210,7 @@ fn interpret_statement_chain<'a>(
     };
 }
 
-pub fn interpret(m: &Program, inputs: &mut VecDeque<i64>, outputs: &mut VecDeque<i64>) {
+pub fn interpret(m: &Program, inputs: &mut VecDeque<Value>, outputs: &mut VecDeque<Value>) {
     let main_function = m
         .functions
         .iter()

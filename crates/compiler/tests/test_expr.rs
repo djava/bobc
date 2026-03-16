@@ -10,9 +10,9 @@ fn test_nested_arithmetic() {
 y = read_int()
 print_int((x + y) + (x - y))
 }",
-        inputs: VecDeque::from(vec![10, 3]),
+        inputs: VecDeque::from(vec![Value::I64(10), Value::I64(3)]),
         // (10+3) + (10-3) = 13 + 7 = 20
-        expected_outputs: VecDeque::from(vec![20]),
+        expected_outputs: VecDeque::from(vec![Value::I64(20)]),
     });
 }
 
@@ -21,7 +21,7 @@ fn test_deeply_nested_expression() {
     execute_test_case(TestCase {
         input: "fn main() -> int { print_int(1 + (2 + (3 + (4 + (5 + 6))))) }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![21]),
+        expected_outputs: VecDeque::from(vec![Value::I64(21)]),
     });
 }
 
@@ -29,8 +29,8 @@ fn test_deeply_nested_expression() {
 fn test_expression_with_multiple_reads() {
     execute_test_case(TestCase {
         input: "fn main() -> int { print_int(read_int() + read_int() + read_int()) }",
-        inputs: VecDeque::from(vec![11, 22, 33]),
-        expected_outputs: VecDeque::from(vec![66]),
+        inputs: VecDeque::from(vec![Value::I64(11), Value::I64(22), Value::I64(33)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(66)]),
     });
 }
 
@@ -40,8 +40,8 @@ fn test_expression_with_multiple_reads() {
 fn test_multiply_expr() {
     execute_test_case(TestCase {
         input: "fn main() -> int { print_int((read_int() * read_int()) + (read_int() * read_int())) }",
-        inputs: VecDeque::from([10, 20, 30, 40]),
-        expected_outputs: VecDeque::from([(10 * 20) + (30 * 40)]),
+        inputs: VecDeque::from(vec![Value::I64(10), Value::I64(20), Value::I64(30), Value::I64(40)]),
+        expected_outputs: VecDeque::from(vec![Value::I64((10 * 20) + (30 * 40))]),
     });
 }
 
@@ -50,7 +50,7 @@ fn test_multiply_constants() {
     execute_test_case(TestCase {
         input: "fn main() -> int { print_int(3 * 4) }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from([12]),
+        expected_outputs: VecDeque::from(vec![Value::I64(12)]),
     });
 }
 
@@ -60,8 +60,8 @@ fn test_multiply_by_zero() {
         input: "fn main() -> int { x = read_int()
 print_int(x * 0)
 }",
-        inputs: VecDeque::from([42]),
-        expected_outputs: VecDeque::from([0]),
+        inputs: VecDeque::from(vec![Value::I64(42)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(0)]),
     });
 }
 
@@ -71,8 +71,8 @@ fn test_multiply_by_one() {
         input: "fn main() -> int { x = read_int()
 print_int(x * 1)
 }",
-        inputs: VecDeque::from([99]),
-        expected_outputs: VecDeque::from([99]),
+        inputs: VecDeque::from(vec![Value::I64(99)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(99)]),
     });
 }
 
@@ -83,8 +83,8 @@ fn test_multiply_negative() {
 y = read_int()
 print_int(x * y)
 }",
-        inputs: VecDeque::from([-3, 7]),
-        expected_outputs: VecDeque::from([-21]),
+        inputs: VecDeque::from(vec![Value::I64(-3), Value::I64(7)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(-21)]),
     });
 }
 
@@ -95,8 +95,8 @@ fn test_multiply_both_negative() {
 y = read_int()
 print_int(x * y)
 }",
-        inputs: VecDeque::from([-4, -5]),
-        expected_outputs: VecDeque::from([20]),
+        inputs: VecDeque::from(vec![Value::I64(-4), Value::I64(-5)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(20)]),
     });
 }
 
@@ -108,8 +108,8 @@ y = read_int()
 z = x * y
 print_int(z)
 }",
-        inputs: VecDeque::from([6, 7]),
-        expected_outputs: VecDeque::from([42]),
+        inputs: VecDeque::from(vec![Value::I64(6), Value::I64(7)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(42)]),
     });
 }
 
@@ -120,8 +120,8 @@ fn test_multiply_self_assign() {
 x = x * x
 print_int(x)
 }",
-        inputs: VecDeque::from([5]),
-        expected_outputs: VecDeque::from([25]),
+        inputs: VecDeque::from(vec![Value::I64(5)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(25)]),
     });
 }
 
@@ -129,8 +129,8 @@ print_int(x)
 fn test_multiply_chained() {
     execute_test_case(TestCase {
         input: "fn main() -> int { print_int(read_int() * read_int() * read_int()) }",
-        inputs: VecDeque::from([2, 3, 4]),
-        expected_outputs: VecDeque::from([24]),
+        inputs: VecDeque::from(vec![Value::I64(2), Value::I64(3), Value::I64(4)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(24)]),
     });
 }
 
@@ -142,8 +142,8 @@ b = read_int()
 c = read_int()
 print_int(a * b + c)
 }",
-        inputs: VecDeque::from([3, 4, 5]),
-        expected_outputs: VecDeque::from([3 * 4 + 5]),
+        inputs: VecDeque::from(vec![Value::I64(3), Value::I64(4), Value::I64(5)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(3 * 4 + 5)]),
     });
 }
 
@@ -154,8 +154,8 @@ fn test_multiply_in_conditional() {
 if x > 0 { print_int(x * 10) }
 else { print_int(x * 20) }
 }",
-        inputs: VecDeque::from([3]),
-        expected_outputs: VecDeque::from([30]),
+        inputs: VecDeque::from(vec![Value::I64(3)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(30)]),
     });
 }
 
@@ -171,8 +171,8 @@ while n > 0 {
 }
 print_int(result)
 }",
-        inputs: VecDeque::from([5]),
-        expected_outputs: VecDeque::from([120]),
+        inputs: VecDeque::from(vec![Value::I64(5)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(120)]),
     });
 }
 
@@ -183,8 +183,8 @@ fn test_multiply_large_values() {
 y = read_int()
 print_int(x * y)
 }",
-        inputs: VecDeque::from([100000, 100000]),
-        expected_outputs: VecDeque::from([10000000000_i64]),
+        inputs: VecDeque::from(vec![Value::I64(100000), Value::I64(100000)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(10000000000_i64)]),
     });
 }
 
@@ -203,8 +203,8 @@ print_int(c * d)
 print_int(e * f)
 print_int(a + b + c + d + e + f)
 }",
-        inputs: VecDeque::from([2, 3, 4, 5, 6, 7]),
-        expected_outputs: VecDeque::from([6, 20, 42, 2 + 3 + 4 + 5 + 6 + 7]),
+        inputs: VecDeque::from(vec![Value::I64(2), Value::I64(3), Value::I64(4), Value::I64(5), Value::I64(6), Value::I64(7)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(6), Value::I64(20), Value::I64(42), Value::I64(2 + 3 + 4 + 5 + 6 + 7)]),
     });
 }
 
@@ -215,7 +215,7 @@ fn test_divide_constants() {
     execute_test_case(TestCase {
         input: "fn main() -> int { print_int(12 / 4) }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from([3]),
+        expected_outputs: VecDeque::from(vec![Value::I64(3)]),
     });
 }
 
@@ -225,8 +225,8 @@ fn test_divide_variable() {
         input: "fn main() -> int { x = read_int()
 print_int(x / 3)
 }",
-        inputs: VecDeque::from([21]),
-        expected_outputs: VecDeque::from([7]),
+        inputs: VecDeque::from(vec![Value::I64(21)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(7)]),
     });
 }
 
@@ -237,8 +237,8 @@ fn test_divide_two_variables() {
 y = read_int()
 print_int(x / y)
 }",
-        inputs: VecDeque::from([100, 4]),
-        expected_outputs: VecDeque::from([25]),
+        inputs: VecDeque::from(vec![Value::I64(100), Value::I64(4)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(25)]),
     });
 }
 
@@ -248,8 +248,8 @@ fn test_divide_by_one() {
         input: "fn main() -> int { x = read_int()
 print_int(x / 1)
 }",
-        inputs: VecDeque::from([99]),
-        expected_outputs: VecDeque::from([99]),
+        inputs: VecDeque::from(vec![Value::I64(99)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(99)]),
     });
 }
 
@@ -259,7 +259,7 @@ fn test_divide_truncates() {
     execute_test_case(TestCase {
         input: "fn main() -> int { print_int(7 / 2) }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from([3]),
+        expected_outputs: VecDeque::from(vec![Value::I64(3)]),
     });
 }
 
@@ -270,8 +270,8 @@ fn test_divide_negative_truncates() {
         input: "fn main() -> int { x = read_int()
 print_int(x / 2)
 }",
-        inputs: VecDeque::from([-7]),
-        expected_outputs: VecDeque::from([-3]),
+        inputs: VecDeque::from(vec![Value::I64(-7)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(-3)]),
     });
 }
 
@@ -282,8 +282,8 @@ fn test_divide_both_negative() {
 y = read_int()
 print_int(x / y)
 }",
-        inputs: VecDeque::from([-20, -4]),
-        expected_outputs: VecDeque::from([5]),
+        inputs: VecDeque::from(vec![Value::I64(-20), Value::I64(-4)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(5)]),
     });
 }
 
@@ -294,8 +294,8 @@ fn test_divide_stored_in_variable() {
 y = x / 6
 print_int(y)
 }",
-        inputs: VecDeque::from([42]),
-        expected_outputs: VecDeque::from([7]),
+        inputs: VecDeque::from(vec![Value::I64(42)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(7)]),
     });
 }
 
@@ -306,9 +306,9 @@ fn test_divide_mixed_with_multiply() {
 b = read_int()
 print_int(a * b / 2)
 }",
-        inputs: VecDeque::from([6, 4]),
+        inputs: VecDeque::from(vec![Value::I64(6), Value::I64(4)]),
         // 6 * 4 / 2 = 12
-        expected_outputs: VecDeque::from([12]),
+        expected_outputs: VecDeque::from(vec![Value::I64(12)]),
     });
 }
 
@@ -325,8 +325,8 @@ print_int(a / b)
 print_int(c / d)
 print_int(e / f)
 }",
-        inputs: VecDeque::from([100, 5, 81, 9, 64, 8]),
-        expected_outputs: VecDeque::from([20, 9, 8]),
+        inputs: VecDeque::from(vec![Value::I64(100), Value::I64(5), Value::I64(81), Value::I64(9), Value::I64(64), Value::I64(8)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(20), Value::I64(9), Value::I64(8)]),
     });
 }
 
@@ -337,7 +337,7 @@ fn test_left_shift_constants() {
     execute_test_case(TestCase {
         input: "fn main() -> int { print_int(1 << 3) }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from([8]),
+        expected_outputs: VecDeque::from(vec![Value::I64(8)]),
     });
 }
 
@@ -346,7 +346,7 @@ fn test_right_shift_constants() {
     execute_test_case(TestCase {
         input: "fn main() -> int { print_int(16 >> 2) }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from([4]),
+        expected_outputs: VecDeque::from(vec![Value::I64(4)]),
     });
 }
 
@@ -356,8 +356,8 @@ fn test_left_shift_variable() {
         input: "fn main() -> int { x = read_int()
 print_int(x << 4)
 }",
-        inputs: VecDeque::from([3]),
-        expected_outputs: VecDeque::from([48]),
+        inputs: VecDeque::from(vec![Value::I64(3)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(48)]),
     });
 }
 
@@ -367,8 +367,8 @@ fn test_right_shift_variable() {
         input: "fn main() -> int { x = read_int()
 print_int(x >> 3)
 }",
-        inputs: VecDeque::from([64]),
-        expected_outputs: VecDeque::from([8]),
+        inputs: VecDeque::from(vec![Value::I64(64)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(8)]),
     });
 }
 
@@ -378,8 +378,8 @@ fn test_left_shift_by_zero() {
         input: "fn main() -> int { x = read_int()
 print_int(x << 0)
 }",
-        inputs: VecDeque::from([42]),
-        expected_outputs: VecDeque::from([42]),
+        inputs: VecDeque::from(vec![Value::I64(42)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(42)]),
     });
 }
 
@@ -389,8 +389,8 @@ fn test_right_shift_by_zero() {
         input: "fn main() -> int { x = read_int()
 print_int(x >> 0)
 }",
-        inputs: VecDeque::from([42]),
-        expected_outputs: VecDeque::from([42]),
+        inputs: VecDeque::from(vec![Value::I64(42)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(42)]),
     });
 }
 
@@ -401,8 +401,8 @@ fn test_right_shift_arithmetic() {
         input: "fn main() -> int { x = read_int()
 print_int(x >> 1)
 }",
-        inputs: VecDeque::from([-8]),
-        expected_outputs: VecDeque::from([-4]),
+        inputs: VecDeque::from(vec![Value::I64(-8)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(-4)]),
     });
 }
 
@@ -413,8 +413,8 @@ fn test_left_shift_stored_in_variable() {
 y = x << 2
 print_int(y)
 }",
-        inputs: VecDeque::from([5]),
-        expected_outputs: VecDeque::from([20]),
+        inputs: VecDeque::from(vec![Value::I64(5)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(20)]),
     });
 }
 
@@ -424,9 +424,9 @@ fn test_shift_in_expression() {
         input: "fn main() -> int { x = read_int()
 print_int((x << 3) + (x >> 1))
 }",
-        inputs: VecDeque::from([4]),
+        inputs: VecDeque::from(vec![Value::I64(4)]),
         // (4 << 3) + (4 >> 1) = 32 + 2 = 34
-        expected_outputs: VecDeque::from([34]),
+        expected_outputs: VecDeque::from(vec![Value::I64(34)]),
     });
 }
 
@@ -442,7 +442,7 @@ print_int(b >> 1)
 print_int(c << 2)
 print_int(d >> 2)
 }",
-        inputs: VecDeque::from([1, 8, 3, 32]),
-        expected_outputs: VecDeque::from([2, 4, 12, 8]),
+        inputs: VecDeque::from(vec![Value::I64(1), Value::I64(8), Value::I64(3), Value::I64(32)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(2), Value::I64(4), Value::I64(12), Value::I64(8)]),
     });
 }

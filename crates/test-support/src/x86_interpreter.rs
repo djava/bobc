@@ -224,8 +224,8 @@ impl X86Env {
 
 fn execute_special_functions(
     idx: usize,
-    inputs: &mut VecDeque<i64>,
-    outputs: &mut VecDeque<i64>,
+    inputs: &mut VecDeque<Value>,
+    outputs: &mut VecDeque<Value>,
     env: &mut X86Env,
 ) -> bool {
     if idx < env.special_function_offset {
@@ -237,11 +237,15 @@ fn execute_special_functions(
 
     if label == FN_PRINT_INT {
         let int = env.read_arg(&Arg::new_reg(Register::rdi));
-        outputs.push_back(int);
+        outputs.push_back(Value::I64(int));
         return true;
     } else if label == FN_READ_INT {
-        let int = inputs.pop_front().expect("Overflowed input values");
-        env.write_arg(&Arg::new_reg(Register::rax), int);
+        let input = inputs.pop_front().expect("Overflowed input values");
+        if let Value::I64(int) = input {
+            env.write_arg(&Arg::new_reg(Register::rax), int);
+        } else {
+            panic!("Expected int input, got {input:?}")
+        }
         return true;
     } else if label == FN_GC_INITIALIZE {
         // Don't need to do anything in sim
@@ -300,8 +304,8 @@ enum Continuation {
 
 fn run_instr(
     instr: &Instr,
-    inputs: &mut VecDeque<i64>,
-    outputs: &mut VecDeque<i64>,
+    inputs: &mut VecDeque<Value>,
+    outputs: &mut VecDeque<Value>,
     env: &mut X86Env,
 ) -> Continuation {
     match instr {
@@ -446,7 +450,7 @@ fn run_instr(
     }
 }
 
-pub fn interpret_x86(m: &X86Program, inputs: &mut VecDeque<i64>, outputs: &mut VecDeque<i64>) {
+pub fn interpret_x86(m: &X86Program, inputs: &mut VecDeque<Value>, outputs: &mut VecDeque<Value>) {
     let funcs = m.functions.iter().map(|f| f.name.clone()).collect();
     let mut env = X86Env::new(funcs);
 

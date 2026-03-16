@@ -14,7 +14,7 @@ fn test_lambda_captures_two_vars() {
     print_int(x(3))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![6]),
+        expected_outputs: VecDeque::from(vec![Value::I64(6)]),
     });
 }
 
@@ -29,7 +29,7 @@ fn test_lambda_no_captures() {
     print_int(f(3))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![25, 9]),
+        expected_outputs: VecDeque::from(vec![Value::I64(25), Value::I64(9)]),
     });
 }
 
@@ -42,7 +42,7 @@ fn test_lambda_no_captures_constant_body() {
     print_int(f(99))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![42, 42]),
+        expected_outputs: VecDeque::from(vec![Value::I64(42), Value::I64(42)]),
     });
 }
 
@@ -56,7 +56,7 @@ fn test_lambda_two_params() {
     print_int(add(10, 32))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![42]),
+        expected_outputs: VecDeque::from(vec![Value::I64(42)]),
     });
 }
 
@@ -70,7 +70,7 @@ fn test_lambda_two_params_multiple_calls() {
     print_int(mul(10, 10))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![6, 35, 100]),
+        expected_outputs: VecDeque::from(vec![Value::I64(6), Value::I64(35), Value::I64(100)]),
     });
 }
 
@@ -87,7 +87,7 @@ fn test_lambda_captures_three_vars() {
     print_int(f(7))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![42]),
+        expected_outputs: VecDeque::from(vec![Value::I64(42)]),
     });
 }
 
@@ -102,7 +102,7 @@ fn test_lambda_captures_and_ignores_param() {
     print_int(f(999))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![100, 100]),
+        expected_outputs: VecDeque::from(vec![Value::I64(100), Value::I64(100)]),
     });
 }
 
@@ -122,7 +122,7 @@ fn test_lambda_called_in_loop() {
     print_int(x)
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![5]),
+        expected_outputs: VecDeque::from(vec![Value::I64(5)]),
     });
 }
 
@@ -140,7 +140,7 @@ fn main() {
     print_int(apply(double, 21))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![42]),
+        expected_outputs: VecDeque::from(vec![Value::I64(42)]),
     });
 }
 
@@ -161,7 +161,7 @@ fn main() {
     print_int(apply(inc, 10))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![-10, 11]),
+        expected_outputs: VecDeque::from(vec![Value::I64(-10), Value::I64(11)]),
     });
 }
 
@@ -177,8 +177,8 @@ fn test_lambda_captures_runtime_value() {
     print_int(f(2))
     print_int(f(3))
 }",
-        inputs: VecDeque::from(vec![10]),
-        expected_outputs: VecDeque::from(vec![11, 12, 13]),
+        inputs: VecDeque::from(vec![Value::I64(10)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(11), Value::I64(12), Value::I64(13)]),
     });
 }
 
@@ -195,7 +195,7 @@ fn test_lambda_arithmetic_body() {
 }",
         inputs: VecDeque::new(),
         // 2*2 + 3 = 7, 4*4 + 3 = 19
-        expected_outputs: VecDeque::from(vec![7, 19]),
+        expected_outputs: VecDeque::from(vec![Value::I64(7), Value::I64(19)]),
     });
 }
 
@@ -217,8 +217,8 @@ fn test_lambda_assigned_in_conditional() {
         print_int(f(5))
     }
 }",
-        inputs: VecDeque::from(vec![1]),
-        expected_outputs: VecDeque::from(vec![15]),
+        inputs: VecDeque::from(vec![Value::I64(1)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(15)]),
     });
 }
 
@@ -237,8 +237,8 @@ fn test_lambda_assigned_in_conditional_negative_branch() {
         print_int(f(5))
     }
 }",
-        inputs: VecDeque::from(vec![-1]),
-        expected_outputs: VecDeque::from(vec![25]),
+        inputs: VecDeque::from(vec![Value::I64(-1)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(25)]),
     });
 }
 
@@ -258,7 +258,7 @@ fn test_lambda_multiline_body() {
 }",
         inputs: VecDeque::new(),
         // 3*2 + 7 = 13, 10*2 + 7 = 27
-        expected_outputs: VecDeque::from(vec![13, 27]),
+        expected_outputs: VecDeque::from(vec![Value::I64(13), Value::I64(27)]),
     });
 }
 
@@ -276,7 +276,7 @@ fn test_lambda_multiline_no_captures() {
 }",
         inputs: VecDeque::new(),
         // (2+3)^2 = 25, (1+4)^2 = 25
-        expected_outputs: VecDeque::from(vec![25, 25]),
+        expected_outputs: VecDeque::from(vec![Value::I64(25), Value::I64(25)]),
     });
 }
 
@@ -299,7 +299,7 @@ fn main() {
     }
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![10, 11, 12]),
+        expected_outputs: VecDeque::from(vec![Value::I64(10), Value::I64(11), Value::I64(12)]),
     });
 }
 
@@ -316,7 +316,7 @@ fn test_lambda_captures_tuple() {
     print_int(f(10))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![10, 20]),
+        expected_outputs: VecDeque::from(vec![Value::I64(10), Value::I64(20)]),
     });
 }
 
@@ -330,7 +330,7 @@ fn test_lambda_captures_tuple_single_element() {
     print_int(f(5))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![15]),
+        expected_outputs: VecDeque::from(vec![Value::I64(15)]),
     });
 }
 
@@ -345,7 +345,7 @@ fn test_lambda_in_tuple() {
     print_int(tup[0](20))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![15, 25]),
+        expected_outputs: VecDeque::from(vec![Value::I64(15), Value::I64(25)]),
     });
 }
 
@@ -361,6 +361,6 @@ fn test_lambda_returns_tuple_element() {
     print_int(get(2))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![100, 101, 102]),
+        expected_outputs: VecDeque::from(vec![Value::I64(100), Value::I64(101), Value::I64(102)]),
     });
 }

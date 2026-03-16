@@ -45,8 +45,8 @@ fn subscript_tuple(tup: &Value, idx: i64) -> Value {
 
 fn interpret_expr(
     expr: &Expr,
-    inputs: &mut VecDeque<i64>,
-    outputs: &mut VecDeque<i64>,
+    inputs: &mut VecDeque<Value>,
+    outputs: &mut VecDeque<Value>,
     val_env: &mut ValueEnv,
     func_env: &Vec<Function>,
 ) -> Value {
@@ -69,7 +69,7 @@ fn interpret_expr(
                 }
 
                 if let Value::I64(val) = interpret_atom(&args[0], val_env, func_env) {
-                    outputs.push_back(val.clone());
+                    outputs.push_back(Value::I64(val));
                 } else {
                     panic!("Wrong argument type to print_int()");
                 }
@@ -80,10 +80,11 @@ fn interpret_expr(
                     panic!("Wrong number of args to read_int()");
                 }
 
-                if let Some(val) = inputs.pop_front() {
-                    Value::I64(val)
+                let input = inputs.pop_front().expect("Overflowed inputs");
+                if let Value::I64(..) = input {
+                    input
                 } else {
-                    panic!("Overflowed inputs");
+                    panic!("Unexpected input `{input:?} - expected int");
                 }
             } else {
                 // Resolve the function name — either directly from a GlobalSymbol,
@@ -131,8 +132,8 @@ fn interpret_expr(
 
 fn interpret_statement(
     statement: &Statement,
-    inputs: &mut VecDeque<i64>,
-    outputs: &mut VecDeque<i64>,
+    inputs: &mut VecDeque<Value>,
+    outputs: &mut VecDeque<Value>,
     val_env: &mut ValueEnv,
     func_env: &Vec<Function>,
 ) -> Continuation {
@@ -186,8 +187,8 @@ fn interpret_statement(
 
 fn interpret_block(
     block: &Block,
-    inputs: &mut VecDeque<i64>,
-    outputs: &mut VecDeque<i64>,
+    inputs: &mut VecDeque<Value>,
+    outputs: &mut VecDeque<Value>,
     val_env: &mut ValueEnv,
     func_env: &Vec<Function>,
 ) -> Continuation {
@@ -206,8 +207,8 @@ fn interpret_block(
 pub fn interpret_func(
     f: &Function,
     args: Vec<Value>,
-    inputs: &mut VecDeque<i64>,
-    outputs: &mut VecDeque<i64>,
+    inputs: &mut VecDeque<Value>,
+    outputs: &mut VecDeque<Value>,
     func_env: &Vec<Function>,
 ) -> Value {
     let mut val_env = ValueEnv::new();
@@ -262,7 +263,7 @@ pub fn interpret_func(
     Value::None
 }
 
-pub fn interpret_irprogram(p: &IRProgram, inputs: &mut VecDeque<i64>, outputs: &mut VecDeque<i64>) {
+pub fn interpret_irprogram(p: &IRProgram, inputs: &mut VecDeque<Value>, outputs: &mut VecDeque<Value>) {
     let main_func = p
         .functions
         .iter()

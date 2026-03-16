@@ -350,8 +350,8 @@ mod tests {
 
     struct TestCase {
         ast: Program,
-        inputs: VecDeque<i64>,
-        expected_outputs: VecDeque<i64>,
+        inputs: VecDeque<Value>,
+        expected_outputs: VecDeque<Value>,
     }
 
     fn check_expr_invariants(e: &Expr) {
@@ -452,7 +452,7 @@ mod tests {
 
         check_invariants(&post_run_ast);
 
-        let mut outputs = VecDeque::<i64>::new();
+        let mut outputs = VecDeque::new();
         interpret(&post_run_ast, &mut tc.inputs, &mut outputs);
 
         assert_eq!(outputs, tc.expected_outputs);
@@ -479,7 +479,7 @@ mod tests {
                 global_types: TypeEnv::new(),
             },
             inputs: VecDeque::new(),
-            expected_outputs: VecDeque::from(vec![42]),
+            expected_outputs: VecDeque::from(vec![Value::I64(42)]),
         })
     }
 
@@ -502,8 +502,8 @@ mod tests {
                 }],
                 global_types: TypeEnv::new(),
             },
-            inputs: VecDeque::from(vec![42]),
-            expected_outputs: VecDeque::from(vec![42]),
+            inputs: VecDeque::from(vec![Value::I64(42)]),
+            expected_outputs: VecDeque::from(vec![Value::I64(42)]),
         })
     }
 
@@ -533,8 +533,8 @@ mod tests {
                 }],
                 global_types: TypeEnv::new(),
             },
-            inputs: VecDeque::from(vec![5, 3]),
-            expected_outputs: VecDeque::from(vec![2]),
+            inputs: VecDeque::from(vec![Value::I64(5), Value::I64(3)]),
+            expected_outputs: VecDeque::from(vec![Value::I64(2)]),
         });
     }
 
@@ -555,7 +555,7 @@ mod tests {
                 global_types: TypeEnv::new(),
             },
             inputs: VecDeque::from(vec![]),
-            expected_outputs: VecDeque::from(vec![0]),
+            expected_outputs: VecDeque::from(vec![Value::I64(0)]),
         });
     }
 
@@ -588,7 +588,7 @@ mod tests {
                 global_types: TypeEnv::new(),
             },
             inputs: VecDeque::from(vec![]),
-            expected_outputs: VecDeque::from(vec![84]),
+            expected_outputs: VecDeque::from(vec![Value::I64(84)]),
         });
     }
 
@@ -623,8 +623,8 @@ mod tests {
                 }],
                 global_types: TypeEnv::new(),
             },
-            inputs: VecDeque::from(vec![-100]),
-            expected_outputs: VecDeque::from(vec![44 - 100]),
+            inputs: VecDeque::from(vec![Value::I64(-100)]),
+            expected_outputs: VecDeque::from(vec![Value::I64(44 - 100)]),
         });
     }
 
@@ -649,7 +649,7 @@ mod tests {
                 global_types: TypeEnv::new(),
             },
             inputs: VecDeque::new(),
-            expected_outputs: VecDeque::from(vec![42]),
+            expected_outputs: VecDeque::from(vec![Value::I64(42)]),
         })
     }
 
@@ -682,8 +682,8 @@ mod tests {
                 }],
                 global_types: TypeEnv::new(),
             },
-            inputs: VecDeque::from(vec![5]),
-            expected_outputs: VecDeque::from(vec![60]),
+            inputs: VecDeque::from(vec![Value::I64(5)]),
+            expected_outputs: VecDeque::from(vec![Value::I64(60)]),
         })
     }
 
@@ -709,7 +709,7 @@ mod tests {
                 global_types: TypeEnv::new(),
             },
             inputs: VecDeque::new(),
-            expected_outputs: VecDeque::from(vec![0]),
+            expected_outputs: VecDeque::from(vec![Value::I64(0)]),
         })
     }
 
@@ -744,7 +744,7 @@ mod tests {
                 global_types: TypeEnv::new(),
             },
             inputs: VecDeque::new(),
-            expected_outputs: VecDeque::from(vec![26]),
+            expected_outputs: VecDeque::from(vec![Value::I64(26)]),
         })
     }
 
@@ -795,7 +795,7 @@ mod tests {
                 global_types: TypeEnv::new(),
             },
             inputs: VecDeque::new(),
-            expected_outputs: VecDeque::from(vec![5, 4, 3, 2, 1]),
+            expected_outputs: VecDeque::from(vec![Value::I64(5), Value::I64(4), Value::I64(3), Value::I64(2), Value::I64(1)]),
         });
     }
 
@@ -829,7 +829,7 @@ mod tests {
                 global_types: TypeEnv::new(),
             },
             inputs: VecDeque::new(),
-            expected_outputs: VecDeque::from(vec![42]), // Loop should be removed entirely
+            expected_outputs: VecDeque::from(vec![Value::I64(42)]), // Loop should be removed entirely
         });
     }
 
@@ -884,7 +884,7 @@ mod tests {
                 global_types: TypeEnv::new(),
             },
             inputs: VecDeque::new(),
-            expected_outputs: VecDeque::from(vec![20, 20, 20]),
+            expected_outputs: VecDeque::from(vec![Value::I64(20), Value::I64(20), Value::I64(20)]),
         });
     }
 }

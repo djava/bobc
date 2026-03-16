@@ -111,8 +111,8 @@ mod tests {
 
     struct TestCase {
         ast: Program,
-        inputs: VecDeque<i64>,
-        expected_outputs: VecDeque<i64>,
+        inputs: VecDeque<Value>,
+        expected_outputs: VecDeque<Value>,
     }
 
     fn assert_expr_no_and_or(e: &Expr) {
@@ -174,7 +174,7 @@ mod tests {
             .flat_map(|f| &f.body)
             .for_each(assert_statement_no_and_or);
 
-        let mut outputs = VecDeque::<i64>::new();
+        let mut outputs = VecDeque::new();
         ast_interpreter::interpret(&post_run_ast, &mut tc.inputs, &mut outputs);
 
         assert!(tc.inputs.is_empty());
@@ -283,7 +283,7 @@ mod tests {
                 }],
                 global_types: TypeEnv::new(),
             },
-            inputs: VecDeque::from([1]),
+            inputs: VecDeque::from(vec![Value::I64(1)]),
             expected_outputs: VecDeque::new(),
         };
 
@@ -328,7 +328,7 @@ mod tests {
                 }],
                 global_types: TypeEnv::new(),
             },
-            inputs: VecDeque::from([1]),
+            inputs: VecDeque::from(vec![Value::I64(1)]),
             expected_outputs: VecDeque::new(),
         };
 

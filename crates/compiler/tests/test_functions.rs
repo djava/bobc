@@ -14,7 +14,7 @@ fn main() {
     print_int(add(40, 2))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![42]),
+        expected_outputs: VecDeque::from(vec![Value::I64(42)]),
     });
 }
 
@@ -29,7 +29,7 @@ fn main() {
     print_int(seven())
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![7]),
+        expected_outputs: VecDeque::from(vec![Value::I64(7)]),
     });
 }
 
@@ -44,7 +44,7 @@ fn main() {
     print_int(double(21))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![42]),
+        expected_outputs: VecDeque::from(vec![Value::I64(42)]),
     });
 }
 
@@ -59,7 +59,7 @@ fn main() {
     print_int(sum3(10, 20, 30))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![60]),
+        expected_outputs: VecDeque::from(vec![Value::I64(60)]),
     });
 }
 
@@ -74,7 +74,7 @@ fn main() {
     print_int(sum4(1, 2, 3, 4))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![10]),
+        expected_outputs: VecDeque::from(vec![Value::I64(10)]),
     });
 }
 
@@ -89,7 +89,7 @@ fn main() {
     print_int(sum5(1, 2, 3, 4, 5))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![15]),
+        expected_outputs: VecDeque::from(vec![Value::I64(15)]),
     });
 }
 
@@ -104,7 +104,7 @@ fn main() {
     print_int(sum6(1, 2, 3, 4, 5, 6))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![21]),
+        expected_outputs: VecDeque::from(vec![Value::I64(21)]),
     });
 }
 
@@ -119,7 +119,7 @@ fn main() {
     print_int(sum7(1, 2, 3, 4, 5, 6, 7))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![28]),
+        expected_outputs: VecDeque::from(vec![Value::I64(28)]),
     });
 }
 
@@ -136,7 +136,7 @@ fn main() {
     greet()
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![42]),
+        expected_outputs: VecDeque::from(vec![Value::I64(42)]),
     });
 }
 
@@ -151,7 +151,7 @@ fn main() {
     print_sum(10, 20)
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![30]),
+        expected_outputs: VecDeque::from(vec![Value::I64(30)]),
     });
 }
 
@@ -173,7 +173,7 @@ fn main() {
     print_int(sub(10, 5))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![15, 5]),
+        expected_outputs: VecDeque::from(vec![Value::I64(15), Value::I64(5)]),
     });
 }
 
@@ -198,7 +198,7 @@ fn main() {
     print_int(c())
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![1, 2, 3]),
+        expected_outputs: VecDeque::from(vec![Value::I64(1), Value::I64(2), Value::I64(3)]),
     });
 }
 
@@ -219,7 +219,7 @@ fn main() {
     print_int(add3(10, 20, 30))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![60]),
+        expected_outputs: VecDeque::from(vec![Value::I64(60)]),
     });
 }
 
@@ -234,7 +234,7 @@ fn main() {
     print_int(inc(inc(inc(0))))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![3]),
+        expected_outputs: VecDeque::from(vec![Value::I64(3)]),
     });
 }
 
@@ -249,7 +249,7 @@ fn main() {
     print_int(add(add(1, 2), add(3, 4)))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![10]),
+        expected_outputs: VecDeque::from(vec![Value::I64(10)]),
     });
 }
 
@@ -269,7 +269,7 @@ fn main() {
 }",
         inputs: VecDeque::new(),
         // sum=13, diff=7, result=20 -> actually (10+3)+(10-3) = 13+7 = 20
-        expected_outputs: VecDeque::from(vec![20]),
+        expected_outputs: VecDeque::from(vec![Value::I64(20)]),
     });
 }
 
@@ -288,7 +288,7 @@ fn main() {
     print_int(x)
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![99, 1]),
+        expected_outputs: VecDeque::from(vec![Value::I64(99), Value::I64(1)]),
     });
 }
 
@@ -305,7 +305,7 @@ fn main() {
     print_int(five() + five())
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![10]),
+        expected_outputs: VecDeque::from(vec![Value::I64(10)]),
     });
 }
 
@@ -321,7 +321,7 @@ fn main() {
     print_int(result)
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![7]),
+        expected_outputs: VecDeque::from(vec![Value::I64(7)]),
     });
 }
 
@@ -340,7 +340,7 @@ fn main() {
     }
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![1]),
+        expected_outputs: VecDeque::from(vec![Value::I64(1)]),
     });
 }
 
@@ -359,7 +359,7 @@ fn main() {
     print_int(double(3))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![2, 4, 6]),
+        expected_outputs: VecDeque::from(vec![Value::I64(2), Value::I64(4), Value::I64(6)]),
     });
 }
 
@@ -378,7 +378,7 @@ fn main() {
     }
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![0, 2, 4, 6, 8]),
+        expected_outputs: VecDeque::from(vec![Value::I64(0), Value::I64(2), Value::I64(4), Value::I64(6), Value::I64(8)]),
     });
 }
 
@@ -399,7 +399,7 @@ fn main() {
     print_int(fact(5))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![120]),
+        expected_outputs: VecDeque::from(vec![Value::I64(120)]),
     });
 }
 
@@ -419,7 +419,7 @@ fn main() {
     print_int(fact(1))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![1, 1]),
+        expected_outputs: VecDeque::from(vec![Value::I64(1), Value::I64(1)]),
     });
 }
 
@@ -444,7 +444,7 @@ fn main() {
     print_int(fib(6))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![0, 1, 1, 2, 3, 5, 8]),
+        expected_outputs: VecDeque::from(vec![Value::I64(0), Value::I64(1), Value::I64(1), Value::I64(2), Value::I64(3), Value::I64(5), Value::I64(8)]),
     });
 }
 
@@ -464,7 +464,7 @@ fn main() {
     countdown(3)
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![3, 2, 1, 0]),
+        expected_outputs: VecDeque::from(vec![Value::I64(3), Value::I64(2), Value::I64(1), Value::I64(0)]),
     });
 }
 
@@ -497,7 +497,7 @@ fn main() {
     print_int(is_odd(4))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![1, 0, 1, 1, 0]),
+        expected_outputs: VecDeque::from(vec![Value::I64(1), Value::I64(0), Value::I64(1), Value::I64(1), Value::I64(0)]),
     });
 }
 
@@ -520,7 +520,7 @@ fn main() {
     print_int(abs(0))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![5, 5, 0]),
+        expected_outputs: VecDeque::from(vec![Value::I64(5), Value::I64(5), Value::I64(0)]),
     });
 }
 
@@ -542,7 +542,7 @@ fn main() {
 }",
         inputs: VecDeque::new(),
         // 1+2+...+10 = 55
-        expected_outputs: VecDeque::from(vec![55]),
+        expected_outputs: VecDeque::from(vec![Value::I64(55)]),
     });
 }
 
@@ -567,7 +567,7 @@ fn main() {
     print_int(clamp(15, 0, 10))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![0, 5, 10]),
+        expected_outputs: VecDeque::from(vec![Value::I64(0), Value::I64(5), Value::I64(10)]),
     });
 }
 
@@ -584,7 +584,7 @@ fn main() {
     print_int(add(0, 0))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![0]),
+        expected_outputs: VecDeque::from(vec![Value::I64(0)]),
     });
 }
 
@@ -599,7 +599,7 @@ fn main() {
     print_int(add(-10, -20))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![-30]),
+        expected_outputs: VecDeque::from(vec![Value::I64(-30)]),
     });
 }
 
@@ -614,7 +614,7 @@ fn main() {
     print_int(add(1000000, 2000000))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![3000000]),
+        expected_outputs: VecDeque::from(vec![Value::I64(3000000)]),
     });
 }
 
@@ -630,8 +630,8 @@ fn test_function_with_read_int_arg() {
 fn main() {
     print_int(double(read_int()))
 }",
-        inputs: VecDeque::from(vec![21]),
-        expected_outputs: VecDeque::from(vec![42]),
+        inputs: VecDeque::from(vec![Value::I64(21)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(42)]),
     });
 }
 
@@ -646,8 +646,8 @@ fn test_function_reads_input_internally() {
 fn main() {
     print_int(read_and_double())
 }",
-        inputs: VecDeque::from(vec![5]),
-        expected_outputs: VecDeque::from(vec![10]),
+        inputs: VecDeque::from(vec![Value::I64(5)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(10)]),
     });
 }
 
@@ -669,7 +669,7 @@ fn main() {
     print_int(bar(10))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![11, 12]),
+        expected_outputs: VecDeque::from(vec![Value::I64(11), Value::I64(12)]),
     });
 }
 
@@ -685,7 +685,7 @@ fn main() {
     print_int(foo(10))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![11]),
+        expected_outputs: VecDeque::from(vec![Value::I64(11)]),
     });
 }
 
@@ -702,7 +702,7 @@ fn double(x: int) -> int {
     return x + x
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![10]),
+        expected_outputs: VecDeque::from(vec![Value::I64(10)]),
     });
 }
 
@@ -721,7 +721,7 @@ fn main() {
     print_int(a())
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![42]),
+        expected_outputs: VecDeque::from(vec![Value::I64(42)]),
     });
 }
 
@@ -743,7 +743,7 @@ fn main() {
     print_int(pick(false, 10, 20))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![10, 20]),
+        expected_outputs: VecDeque::from(vec![Value::I64(10), Value::I64(20)]),
     });
 }
 
@@ -767,7 +767,7 @@ fn main() {
     }
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![1, 0]),
+        expected_outputs: VecDeque::from(vec![Value::I64(1), Value::I64(0)]),
     });
 }
 
@@ -786,7 +786,7 @@ fn main() {
     print_int(t[1])
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![10, 20]),
+        expected_outputs: VecDeque::from(vec![Value::I64(10), Value::I64(20)]),
     });
 }
 
@@ -802,7 +802,7 @@ fn main() {
     print_int(sum_pair(p))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![10]),
+        expected_outputs: VecDeque::from(vec![Value::I64(10)]),
     });
 }
 
@@ -822,7 +822,7 @@ fn main() {
         inputs: VecDeque::new(),
         // If tuples are passed by reference, p[0] should be 99
         // If by value, p[0] should still be 1
-        expected_outputs: VecDeque::from(vec![99, 2]),
+        expected_outputs: VecDeque::from(vec![Value::I64(99), Value::I64(2)]),
     });
 }
 
@@ -839,7 +839,7 @@ fn main() {
     print_int(identity(42))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![42]),
+        expected_outputs: VecDeque::from(vec![Value::I64(42)]),
     });
 }
 
@@ -858,7 +858,7 @@ fn main() {
     print_int(sum_helper(10, 0))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![55]),
+        expected_outputs: VecDeque::from(vec![Value::I64(55)]),
     });
 }
 
@@ -878,7 +878,7 @@ fn main() {
     print_int(count_down(100, 0))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![100]),
+        expected_outputs: VecDeque::from(vec![Value::I64(100)]),
     });
 }
 
@@ -895,7 +895,7 @@ fn main() {
     print_int(always_42())
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![42]),
+        expected_outputs: VecDeque::from(vec![Value::I64(42)]),
     });
 }
 
@@ -910,7 +910,7 @@ fn main() {
     print_int(neg())
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![-1]),
+        expected_outputs: VecDeque::from(vec![Value::I64(-1)]),
     });
 }
 
@@ -925,7 +925,7 @@ fn main() {
     print_int(zero())
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![0]),
+        expected_outputs: VecDeque::from(vec![Value::I64(0)]),
     });
 }
 
@@ -941,7 +941,7 @@ fn main() {
 }",
         inputs: VecDeque::new(),
         // (10+3)*(10-3) = 13*7 = 91
-        expected_outputs: VecDeque::from(vec![91]),
+        expected_outputs: VecDeque::from(vec![Value::I64(91)]),
     });
 }
 
@@ -962,7 +962,7 @@ fn main() {
     print_int(max(5, 5))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![7, 9, 5]),
+        expected_outputs: VecDeque::from(vec![Value::I64(7), Value::I64(9), Value::I64(5)]),
     });
 }
 
@@ -979,7 +979,7 @@ fn main() {
     print_int(mul(6, 7))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![42]),
+        expected_outputs: VecDeque::from(vec![Value::I64(42)]),
     });
 }
 
@@ -995,7 +995,7 @@ fn main() {
     print_int(negate(-10))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![-42, 10]),
+        expected_outputs: VecDeque::from(vec![Value::I64(-42), Value::I64(10)]),
     });
 }
 
@@ -1021,7 +1021,7 @@ fn main() {
     print_int(t[1])
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![1, 2, 3, 4]),
+        expected_outputs: VecDeque::from(vec![Value::I64(1), Value::I64(2), Value::I64(3), Value::I64(4)]),
     });
 }
 
@@ -1045,7 +1045,7 @@ fn main() {
     print_int(power(3, 3))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![1, 2, 1024, 27]),
+        expected_outputs: VecDeque::from(vec![Value::I64(1), Value::I64(2), Value::I64(1024), Value::I64(27)]),
     });
 }
 
@@ -1063,7 +1063,7 @@ fn main() {
 }",
         inputs: VecDeque::new(),
         // 3 + 7 = 10
-        expected_outputs: VecDeque::from(vec![10]),
+        expected_outputs: VecDeque::from(vec![Value::I64(10)]),
     });
 }
 
@@ -1089,7 +1089,7 @@ fn main() {
     print_int(inc(9))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+        expected_outputs: VecDeque::from(vec![Value::I64(1), Value::I64(2), Value::I64(3), Value::I64(4), Value::I64(5), Value::I64(6), Value::I64(7), Value::I64(8), Value::I64(9), Value::I64(10)]),
     });
 }
 
@@ -1119,7 +1119,7 @@ fn main() {
 }",
         inputs: VecDeque::new(),
         // fib(0)=0, fib(1)=1, fib(5)=5, fib(10)=55
-        expected_outputs: VecDeque::from(vec![0, 1, 5, 55]),
+        expected_outputs: VecDeque::from(vec![Value::I64(0), Value::I64(1), Value::I64(5), Value::I64(55)]),
     });
 }
 
@@ -1140,7 +1140,7 @@ fn main() {
     print_int(y)
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![300, 100, 200]),
+        expected_outputs: VecDeque::from(vec![Value::I64(300), Value::I64(100), Value::I64(200)]),
     });
 }
 
@@ -1159,7 +1159,7 @@ fn main() {
     print_double(3)
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![2, 4, 6]),
+        expected_outputs: VecDeque::from(vec![Value::I64(2), Value::I64(4), Value::I64(6)]),
     });
 }
 
@@ -1178,7 +1178,7 @@ fn main() {
     print_int(id(-1))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![0, 42, -1]),
+        expected_outputs: VecDeque::from(vec![Value::I64(0), Value::I64(42), Value::I64(-1)]),
     });
 }
 
@@ -1204,7 +1204,7 @@ fn main() {
     }
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![1, 0]),
+        expected_outputs: VecDeque::from(vec![Value::I64(1), Value::I64(0)]),
     });
 }
 
@@ -1226,7 +1226,7 @@ fn main() {
 }",
         inputs: VecDeque::new(),
         // 9 + 16 = 25
-        expected_outputs: VecDeque::from(vec![25]),
+        expected_outputs: VecDeque::from(vec![Value::I64(25)]),
     });
 }
 
@@ -1250,7 +1250,7 @@ fn main() {
 }",
         inputs: VecDeque::new(),
         // add1(5)=6, mul2(6)=12, sub3(12)=9
-        expected_outputs: VecDeque::from(vec![9]),
+        expected_outputs: VecDeque::from(vec![Value::I64(9)]),
     });
 }
 
@@ -1267,7 +1267,7 @@ fn main() {
     print_int(1)
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![1]),
+        expected_outputs: VecDeque::from(vec![Value::I64(1)]),
     });
 }
 
@@ -1284,7 +1284,7 @@ fn main() {
     print_int(inc(inc(inc(inc(inc(inc(inc(inc(inc(inc(0)))))))))))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![10]),
+        expected_outputs: VecDeque::from(vec![Value::I64(10)]),
     });
 }
 
@@ -1302,7 +1302,7 @@ fn main() {
     returns_int()
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![42]),
+        expected_outputs: VecDeque::from(vec![Value::I64(42)]),
     });
 }
 
@@ -1327,7 +1327,7 @@ fn main() {
     print_int(w)
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![1, 2, 3, 210]),
+        expected_outputs: VecDeque::from(vec![Value::I64(1), Value::I64(2), Value::I64(3), Value::I64(210)]),
     });
 }
 
@@ -1353,7 +1353,7 @@ fn main() {
 }",
         inputs: VecDeque::new(),
         // 1+2+3+4+5+6+7+8+99 = 135
-        expected_outputs: VecDeque::from(vec![135]),
+        expected_outputs: VecDeque::from(vec![Value::I64(135)]),
     });
 }
 
@@ -1375,7 +1375,7 @@ fn test_many_variables_then_call() {
 }",
         inputs: VecDeque::new(),
         // 1+2+3+4+5+6+7+8+99 = 135
-        expected_outputs: VecDeque::from(vec![135]),
+        expected_outputs: VecDeque::from(vec![Value::I64(135)]),
     });
 }
 
@@ -1397,7 +1397,7 @@ fn main() {
 }",
         inputs: VecDeque::new(),
         // 50*51/2 = 1275
-        expected_outputs: VecDeque::from(vec![1275]),
+        expected_outputs: VecDeque::from(vec![Value::I64(1275)]),
     });
 }
 
@@ -1417,7 +1417,7 @@ fn main() {
 }",
         inputs: VecDeque::new(),
         // add(15, 40) = 55
-        expected_outputs: VecDeque::from(vec![55]),
+        expected_outputs: VecDeque::from(vec![Value::I64(55)]),
     });
 }
 
@@ -1444,7 +1444,7 @@ fn main() {
     print_int(sign(0))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![1, -1, 0]),
+        expected_outputs: VecDeque::from(vec![Value::I64(1), Value::I64(-1), Value::I64(0)]),
     });
 }
 
@@ -1465,7 +1465,7 @@ fn main() {
     print_range(1, 6)
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![1, 2, 3, 4, 5]),
+        expected_outputs: VecDeque::from(vec![Value::I64(1), Value::I64(2), Value::I64(3), Value::I64(4), Value::I64(5)]),
     });
 }
 
@@ -1483,7 +1483,7 @@ fn main() {
     print_int(sub(3, 10))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![7, -7]),
+        expected_outputs: VecDeque::from(vec![Value::I64(7), Value::I64(-7)]),
     });
 }
 
@@ -1512,7 +1512,7 @@ fn main() {
 }",
         inputs: VecDeque::new(),
         // ack(0,0)=1, ack(1,1)=3, ack(2,2)=7, ack(3,2)=29
-        expected_outputs: VecDeque::from(vec![1, 3, 7, 29]),
+        expected_outputs: VecDeque::from(vec![Value::I64(1), Value::I64(3), Value::I64(7), Value::I64(29)]),
     });
 }
 
@@ -1531,7 +1531,7 @@ fn main() {
     print_int(f(21))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![42]),
+        expected_outputs: VecDeque::from(vec![Value::I64(42)]),
     });
 }
 
@@ -1554,7 +1554,7 @@ fn main() {
     print_int(f(5))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![10, 6]),
+        expected_outputs: VecDeque::from(vec![Value::I64(10), Value::I64(6)]),
     });
 }
 
@@ -1579,8 +1579,8 @@ fn main() {
     }
     print_int(f(7))
 }",
-        inputs: VecDeque::from(vec![1]),
-        expected_outputs: VecDeque::from(vec![14]),
+        inputs: VecDeque::from(vec![Value::I64(1)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(14)]),
     });
 }
 
@@ -1604,8 +1604,8 @@ fn main() {
     }
     print_int(f(7))
 }",
-        inputs: VecDeque::from(vec![-1]),
-        expected_outputs: VecDeque::from(vec![-7]),
+        inputs: VecDeque::from(vec![Value::I64(-1)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(-7)]),
     });
 }
 
@@ -1628,7 +1628,7 @@ fn main() {
     print_int(x)
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![5]),
+        expected_outputs: VecDeque::from(vec![Value::I64(5)]),
     });
 }
 
@@ -1647,7 +1647,7 @@ fn main() {
     print_int(f(5))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![9, 16, 25]),
+        expected_outputs: VecDeque::from(vec![Value::I64(9), Value::I64(16), Value::I64(25)]),
     });
 }
 
@@ -1670,7 +1670,7 @@ fn main() {
 }",
         inputs: VecDeque::new(),
         // f = double, y = 3, double(3) = 6
-        expected_outputs: VecDeque::from(vec![6]),
+        expected_outputs: VecDeque::from(vec![Value::I64(6)]),
     });
 }
 
@@ -1696,9 +1696,9 @@ fn main() {
     print_int(f(10))
     print_int(f(f(10)))
 }",
-        inputs: VecDeque::from(vec![1]),
+        inputs: VecDeque::from(vec![Value::I64(1)]),
         // f = inc, inc(10) = 11, inc(inc(10)) = 12
-        expected_outputs: VecDeque::from(vec![11, 12]),
+        expected_outputs: VecDeque::from(vec![Value::I64(11), Value::I64(12)]),
     });
 }
 
@@ -1718,8 +1718,8 @@ fn main() {
     flag = read_int()
     print_int((flag > 0 ? double : negate)(7))
 }",
-        inputs: VecDeque::from(vec![1]),
-        expected_outputs: VecDeque::from(vec![14]),
+        inputs: VecDeque::from(vec![Value::I64(1)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(14)]),
     });
 }
 
@@ -1739,8 +1739,8 @@ fn main() {
     flag = read_int()
     print_int((flag > 0 ? double : negate)(7))
 }",
-        inputs: VecDeque::from(vec![-1]),
-        expected_outputs: VecDeque::from(vec![-7]),
+        inputs: VecDeque::from(vec![Value::I64(-1)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(-7)]),
     });
 }
 
@@ -1762,7 +1762,7 @@ fn main() {
     print_int(t[1](5))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![10, 15]),
+        expected_outputs: VecDeque::from(vec![Value::I64(10), Value::I64(15)]),
     });
 }
 
@@ -1780,7 +1780,7 @@ fn main() {
     print_int(sum_arr(arr))
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![60]),
+        expected_outputs: VecDeque::from(vec![Value::I64(60)]),
     });
 }
 
@@ -1799,7 +1799,7 @@ fn main() {
 }",
         inputs: VecDeque::new(),
         // Arrays are passed by reference (same as tuples)
-        expected_outputs: VecDeque::from(vec![99, 2]),
+        expected_outputs: VecDeque::from(vec![Value::I64(99), Value::I64(2)]),
     });
 }
 
@@ -1816,7 +1816,7 @@ fn main() {
     print_int(a[1])
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![3, 7]),
+        expected_outputs: VecDeque::from(vec![Value::I64(3), Value::I64(7)]),
     });
 }
 
@@ -1833,7 +1833,7 @@ fn main() {
 }",
         inputs: VecDeque::new(),
         // (1+2+3)*2 = 12
-        expected_outputs: VecDeque::from(vec![12]),
+        expected_outputs: VecDeque::from(vec![Value::I64(12)]),
     });
 }
 
@@ -1861,6 +1861,6 @@ fn main() {
         inputs: VecDeque::new(),
         // i=0: inc(0)=1, i=1: inc(1)=2, i=2: inc(2)=3,
         // i=3: dec(3)=2, i=4: dec(2)=1, i=5: dec(1)=0
-        expected_outputs: VecDeque::from(vec![0]),
+        expected_outputs: VecDeque::from(vec![Value::I64(0)]),
     });
 }
