@@ -113,13 +113,9 @@ fn optimize_block_order(
         }
     }
 
-    // Append any unreachable blocks (e.g. dead code after tail calls)
-    // at the end so they aren't lost
-    for node in adj_graph.node_indices() {
-        if !order.contains(&node) {
-            order.push(node);
-        }
-    }
+    // It is possible that blocks will be deleted in this pass, but only
+    // if they were unreachable anyway (mostly due to tail call
+    // optimizations).
 
     order
 }
