@@ -4882,4 +4882,109 @@ x[0] = 42
         };
         tc.run();
     }
+
+    #[test]
+    fn test_print_str_call() {
+        let tc = ParserTestCase {
+            input_str: r#"fn main() -> int { print_str("hi") }"#,
+            expected_tokens: vec![
+                TokenValue::Fn,
+                TokenValue::Identifier("main"),
+                TokenValue::OpenParen,
+                TokenValue::CloseParen,
+                TokenValue::RightArrow,
+                TokenValue::IntType,
+                TokenValue::OpenCurly,
+                TokenValue::Identifier("print_str"),
+                TokenValue::OpenParen,
+                TokenValue::StringLiteral("hi"),
+                TokenValue::CloseParen,
+                TokenValue::CloseCurly,
+            ],
+            expected_parse_tree: pt::Module {
+                functions: vec![pt::Function {
+                    name: "main",
+                    params: vec![],
+                    return_type: ValueType::IntType,
+                    statements: vec![pt::Statement::Expr(pt::Expr::Call(
+                        Box::new(pt::Expr::Id("print_str")),
+                        vec![pt::Expr::StringLiteral("hi")],
+                    ))],
+                }],
+            },
+            expected_ast: ast::Program {
+                functions: vec![ast::Function {
+                    name: t_global!(LABEL_MAIN),
+                    body: vec![ast::Statement::Expr(ast::Expr::Call(
+                        Box::new(ast::Expr::Id(main_local!("print_str"))),
+                        vec![ast::Expr::Array(vec![
+                            ast::Expr::Constant(Value::Char('h')),
+                            ast::Expr::Constant(Value::Char('i')),
+                            ast::Expr::Constant(Value::Char('\0')),
+                        ])],
+                    ))],
+                    types: HashMap::new(),
+                    params: IndexMap::new(),
+                    return_type: ValueType::IntType,
+                }],
+                global_types: HashMap::new(),
+            },
+        };
+        tc.run();
+    }
+
+    #[test]
+    fn test_string_type_parameter() {
+        let tc = ParserTestCase {
+            input_str: "fn echo(s: string) -> string {\ns = s\n}",
+            expected_tokens: vec![
+                TokenValue::Fn,
+                TokenValue::Identifier("echo"),
+                TokenValue::OpenParen,
+                TokenValue::Identifier("s"),
+                TokenValue::Colon,
+                TokenValue::StringType,
+                TokenValue::CloseParen,
+                TokenValue::RightArrow,
+                TokenValue::StringType,
+                TokenValue::OpenCurly,
+                TokenValue::Newline,
+                TokenValue::Identifier("s"),
+                TokenValue::Equals,
+                TokenValue::Identifier("s"),
+                TokenValue::Newline,
+                TokenValue::CloseCurly,
+            ],
+            expected_parse_tree: pt::Module {
+                functions: vec![pt::Function {
+                    name: "echo",
+                    params: vec![("s", ValueType::ArrayType(Box::new(ValueType::CharType)))],
+                    return_type: ValueType::ArrayType(Box::new(ValueType::CharType)),
+                    statements: vec![pt::Statement::Assign(
+                        "s",
+                        pt::Expr::Id("s"),
+                        None,
+                    )],
+                }],
+            },
+            expected_ast: ast::Program {
+                functions: vec![ast::Function {
+                    name: t_global!("echo"),
+                    body: vec![ast::Statement::Assign(
+                        AssignDest::Id(t_local!("s", t_global!("echo"))),
+                        ast::Expr::Id(t_local!("s", t_global!("echo"))),
+                        None,
+                    )],
+                    types: HashMap::new(),
+                    params: IndexMap::from([(
+                        t_local!("s", t_global!("echo")),
+                        ValueType::ArrayType(Box::new(ValueType::CharType)),
+                    )]),
+                    return_type: ValueType::ArrayType(Box::new(ValueType::CharType)),
+                }],
+                global_types: HashMap::new(),
+            },
+        };
+        tc.run();
+    }
 }
