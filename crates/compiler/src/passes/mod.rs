@@ -1,8 +1,8 @@
 use crate::syntax_trees::*;
 use enum_dispatch::enum_dispatch;
 
-mod partial_eval;
-pub use partial_eval::PartialEval;
+mod constant_folding;
+pub use constant_folding::ConstantFolding;
 mod patch_instructions;
 pub use patch_instructions::PatchInstructions;
 mod prelude_conclusion;
@@ -50,7 +50,7 @@ pub trait ASTPass {
 pub enum ASTtoAST {
     TypeCheck,
     ShortCircuiting,
-    PartialEval,
+    ConstantFolding,
     RemoveComplexOperands,
     InjectAllocations,
     TupleizeExcessArgs,

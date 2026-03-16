@@ -1,17 +1,23 @@
+use std::collections::HashMap;
+
 use crate::{
     passes::ASTPass,
     syntax_trees::{ast::*, shared::*},
 };
 
-/// `PartialEval` Pass
+/// `ConstantFolding` Pass
 ///
 /// Performs compile-time constant folding and dead-code elimination:
+/// - Extracts constant variables into constants
 /// - Folds `BinaryOp`/`UnaryOp` whose operands are all constants
 /// - Applies algebraic identities (`x + 0`, `x * 0`, `x * 1`, `x &&
 ///   true`, etc.)
 /// - Inlines constant-condition `Ternary` and `Conditional` branches
 /// - Eliminates `WhileLoop` with always-false condition; warns on
 ///   always-true
+/// - Uses fixed-point optimization strategy with both the variable
+///   extraction and the operation elision to get every case, even more
+///   complex ones.
 ///
 /// Optional optimization pass, does not affect functionality
 ///
@@ -21,20 +27,14 @@ use crate::{
 /// - No `BinaryOp` or `UnaryOp` with all-constant operands
 /// - No `Ternary`/`Conditional`/`WhileLoop` with constant conditions
 #[derive(Debug)]
-pub struct PartialEval;
+pub struct ConstantFolding;
 
-impl ASTPass for PartialEval {
+impl ASTPass for ConstantFolding {
     fn run_pass(self, mut m: Program) -> Program {
-        let mut new_functions = vec![];
-        for mut f in m.functions {
-            let mut new_body = vec![];
+        let mut new_functions = Vec::with_capacity(m.functions.len());
 
-            for s in f.body {
-                partial_eval_statement(s, &mut new_body);
-            }
-
-            f.body = new_body;
-            new_functions.push(f);
+        for f in m.functions {
+            new_functions.push(fixed_point_constant_fold(f));
         }
 
         m.functions = new_functions;
@@ -42,48 +42,78 @@ impl ASTPass for PartialEval {
     }
 }
 
-fn partial_eval_statement(s: Statement, new_statements: &mut Vec<Statement>) {
+fn fixed_point_constant_fold(mut f: Function) -> Function {
+    loop {
+        let (f1, partial_eval_did_anything) = partial_eval(f);
+        let (f2, const_vars_did_anything) = extract_constant_vars(f1);
+        f = f2;
+
+        if !partial_eval_did_anything && !const_vars_did_anything {
+            break;
+        }
+    }
+
+    f
+}
+
+fn partial_eval(mut f: Function) -> (Function, bool) {
+    let mut new_body = Vec::with_capacity(f.body.len());
+
+    let mut did_anything = false;
+    for s in f.body {
+        partial_eval_statement(s, &mut new_body, &mut did_anything);
+    }
+
+    f.body = new_body;
+    (f, did_anything)
+}
+
+fn partial_eval_statement(
+    s: Statement,
+    new_statements: &mut Vec<Statement>,
+    did_anything: &mut bool,
+) {
     match s {
         Statement::Assign(dest, mut e, _) => {
-            partial_eval_expr(&mut e);
+            partial_eval_expr(&mut e, did_anything);
             new_statements.push(Statement::Assign(dest, e, None));
         }
         Statement::Expr(mut e) => {
-            partial_eval_expr(&mut e);
+            partial_eval_expr(&mut e, did_anything);
             new_statements.push(Statement::Expr(e));
         }
         Statement::Conditional(mut cond, pos, neg) => {
-            partial_eval_expr(&mut cond);
+            partial_eval_expr(&mut cond, did_anything);
 
             if let Expr::Constant(val) = cond {
                 if val.into() {
                     let mut pos_statements = Vec::new();
                     pos.into_iter()
-                        .for_each(|s| partial_eval_statement(s, &mut pos_statements));
+                        .for_each(|s| partial_eval_statement(s, &mut pos_statements, did_anything));
                     new_statements.extend(pos_statements);
                 } else {
                     let mut neg_statements = Vec::new();
                     neg.into_iter()
-                        .for_each(|s| partial_eval_statement(s, &mut neg_statements));
+                        .for_each(|s| partial_eval_statement(s, &mut neg_statements, did_anything));
                     new_statements.extend(neg_statements);
                 }
             } else {
                 let mut pos_pe = Vec::new();
                 pos.into_iter()
-                    .for_each(|s| partial_eval_statement(s, &mut pos_pe));
+                    .for_each(|s| partial_eval_statement(s, &mut pos_pe, did_anything));
 
                 let mut neg_pe = Vec::new();
                 neg.into_iter()
-                    .for_each(|s| partial_eval_statement(s, &mut neg_pe));
+                    .for_each(|s| partial_eval_statement(s, &mut neg_pe, did_anything));
 
                 new_statements.push(Statement::Conditional(cond, pos_pe, neg_pe));
             }
         }
         Statement::WhileLoop(mut cond, body) => {
-            partial_eval_expr(&mut cond);
+            partial_eval_expr(&mut cond, did_anything);
             let mut body_pe = vec![];
             body.into_iter()
-                .for_each(|s| partial_eval_statement(s, &mut body_pe));
+                .for_each(|s| partial_eval_statement(s, &mut body_pe, did_anything));
 
             if let Expr::Constant(val) = cond {
                 if val.into() {
@@ -98,13 +128,13 @@ fn partial_eval_statement(s: Statement, new_statements: &mut Vec<Statement>) {
             }
         }
         Statement::Return(mut expr) => {
-            partial_eval_expr(&mut expr);
+            partial_eval_expr(&mut expr, did_anything);
             new_statements.push(Statement::Return(expr));
         }
     }
 }
 
-fn partial_eval_expr(e: &mut Expr) {
+fn partial_eval_expr(e: &mut Expr, did_anything: &mut bool) {
     use Expr::*;
 
     match e {
@@ -112,13 +142,14 @@ fn partial_eval_expr(e: &mut Expr) {
             // Try and evaluate both operands recursively, then if
             // they're both constants we can evaluate the whole
             // expression
-            partial_eval_expr(&mut *left);
-            partial_eval_expr(&mut *right);
+            partial_eval_expr(&mut *left, did_anything);
+            partial_eval_expr(&mut *right, did_anything);
 
             if let Constant(l_val) = &**left
                 && let Constant(r_val) = &**right
             {
-                *e = Constant(op.eval(l_val, r_val))
+                *e = Constant(op.eval(l_val, r_val));
+                *did_anything = true;
             } else {
                 // There are some evals we can do with even a single
                 // constant out of the two args, ie multiply by 0 or add
@@ -138,16 +169,19 @@ fn partial_eval_expr(e: &mut Expr) {
                         BinaryOperator::Add if constant == &Value::I64(0) => {
                             // x + 0 = 0
                             *e = *var.to_owned();
+                            *did_anything = true;
                         }
 
                         BinaryOperator::And => match constant {
                             // x && true == x
                             Value::Bool(true) => {
                                 *e = *var.to_owned();
+                                *did_anything = true;
                             }
                             // x && false == false
                             Value::Bool(false) => {
                                 *e = Constant(Value::Bool(false));
+                                *did_anything = true;
                             }
                             _ => {}
                         },
@@ -156,10 +190,12 @@ fn partial_eval_expr(e: &mut Expr) {
                             // x || false == x
                             Value::Bool(false) => {
                                 *e = *var.to_owned();
+                                *did_anything = true;
                             }
                             // x || true == true
                             Value::Bool(true) => {
                                 *e = Constant(Value::Bool(true));
+                                *did_anything = true;
                             }
                             _ => {}
                         },
@@ -168,10 +204,12 @@ fn partial_eval_expr(e: &mut Expr) {
                             // x * 0 == 0
                             Value::I64(0) => {
                                 *e = Constant(Value::I64(0));
+                                *did_anything = true;
                             }
                             // x * 1 == 1
                             Value::I64(1) => {
                                 *e = *var.to_owned();
+                                *did_anything = true;
                             }
                             _ => {}
                         },
@@ -183,25 +221,26 @@ fn partial_eval_expr(e: &mut Expr) {
         UnaryOp(op, expr) => {
             // Try and evaluate the operand recursively, then if its
             // constant we can evaluate the whole expression
-            partial_eval_expr(&mut *expr);
+            partial_eval_expr(&mut *expr, did_anything);
             if let Constant(val) = &**expr {
                 *e = Constant(op.eval(&val));
+                *did_anything = true;
             }
         }
         Call(_name, args) => {
             // Can't evaluate through function calls right now, but try
             // to evaluate the arguments regardless
             for i in args {
-                partial_eval_expr(i);
+                partial_eval_expr(i, did_anything);
             }
         }
         StatementBlock(statements, expr) => {
             let mut new_statements = Vec::new();
             statements
                 .iter()
-                .for_each(|s| partial_eval_statement(s.clone(), &mut new_statements));
+                .for_each(|s| partial_eval_statement(s.clone(), &mut new_statements, did_anything));
             *statements = new_statements;
-            partial_eval_expr(expr);
+            partial_eval_expr(expr, did_anything);
         }
         Constant(_val) => {
             // Already a constant, nothing to evaluate
@@ -210,22 +249,26 @@ fn partial_eval_expr(e: &mut Expr) {
             // Can't do anything
         }
         Ternary(cond, pos, neg) => {
-            partial_eval_expr(&mut *cond);
-            partial_eval_expr(&mut *pos);
-            partial_eval_expr(&mut *neg);
+            partial_eval_expr(&mut *cond, did_anything);
+            partial_eval_expr(&mut *pos, did_anything);
+            partial_eval_expr(&mut *neg, did_anything);
 
             if let Constant(val) = cond.as_ref() {
                 if val.into() {
                     *e = (**pos).clone();
+                    *did_anything = true;
                 } else {
                     *e = (**neg).clone();
+                    *did_anything = true;
                 }
             }
         }
-        Tuple(elems) | Expr::Array(elems) => elems.iter_mut().for_each(partial_eval_expr),
+        Tuple(elems) | Expr::Array(elems) => elems
+            .iter_mut()
+            .for_each(|e| partial_eval_expr(e, did_anything)),
         Subscript(container, idx) => {
-            partial_eval_expr(container.as_mut());
-            partial_eval_expr(idx.as_mut());
+            partial_eval_expr(container.as_mut(), did_anything);
+            partial_eval_expr(idx.as_mut(), did_anything);
         }
         GlobalSymbol(_) => {}
         Allocate(_, _) => {
@@ -233,6 +276,264 @@ fn partial_eval_expr(e: &mut Expr) {
         }
         Closure(..) => {}
         Lambda(_) => panic!("Should've been removed already"),
+    }
+}
+
+fn extract_constant_vars(mut f: Function) -> (Function, bool) {
+    let constant_map = identify_constant_vars(&f);
+
+    let mut replaced_any = false;
+    f.body = f
+        .body
+        .into_iter()
+        .filter_map(|s| replace_constant_vars(s, &constant_map, &mut replaced_any))
+        .collect();
+
+    (f, replaced_any)
+}
+
+fn identify_constant_vars(f: &Function) -> HashMap<Identifier, Value> {
+    let mut constant_map = HashMap::new();
+
+    for s in &f.body {
+        identify_constant_vars_for_statement(s, &mut constant_map);
+    }
+
+    // Eliminate any entires in the constant map that were determined
+    // not to be constants
+    constant_map
+        .into_iter()
+        .filter_map(|(k, v)| {
+            if let Some(val) = v {
+                Some((k, val))
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+fn identify_constant_vars_for_statement(
+    s: &Statement,
+    constant_map: &mut HashMap<Identifier, Option<Value>>,
+) {
+    match s {
+        Statement::Assign(AssignDest::Id(id), e, _) => {
+            update_constant_map_for_assign(id, e, constant_map);
+            identify_constant_vars_for_expr(e, constant_map);
+        }
+        Statement::Assign(_, e, _) | Statement::Expr(e) | Statement::Return(e) => {
+            identify_constant_vars_for_expr(e, constant_map);
+        }
+        Statement::Conditional(e, pos, neg) => {
+            identify_constant_vars_for_expr(e, constant_map);
+            for s in pos {
+                identify_constant_vars_for_statement(s, constant_map);
+            }
+            for s in neg {
+                identify_constant_vars_for_statement(s, constant_map);
+            }
+        }
+        Statement::WhileLoop(e, body) => {
+            identify_constant_vars_for_expr(e, constant_map);
+            for s in body {
+                identify_constant_vars_for_statement(s, constant_map);
+            }
+        }
+    }
+}
+
+fn identify_constant_vars_for_expr(
+    e: &Expr,
+    constant_map: &mut HashMap<Identifier, Option<Value>>,
+) {
+    match e {
+        Expr::Closure(_, captures) => {
+            for c in captures {
+                // Any captures variable must not be extracted out
+                // because there's no good way to propagate that into to
+                // the lambda function at this stage.
+                constant_map.insert(c.clone(), None);
+            }
+        }
+        Expr::StatementBlock(statements, expr) => {
+            for s in statements {
+                identify_constant_vars_for_statement(s, constant_map);
+            }
+            identify_constant_vars_for_expr(expr, constant_map);
+        }
+        Expr::BinaryOp(expr, _, expr1) => {
+            identify_constant_vars_for_expr(expr, constant_map);
+            identify_constant_vars_for_expr(expr1, constant_map);
+        }
+        Expr::UnaryOp(_, expr) => {
+            identify_constant_vars_for_expr(expr, constant_map);
+        }
+        Expr::Call(expr, exprs) => {
+            identify_constant_vars_for_expr(expr, constant_map);
+            for e in exprs {
+                identify_constant_vars_for_expr(e, constant_map);
+            }
+        }
+        Expr::Ternary(expr, expr1, expr2) => {
+            identify_constant_vars_for_expr(expr, constant_map);
+            identify_constant_vars_for_expr(expr1, constant_map);
+            identify_constant_vars_for_expr(expr2, constant_map);
+        }
+        Expr::Tuple(exprs) => {
+            for e in exprs {
+                identify_constant_vars_for_expr(e, constant_map);
+            }
+        }
+        Expr::Array(exprs) => {
+            for e in exprs {
+                identify_constant_vars_for_expr(e, constant_map);
+            }
+        }
+        Expr::Subscript(expr, expr1) => {
+            identify_constant_vars_for_expr(expr, constant_map);
+            identify_constant_vars_for_expr(expr1, constant_map);
+        }
+        Expr::Constant(_)
+        | Expr::Id(_)
+        | Expr::Allocate(_, _)
+        | Expr::GlobalSymbol(_)
+        | Expr::Lambda(_) => {}
+    }
+}
+
+fn update_constant_map_for_assign(
+    id: &Identifier,
+    e: &Expr,
+    constant_map: &mut HashMap<Identifier, Option<Value>>,
+) {
+    if let Expr::Constant(v) = e && should_extract_value(v) && !constant_map.contains_key(id) {
+        constant_map.insert(id.clone(), Some(v.clone()));
+    } else {
+        // If this ID is written to multiple times, or written to with a
+        // non-constant, or written to with a non-extractable value
+        // type, mark it as None so that we know that it's not actually
+        // a constant.
+        //
+        // Need to make note of the non-extractable IDs so that even if
+        // there is an extractable looking assign later we know not that
+        // it's not actually.
+        constant_map.insert(id.clone(), None);
+    }
+}
+
+fn should_extract_value(v: &Value) -> bool {
+    match v {
+        Value::I64(_) | Value::Bool(_) | Value::Char(_) | Value::None => true,
+        Value::Tuple(_) | Value::Array(_) | Value::Function(..) => false,
+    }
+}
+
+fn replace_constant_vars(
+    mut s: Statement,
+    constant_map: &HashMap<Identifier, Value>,
+    did_anything: &mut bool,
+) -> Option<Statement> {
+    match s {
+        Statement::Assign(AssignDest::Id(id), Expr::Constant(v), _)
+            if constant_map.contains_key(&id) =>
+        {
+            // Remove this assignment, since we're going to propagate
+            // its constant out to all uses
+            assert_eq!(v, constant_map[&id], "Constant map is wrong?");
+            None
+        }
+        _ => {
+            replace_constant_vars_for_statement(&mut s, constant_map, did_anything);
+            Some(s)
+        }
+    }
+}
+
+fn replace_constant_vars_for_statement(
+    s: &mut Statement,
+    constant_map: &HashMap<Identifier, Value>,
+    did_anything: &mut bool,
+) {
+    match s {
+        Statement::Assign(_, expr, _) | Statement::Expr(expr) => {
+            replace_constant_vars_for_expr(expr, constant_map, did_anything);
+        }
+        Statement::Conditional(expr, statements, statements1) => {
+            replace_constant_vars_for_expr(expr, constant_map, did_anything);
+            for s in statements {
+                replace_constant_vars_for_statement(s, constant_map, did_anything);
+            }
+            for s in statements1 {
+                replace_constant_vars_for_statement(s, constant_map, did_anything);
+            }
+        }
+        Statement::WhileLoop(expr, statements) => {
+            replace_constant_vars_for_expr(expr, constant_map, did_anything);
+            for s in statements {
+                replace_constant_vars_for_statement(s, constant_map, did_anything);
+            }
+        }
+        Statement::Return(expr) => {
+            replace_constant_vars_for_expr(expr, constant_map, did_anything);
+        }
+    }
+}
+
+fn replace_constant_vars_for_expr(
+    e: &mut Expr,
+    constant_map: &HashMap<Identifier, Value>,
+    did_anything: &mut bool,
+) {
+    match e {
+        Expr::Id(id) if constant_map.contains_key(id) => {
+            *e = Expr::Constant(constant_map[id].clone());
+            *did_anything = true;
+        }
+        Expr::StatementBlock(statements, expr) => {
+            for s in statements {
+                replace_constant_vars_for_statement(s, constant_map, did_anything);
+            }
+            replace_constant_vars_for_expr(expr, constant_map, did_anything);
+        }
+        Expr::BinaryOp(expr, _, expr1) => {
+            replace_constant_vars_for_expr(expr, constant_map, did_anything);
+            replace_constant_vars_for_expr(expr1, constant_map, did_anything);
+        }
+        Expr::UnaryOp(_, expr) => {
+            replace_constant_vars_for_expr(expr, constant_map, did_anything);
+        }
+        Expr::Call(expr, exprs) => {
+            replace_constant_vars_for_expr(expr, constant_map, did_anything);
+            for e in exprs {
+                replace_constant_vars_for_expr(e, constant_map, did_anything);
+            }
+        }
+        Expr::Ternary(expr, expr1, expr2) => {
+            replace_constant_vars_for_expr(expr, constant_map, did_anything);
+            replace_constant_vars_for_expr(expr1, constant_map, did_anything);
+            replace_constant_vars_for_expr(expr2, constant_map, did_anything);
+        }
+        Expr::Tuple(exprs) => {
+            for e in exprs {
+                replace_constant_vars_for_expr(e, constant_map, did_anything);
+            }
+        }
+        Expr::Array(exprs) => {
+            for e in exprs {
+                replace_constant_vars_for_expr(e, constant_map, did_anything);
+            }
+        }
+        Expr::Subscript(expr, expr1) => {
+            replace_constant_vars_for_expr(expr, constant_map, did_anything);
+            replace_constant_vars_for_expr(expr1, constant_map, did_anything);
+        }
+        Expr::Constant(_)
+        | Expr::Id(_)
+        | Expr::Allocate(_, _)
+        | Expr::GlobalSymbol(_)
+        | Expr::Closure(_, _)
+        | Expr::Lambda(_) => {}
     }
 }
 
@@ -343,7 +644,7 @@ mod tests {
         ast_interpreter::interpret,
         compiler::{
             constants::LABEL_MAIN,
-            passes::{ASTPass, PartialEval},
+            passes::{ASTPass, ConstantFolding},
             syntax_trees::{ast::*, shared::*},
         },
     };
@@ -388,7 +689,8 @@ mod tests {
             }
             Expr::Subscript(tup, idx) => {
                 check_expr_invariants(tup);
-                if let (Expr::Tuple(elems), Expr::Constant(Value::I64(idx_val))) = (&**tup, &**idx) {
+                if let (Expr::Tuple(elems), Expr::Constant(Value::I64(idx_val))) = (&**tup, &**idx)
+                {
                     assert!(
                         !matches!(&elems[*idx_val as usize], Expr::Constant(_)),
                         "Subscript of Tuple with Constant element should have been folded: {e:?}"
@@ -404,7 +706,11 @@ mod tests {
                     check_statement_invariants(&s);
                 }
             }
-            Expr::Constant(_) | Expr::Id(_) | Expr::GlobalSymbol(_) | Expr::Allocate(_, _) | Expr::Closure(..) => {}
+            Expr::Constant(_)
+            | Expr::Id(_)
+            | Expr::GlobalSymbol(_)
+            | Expr::Allocate(_, _)
+            | Expr::Closure(..) => {}
         }
     }
 
@@ -446,9 +752,9 @@ mod tests {
     fn execute_test_case(mut tc: TestCase) {
         tc.ast.type_check();
 
-        println!("AST before Partial Eval: {:?}", tc.ast);
-        let post_run_ast = PartialEval.run_pass(tc.ast);
-        println!("AST after Partial Eval: {:?}", post_run_ast);
+        println!("AST before Constant Folding: {:?}", tc.ast);
+        let post_run_ast = ConstantFolding.run_pass(tc.ast);
+        println!("AST after Constant Folding: {:?}", post_run_ast);
 
         check_invariants(&post_run_ast);
 
@@ -795,7 +1101,13 @@ mod tests {
                 global_types: TypeEnv::new(),
             },
             inputs: VecDeque::new(),
-            expected_outputs: VecDeque::from(vec![Value::I64(5), Value::I64(4), Value::I64(3), Value::I64(2), Value::I64(1)]),
+            expected_outputs: VecDeque::from(vec![
+                Value::I64(5),
+                Value::I64(4),
+                Value::I64(3),
+                Value::I64(2),
+                Value::I64(1),
+            ]),
         });
     }
 
