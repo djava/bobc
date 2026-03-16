@@ -113,7 +113,13 @@ fn optimize_block_order(
         }
     }
 
-    assert!(order.len() == adj_graph.node_count());
+    // Append any unreachable blocks (e.g. dead code after tail calls)
+    // at the end so they aren't lost
+    for node in adj_graph.node_indices() {
+        if !order.contains(&node) {
+            order.push(node);
+        }
+    }
 
     order
 }

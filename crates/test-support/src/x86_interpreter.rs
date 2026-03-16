@@ -438,10 +438,11 @@ fn run_instr(
             let func = env.read_arg(s);
             let func_idx = (func as usize) & !FUNCTIONS_OFFSET;
             if execute_special_functions(func_idx, inputs, outputs, env) {
-                // If this is a special function, then
-                // execute_special_functions() will take care of
-                // everything including return value, so just `Next` it.
-                Continuation::Next
+                // This is a tail call whose stack frame is already torn
+                // down. The special function put its result in RAX, so
+                // return to the caller rather than falling through to
+                // dead code after the jmp.
+                Continuation::Return
             } else {
                 Continuation::Jump(env.functions[func_idx].clone())
             }
