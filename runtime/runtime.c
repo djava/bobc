@@ -857,6 +857,7 @@ void __assign_to_array_elem(int64_t *ptr, int64_t idx, int64_t value) {
 }
 
 void print_str(int64_t *ptr) {
+  int string_length = (int)len(ptr);
   char* str = (char*)(&ptr[1]);
-  puts(str);
+  printf("%.*s\n", string_length, str);
 }
