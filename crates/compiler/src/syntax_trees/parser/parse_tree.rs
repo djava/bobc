@@ -38,6 +38,7 @@ pub enum Expr<'a> {
     Subscript(Box<Expr<'a>>, Box<Expr<'a>>),
     Lambda(Vec<&'a str>, Vec<Statement<'a>>),
     StringLiteral(&'a str),
+    CharLiteral(char),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -126,7 +127,15 @@ parser! {
 
         rule string_type() -> ValueType = [TokenValue::StringType] { ValueType::ArrayType(Box::new(ValueType::CharType)) }
 
-        rule _type() -> ValueType = array_type() / tuple_type() / primitive_type() / callable_type() / none_type() / string_type()
+        rule char_type() -> ValueType = [TokenValue::CharType] { ValueType::CharType }
+
+        rule _type() -> ValueType = array_type()
+                                  / tuple_type()
+                                  / primitive_type()
+                                  / callable_type()
+                                  / none_type()
+                                  / string_type()
+                                  / char_type()
 
         // Trailing comma is mandatory for one elem but optional for multiple
         rule tuple_elements() -> Vec<Expr<'t>> =
@@ -181,6 +190,7 @@ parser! {
             [TokenValue::Bool(val)] { Expr::Bool(val) }
             [TokenValue::OpenParen] e:expr() [TokenValue::CloseParen] { Expr::Parens(Box::new(e)) }
             [TokenValue::StringLiteral(s)] { Expr::StringLiteral(s) }
+            [TokenValue::CharLiteral(c)] { Expr::CharLiteral(c) }
         }
 
         pub rule assign_type_hint() -> Option<ValueType> = ([TokenValue::Colon] t:_type() { t })?

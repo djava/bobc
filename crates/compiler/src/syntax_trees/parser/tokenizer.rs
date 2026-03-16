@@ -3,7 +3,7 @@ use peg::*;
 use nom::{
     IResult, Parser,
     branch::alt,
-    bytes::complete::{is_a, is_not, tag, take_until, take_while},
+    bytes::complete::{is_a, is_not, tag, take, take_until, take_while},
     combinator::{all_consuming, eof, peek, recognize},
     multi::many0,
     sequence::terminated,
@@ -49,6 +49,7 @@ pub enum TokenValue<'a> {
     ArrayType,
     CallableType,
     StringType,
+    CharType,
     NoneType,
     RightArrow,
     Return,
@@ -57,6 +58,7 @@ pub enum TokenValue<'a> {
     Semicolon,
     Divide,
     StringLiteral(&'a str),
+    CharLiteral(char),
 }
 
 #[derive(Debug)]
@@ -116,6 +118,7 @@ fn keyword_parser<'a>(rem: LocatedSpan<&'a str>) -> IResult<LocatedSpan<&'a str>
             token_map!("array", ArrayType),
             token_map!("callable", CallableType),
             token_map!("string", StringType),
+            token_map!("char", CharType),
             token_map!("none", NoneType),
             token_map!("return", Return),
             token_map!("lambda", Lambda),
@@ -221,6 +224,24 @@ fn string_literal_parser(rem: LocatedSpan<&'_ str>) -> IResult<LocatedSpan<&'_ s
     ))
 }
 
+fn char_literal_parser(rem: LocatedSpan<&'_ str>) -> IResult<LocatedSpan<&'_ str>, Token<'_>> {
+    let (rem, char_literal_span) =
+        recognize((tag("'"), is_not("'"), tag("'"))).parse(rem)?;
+
+    let (_open, (_rem, contents)) =
+        (tag("'"), take(1usize)).parse(char_literal_span)?;
+
+    Ok((
+        rem,
+        Token {
+            token: TokenValue::CharLiteral(
+                contents.into_fragment().chars().nth(0).unwrap(),
+            ),
+            span: char_literal_span,
+        },
+    ))
+}
+
 fn token_parser(rem: LocatedSpan<&'_ str>) -> IResult<LocatedSpan<&'_ str>, Token<'_>> {
     let (rem, _) = many0(whitespace).parse(rem)?;
 
@@ -229,6 +250,7 @@ fn token_parser(rem: LocatedSpan<&'_ str>) -> IResult<LocatedSpan<&'_ str>, Toke
         keyword_parser,
         int_parser,
         string_literal_parser,
+        char_literal_parser,
         punctuation_parser,
         id_parser,
     ))

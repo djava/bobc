@@ -101,6 +101,9 @@ fn to_ast_expr(pte: pt::Expr, func_id: &Identifier) -> ast::Expr {
 
             ast::Expr::Array(c)
         }
+        pt::Expr::CharLiteral(c) => {
+            ast::Expr::Constant(Value::Char(c))
+        }
     }
 }
 
