@@ -18,9 +18,10 @@ struct Eflags {
 const HEAP_OFFSET: usize = 0x10000;
 const FUNCTIONS_OFFSET: usize = 0x20000;
 
-const SPECIAL_FUNCTIONS: [&str; 6] = [
+const SPECIAL_FUNCTIONS: [&str; 7] = [
     FN_READ_INT,
     FN_PRINT_INT,
+    FN_PRINT_STR,
     FN_GC_INITIALIZE,
     FN_GC_COLLECT,
     FN_SUBSCRIPT_ARRAY,
@@ -238,6 +239,23 @@ fn execute_special_functions(
     if label == FN_PRINT_INT {
         let int = env.read_arg(&Arg::new_reg(Register::rdi));
         outputs.push_back(Value::I64(int));
+        return true;
+    } else if label == FN_PRINT_STR {
+        let str_tag_i64 = env.read_arg(&Arg::new_deref(Register::rdi, 0, Width::Quad));
+        let array_tag = ArrayTag::from_bits(str_tag_i64 as u64);
+
+        let mut chars = Vec::with_capacity(array_tag.length() as _);
+        for i in 0..array_tag.length() {
+            let c_i64 = env.read_arg(&Arg::new_deref(
+                Register::rdi,
+                (size_of_val(&array_tag) + i as usize) as _,
+                Width::Byte,
+            ));
+            let c = char::from_u32(c_i64 as _).expect("Couldn't convert to char");
+            chars.push(Value::Char(c));
+        }
+        outputs.push_back(Value::Array(chars));
+
         return true;
     } else if label == FN_READ_INT {
         let input = inputs.pop_front().expect("Overflowed input values");

@@ -45,18 +45,11 @@ fn interpret_expr(
             } else if **func == GlobalSymbol(global!(FN_PRINT_STR)) && args.len() == 1 {
                 if let Some(Value::Array(chars)) =
                     interpret_expr(&args[0], inputs, outputs, val_env, func_env)
+                    && chars.iter().all(|v| matches!(v, Value::Char(_)))
                 {
-                    println!(
-                        "[OUTPUT]: {}",
-                        chars
-                            .into_iter()
-                            .map(|v| if let Value::Char(c) = v {
-                                c
-                            } else {
-                                panic!("Arg to print_str was not chars")
-                            })
-                            .collect::<String>()
-                    );
+                    outputs.push_back(Value::Array(chars))
+                } else {
+                    panic!("Non-string passed to print_str")
                 }
 
                 Some(Value::None)
