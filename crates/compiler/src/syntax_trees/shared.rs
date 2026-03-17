@@ -251,7 +251,13 @@ impl BinaryOperator {
                 NotEquals => Some(BoolType),
                 _ => None,
             },
-            (TupleType(_), TupleType(_)) => match self {
+            (TupleType(a), TupleType(b)) if a == b => match self {
+                Equals => Some(BoolType),
+                NotEquals => Some(BoolType),
+                Is => Some(BoolType),
+                _ => None,
+            },
+            (ArrayType(a), ArrayType(b)) if a == b => match self {
                 Equals => Some(BoolType),
                 NotEquals => Some(BoolType),
                 Is => Some(BoolType),
