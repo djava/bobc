@@ -446,3 +446,168 @@ print_int(d >> 2)
         expected_outputs: VecDeque::from(vec![Value::I64(2), Value::I64(4), Value::I64(12), Value::I64(8)]),
     });
 }
+
+// ── Modulo ───────────────────────────────────────────────────────
+
+#[test]
+fn test_modulo_constants() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { print_int(10 % 3) }",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![Value::I64(1)]),
+    });
+}
+
+#[test]
+fn test_modulo_variable() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { x = read_int()
+print_int(x % 5)
+}",
+        inputs: VecDeque::from(vec![Value::I64(17)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(2)]),
+    });
+}
+
+#[test]
+fn test_modulo_two_variables() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { x = read_int()
+y = read_int()
+print_int(x % y)
+}",
+        inputs: VecDeque::from(vec![Value::I64(23), Value::I64(7)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(2)]),
+    });
+}
+
+#[test]
+fn test_modulo_evenly_divisible() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { print_int(12 % 4) }",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![Value::I64(0)]),
+    });
+}
+
+#[test]
+fn test_modulo_by_one() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { x = read_int()
+print_int(x % 1)
+}",
+        inputs: VecDeque::from(vec![Value::I64(99)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(0)]),
+    });
+}
+
+#[test]
+fn test_modulo_negative_dividend() {
+    // -7 % 3 = -1 (C/x86 semantics: remainder has sign of dividend)
+    execute_test_case(TestCase {
+        input: "fn main() -> int { x = read_int()
+print_int(x % 3)
+}",
+        inputs: VecDeque::from(vec![Value::I64(-7)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(-1)]),
+    });
+}
+
+#[test]
+fn test_modulo_negative_divisor() {
+    // 7 % -3 = 1 (remainder has sign of dividend)
+    execute_test_case(TestCase {
+        input: "fn main() -> int { x = read_int()
+y = read_int()
+print_int(x % y)
+}",
+        inputs: VecDeque::from(vec![Value::I64(7), Value::I64(-3)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(1)]),
+    });
+}
+
+#[test]
+fn test_modulo_both_negative() {
+    // -7 % -3 = -1
+    execute_test_case(TestCase {
+        input: "fn main() -> int { x = read_int()
+y = read_int()
+print_int(x % y)
+}",
+        inputs: VecDeque::from(vec![Value::I64(-7), Value::I64(-3)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(-1)]),
+    });
+}
+
+#[test]
+fn test_modulo_stored_in_variable() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { x = read_int()
+y = x % 7
+print_int(y)
+}",
+        inputs: VecDeque::from(vec![Value::I64(25)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(4)]),
+    });
+}
+
+#[test]
+fn test_modulo_mixed_with_arithmetic() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { a = read_int()
+b = read_int()
+r = a % b
+q = a / b
+print_int(r + q)
+}",
+        inputs: VecDeque::from(vec![Value::I64(17), Value::I64(5)]),
+        // 17 % 5 + 17 / 5 = 2 + 3 = 5
+        expected_outputs: VecDeque::from(vec![Value::I64(5)]),
+    });
+}
+
+#[test]
+fn test_modulo_in_conditional() {
+    // Check if even or odd
+    execute_test_case(TestCase {
+        input: "fn main() -> int { x = read_int()
+if x % 2 == 0 { print_int(1) }
+else { print_int(0) }
+}",
+        inputs: VecDeque::from(vec![Value::I64(6)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(1)]),
+    });
+}
+
+#[test]
+fn test_modulo_in_loop() {
+    // Print numbers 0-4 that are divisible by 2
+    execute_test_case(TestCase {
+        input: "fn main() -> int { i = 0
+while i < 5 {
+    if i % 2 == 0 { print_int(i) }
+    i = i + 1
+}
+}",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![Value::I64(0), Value::I64(2), Value::I64(4)]),
+    });
+}
+
+#[test]
+fn test_modulo_register_pressure() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int { a = read_int()
+b = read_int()
+c = read_int()
+d = read_int()
+e = read_int()
+f = read_int()
+print_int(a % b)
+print_int(c % d)
+print_int(e % f)
+}",
+        inputs: VecDeque::from(vec![Value::I64(17), Value::I64(5), Value::I64(23), Value::I64(7), Value::I64(100), Value::I64(9)]),
+        expected_outputs: VecDeque::from(vec![Value::I64(2), Value::I64(2), Value::I64(1)]),
+    });
+}
