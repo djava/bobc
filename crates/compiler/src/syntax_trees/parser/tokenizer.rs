@@ -59,6 +59,7 @@ pub enum TokenValue<'a> {
     Divide,
     StringLiteral(&'a str),
     CharLiteral(char),
+    Percent
 }
 
 #[derive(Debug)]
@@ -163,6 +164,7 @@ fn punctuation_parser<'a>(rem: LocatedSpan<&'a str>) -> IResult<LocatedSpan<&'a 
             token_map!("*", Asterisk),
             token_map!(";", Semicolon),
             token_map!("/", Divide),
+            token_map!("%", Percent),
         )),
     ))
     .parse(rem)?;

@@ -557,6 +557,7 @@ impl BinaryOperatorExt for BinaryOperator {
                         BinaryOperator::LeftShift => Value::I64(l_val << r_val),
                         BinaryOperator::RightShift => Value::I64(l_val >> r_val),
                         BinaryOperator::Divide => Value::I64(l_val / r_val),
+                        BinaryOperator::Modulo => Value::I64(l_val % r_val),
                         BinaryOperator::Equals => Value::Bool(l_val == r_val),
                         BinaryOperator::NotEquals => Value::Bool(l_val != r_val),
                         BinaryOperator::Greater => Value::Bool(l_val > r_val),

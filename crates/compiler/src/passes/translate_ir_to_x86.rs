@@ -164,6 +164,7 @@ fn translate_assign(dest: SizedAssignDest<()>, expr: ir::Expr) -> Vec<Instr> {
             translate_bitshift(BitshiftDirection::Right, dest, l, r)
         }
         ir::Expr::BinaryOp(l, BinaryOperator::Divide, r) => translate_divide(dest, l, r),
+        ir::Expr::BinaryOp(l, BinaryOperator::Modulo, r) => translate_modulo(dest, l, r),
         ir::Expr::BinaryOp(l, cmp_op, r) => translate_comparison(dest, cmp_op, l, r),
         ir::Expr::Call(func_id, args) => translate_call(Some(dest), func_id, args),
         ir::Expr::Allocate(bytes, value_type) => translate_allocation(dest, bytes, value_type),
@@ -750,7 +751,40 @@ fn translate_divide(
         Instr::cqto,
         Instr::mov(atom_to_arg(divisor), divisor_var.clone()),
         Instr::idiv(divisor_var),
+        // Quotient of division is in %rax
         Instr::mov(x86::Arg::new_reg(Register::rax), assigndest_to_arg(dest)),
+    ]);
+
+    ret
+}
+
+fn translate_modulo(
+    dest: SizedAssignDest<()>,
+    dividend: ir::Atom,
+    divisor: ir::Atom,
+) -> Vec<Instr> {
+    let mut ret = vec![];
+    if let AssignDest::Subscript(id, _idx) = &dest.value {
+        ret.push(Instr::mov(
+            x86::Arg::new_variable(id.clone(), Width::from(POINTER_SIZE as usize)),
+            x86::Arg::new_reg(x86::Register::r11),
+        ));
+    }
+
+    // The divisor argument cannot be an immediate, but we can't just
+    // use a PatchInstructions case to movq it to rax at the end because
+    // rax is also in use by idivq. It can be register or memory though,
+    // so give it an identifier that the register allocator will place.
+    let divisor_var =
+        x86::Arg::new_variable(Identifier::new_ephemeral(), Width::from(divisor.size));
+
+    ret.extend([
+        Instr::mov(atom_to_arg(dividend), x86::Arg::new_reg(Register::rax)),
+        Instr::cqto,
+        Instr::mov(atom_to_arg(divisor), divisor_var.clone()),
+        Instr::idiv(divisor_var),
+        // Remainder of division is in %rdx
+        Instr::mov(x86::Arg::new_reg(Register::rdx), assigndest_to_arg(dest)),
     ]);
 
     ret
@@ -886,6 +920,7 @@ fn try_binop_to_cc(op: BinaryOperator) -> Option<x86::Comparison> {
         | BinaryOperator::Or
         | BinaryOperator::LeftShift
         | BinaryOperator::RightShift
+        | BinaryOperator::Modulo
         | BinaryOperator::Divide => None,
     }
 }

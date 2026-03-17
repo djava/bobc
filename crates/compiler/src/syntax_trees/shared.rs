@@ -225,6 +225,7 @@ pub enum BinaryOperator {
     LeftShift,
     RightShift,
     Divide,
+    Modulo,
 }
 
 impl BinaryOperator {
@@ -240,6 +241,7 @@ impl BinaryOperator {
                 LeftShift => Some(IntType),
                 RightShift => Some(IntType),
                 Divide => Some(IntType),
+                Modulo => Some(IntType),
                 Equals => Some(BoolType),
                 NotEquals => Some(BoolType),
                 Greater => Some(BoolType),

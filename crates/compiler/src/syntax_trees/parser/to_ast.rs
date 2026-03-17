@@ -40,6 +40,7 @@ fn to_ast_expr(pte: pt::Expr, func_id: &Identifier) -> ast::Expr {
                 pt::Operator::LeftShift => BinaryOperator::LeftShift,
                 pt::Operator::RightShift => BinaryOperator::RightShift,
                 pt::Operator::Divide => BinaryOperator::Divide,
+                pt::Operator::Modulo => BinaryOperator::Modulo,
                 pt::Operator::Not => {
                     panic!("pt::Operator::Not should never be in a Binary expression")
                 }
