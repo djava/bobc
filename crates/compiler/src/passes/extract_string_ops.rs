@@ -5,6 +5,21 @@ use crate::{
     utils::global,
 };
 
+/// `ExtractStringOps` Pass
+///
+/// Rewrites string operations into calls to runtime helper functions.
+/// Currently only handles string concatenation: `BinaryOp(+)` on two
+/// `string`-typed operands is replaced with a call to
+/// `FN_STR_CONCAT`.
+///
+/// It is mandatory to run this pass
+///
+/// Pre-conditions:
+/// - `TypeCheck` (needs type information to identify string operands)
+/// - `DisambiguateSubscript` (subscripts must already be resolved)
+///
+/// Post-conditions:
+/// - No `BinaryOp(str, Add, str)` remains; all replaced with calls
 #[derive(Debug)]
 pub struct ExtractStringOps;
 

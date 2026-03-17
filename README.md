@@ -4,7 +4,7 @@ Compiler for a small statically-typed language, built for WPI's CS4533 (Programm
 
 ## The Language
 
-Source files use the `.bob` extension. The language contains: functions, variables, arithmetic, conditionals, loops, first-class functions, closures, tuples, and arrays. Types are `int`, `bool`, `tuple<...>`, `array<T, N>`, and `Callable<[args], ret>`. A short example:
+Source files use the `.bob` extension. The language contains: functions, variables, arithmetic, conditionals, loops, first-class functions, closures, tuples, arrays, and strings. Types are `int`, `bool`, `char`, `string`, `tuple<...>`, `array<T>`, and `Callable<[args], ret>`. A short example:
 
 ```
 fn factorial(n: int) -> int {
@@ -16,12 +16,15 @@ fn factorial(n: int) -> int {
     return result
 }
 
-fn main() -> int {
-    print_int(factorial(read_int()))
+fn main() {
+    print_str("Enter a number: ")
+    n = read_int()
+    print_str("Factorial of your number is:")
+    print_int(factorial(n))
 }
 ```
 
-Built-in functions are `read_int()`, `print_int(x)`, and `len(x)` (which takes array or tuple). There's no `print_bool` or string type. The runtime is a C library linked alongside the compiled output.
+Built-in functions are `read_int()`, `print_int(x)`, `print_str(s)`, and `len(x)` (which takes array or tuple). The runtime is a C library linked alongside the compiled output.
 
 ## Compilation Pipeline
 
@@ -31,7 +34,7 @@ The compiler works in three stages: AST passes, a translation to a flat IR, then
 
 1. **GlobalizeIdentifiers** — Determines which identifiers should be treated as globals rather than locals, and makes them so. 
 
-2. **TypeCheck** — Walks the AST and infers/checks types. Runs after each pass which adds identifiers or changes their types (after GlobalizeIdentifiers, ClosurizeFunctions and RemoveComplexOperands). Uses a type environment that maps identifiers to `ValueType`.
+2. **TypeCheck** — Walks the AST and infers/checks types. Runs multiple times in the pipeline: after GlobalizeIdentifiers, after ClosurizeLambdas, and after RemoveComplexOperands. Uses a type environment that maps identifiers to `ValueType`.
 
 3. **ClosurizeFunctions** — Prepares every named top-level function for the uniform closure calling convention. Inserts an empty captures tuple as the first argument and replaces references to functions with `Expr::Closure` nodes.
 
@@ -39,17 +42,21 @@ The compiler works in three stages: AST passes, a translation to a flat IR, then
 
 5. **DisambiguateSubscript** — Rewrites `x[i]` expressions to distinguish between tuple subscripts (which have statically-known integer indices) and array subscripts (which are dynamic). This affects how later passes generate allocation and access code.
 
-6. **ShortCircuiting** — Rewrites `&&` and `||` into nested ternary expressions so that evaluation is lazy.
+6. **ExtractStringOps** — Rewrites string operations into calls to runtime functions. Currently handles string concatenation (`+` on two strings), which is rewritten into a call to the runtime's `__str_concat`.
 
-7. **PartialEval** *(optional, only in `-O` mode)* — Constant folding and dead code elimination. Folds operations on known constants, applies algebraic identities like `x * 0 = 0` and `x + 0 = x`, and eliminates branches with statically-known conditions.
+7. **ConstantFolding** *(optional, only in `-O` mode)* — Constant folding and dead code elimination. Extracts constant variables, folds operations on known constants, applies algebraic identities like `x * 0 = 0` and `x + 0 = x`, and eliminates branches with statically-known conditions. Uses a fixed-point algorithm that alternates between constant variable extraction and operation folding to handle multi-step simplifications.
 
-8. **TupleizeExcessArgs** — The ABI passes the first six arguments in registers. Functions with more than six parameters get their excess arguments packed into a tuple, which is passed as the sixth argument. This is used instead of the typical stack slots for argument passing for simplicity.
+8. **ShortCircuiting** — Rewrites `&&` and `||` into nested ternary expressions so that evaluation is lazy.
 
-9. **RemoveComplexOperands** — Ensures every operand to every operation is "atomic" — either a variable or a constant. Any complex sub-expression gets lifted into a fresh temporary assignment before the containing statement.
+9. **TupleizeExcessArgs** — The ABI passes the first six arguments in registers. Functions with more than six parameters get their excess arguments packed into a tuple, which is passed as the sixth argument. This is used instead of the typical stack slots for argument passing for simplicity.
 
-10. **InjectAllocations** — Replaces tuple, array, and closure construction with explicit heap allocation sequences: check `free_ptr` against `fromspace_end`, call `gc_collect` if needed, bump the allocation pointer, then initialize each element by subscript assignment.
+10. **RemoveComplexOperands** — Ensures every operand to every operation is "atomic" — either a variable or a constant. Any complex sub-expression gets lifted into a fresh temporary assignment before the containing statement.
 
-11. **DeclosurizeCalls** — Rewrites all call expressions to extract the function pointer from the closure tuple and pass the closure as the first argument, implementing the actual calling convention.
+11. **TypeCheck** *(second run)* — Re-checks types after RemoveComplexOperands introduces new temporaries.
+
+12. **InjectAllocations** — Replaces tuple, array, and closure construction with explicit heap allocation sequences: check `free_ptr` against `fromspace_end`, call `gc_collect` if needed, bump the allocation pointer, then initialize each element by subscript assignment.
+
+13. **DeclosurizeCalls** — Rewrites all call expressions to extract the function pointer from the closure tuple and pass the closure as the first argument, implementing the actual calling convention.
 
 ### IR Translation
 
@@ -71,11 +78,11 @@ The compiler works in three stages: AST passes, a translation to a flat IR, then
 
 5. **RemoveJumps** *(optional)* — Removes unconditional jumps to the immediately following block.
 
-6. **OptimizeFallthrough** *(optional)* — Reorders basic blocks so that the most common fall-through path doesn't need a jump at all.
+6. **OptimizeFallthrough** *(optional)* — Reorders basic blocks so that the most common fall-through path doesn't need a jump at all. Also eliminates dead blocks that are unreachable after jump removal.
 
 ## Runtime
 
-The runtime is a C library in `runtime/`. It provides `read_int`, `print_int`, and the garbage collector. The GC is a semi-space (Cheney's algorithm) copying collector. On each collection, it copies all live objects from fromspace into tospace, updating all pointers on the root stack. Heap and root stack sizes are both 32KB by default. The runtime is almost entirely taken from Siek's textbook supporting materials
+The runtime is a C library in `runtime/`. It provides `read_int`, `print_int`, `print_str`, string concatenation (`__str_concat`), and the garbage collector. The GC is a semi-space (Cheney's algorithm) copying collector. On each collection, it copies all live objects from fromspace into tospace, updating all pointers on the root stack. Heap and root stack sizes are both 32KB by default. The runtime is almost entirely taken from Siek's textbook supporting materials.
 
 ## Building and Running
 

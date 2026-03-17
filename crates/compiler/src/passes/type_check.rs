@@ -7,8 +7,9 @@ use crate::{passes::ASTPass, syntax_trees::ast::Program};
 /// envs, for the locals of each function in the program and also in
 /// global_types for the whole program
 ///
-/// It is mandatory to run this pass, both before and after
-/// `ClosurizeFunctions`
+/// It is mandatory to run this pass. Runs multiple times in the
+/// pipeline: after `GlobalizeIdentifiers`, after `ClosurizeLambdas`,
+/// and after `RemoveComplexOperands`
 ///
 /// Pre-conditions:
 /// - `GlobalizeIdentifiers`

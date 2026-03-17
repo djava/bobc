@@ -25,6 +25,7 @@ use crate::{
 /// Post-conditions:
 /// - Blocks are reordered for maximum fallthrough
 /// - Any unconditional jmp to the physically next block is removed
+/// - Dead blocks unreachable after reordering are eliminated
 #[derive(Debug)]
 pub struct OptimizeFallthrough;
 
