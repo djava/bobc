@@ -787,19 +787,19 @@ int64_t proxy_vec_set(int64_t* vec, int i, int64_t arg) {
     
 }
 
-#define TAG_IS_ARRAY_MASK 0x01
+#define TAG_IS_ARRAY_MASK 0x01ULL
 #define TAG_IS_ARRAY_SHIFT 62
 
 // Tuple tag field extraction constants (see TupleTag in syntax_trees/shared.rs)
-#define TUPLE_LENGTH_TAG_MASK 0x03F
+#define TUPLE_LENGTH_TAG_MASK 0x03FULL
 #define TUPLE_LENGTH_TAG_SHIFT 1
 
 // Array tag field extraction constants (see ArrayTag in syntax_trees/shared.rs)
 #define ARRAY_LENGTH_TAG_SHIFT 6
-#define ARRAY_LENGTH_TAG_MASK 0x00FFFFFFFFFFFFFF
+#define ARRAY_LENGTH_TAG_MASK 0x00FFFFFFFFFFFFFFULL
 
 #define ARRAY_ELEM_SIZE_TAG_SHIFT 2
-#define ARRAY_ELEM_SIZE_TAG_MASK 0xF
+#define ARRAY_ELEM_SIZE_TAG_MASK 0xFULL
 
 int64_t len(int64_t* ptr) {
   if ((*ptr >> TAG_IS_ARRAY_SHIFT) & TAG_IS_ARRAY_MASK) {
@@ -860,4 +860,37 @@ void print_str(int64_t *ptr) {
   int string_length = (int)len(ptr);
   char* str = (char*)(&ptr[1]);
   printf("%.*s\n", string_length, str);
+}
+
+
+int64_t *__str_concat(int64_t *a, int64_t *b) {
+  char *a_str = (char*)(a + 1);
+  size_t a_len = strnlen(a_str, len(a));
+  
+  char *b_str = (char* )(b + 1);
+  size_t b_len = strnlen(b_str, len(b));
+
+  size_t new_len = a_len + b_len + 1;
+  
+  int64_t tag = ((new_len & ARRAY_LENGTH_TAG_MASK) << ARRAY_LENGTH_TAG_SHIFT)
+  | ((sizeof(char) & ARRAY_ELEM_SIZE_TAG_MASK) << ARRAY_ELEM_SIZE_TAG_SHIFT)
+  | ((1ULL & TAG_IS_ARRAY_MASK) << TAG_IS_ARRAY_SHIFT);
+  
+  size_t byte_allocation = new_len + sizeof(tag);
+  int64_t *out_ptr;
+  __asm__ volatile (
+      "movq %1, %%r11\n\t"  // Load GC free ptr into r11
+      "addq %2, %1\n\t"     // Bump GC free ptr by byte_allocation
+      "movq %3, (%%r11)\n\t" // Move tag into beginning of allocation
+      "movq %%r11, %0"       // Move tag pointer out
+      : "=r" (out_ptr), "+r" (__gc_free_ptr)
+      : "r" (byte_allocation), "r" (tag)
+      : "r11", "cc", "memory"
+  );
+
+  char* new_str = (char*)(out_ptr + 1);
+  strncpy(new_str, a_str, a_len);
+  strncat(new_str, b_str, b_len);
+
+  return out_ptr;
 }

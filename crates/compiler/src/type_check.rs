@@ -517,6 +517,16 @@ impl ast::Program {
                     Box::new(ValueType::NoneType),
                 ),
             ),
+            (
+                global!(FN_STR_CONCAT),
+                ValueType::FunctionType(
+                    vec![
+                        ValueType::string(),
+                        ValueType::string(),
+                    ],
+                    Box::new(ValueType::string())
+                )
+            )
         ];
 
         self.global_types = {

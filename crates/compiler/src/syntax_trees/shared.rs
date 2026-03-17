@@ -61,6 +61,10 @@ pub enum ValueType {
 }
 
 impl ValueType {
+    pub fn string() -> Self {
+        Self::ArrayType(Box::new(Self::CharType))
+    }
+
     pub fn size(&self) -> usize {
         match self {
             ValueType::IntType => 8,
@@ -261,6 +265,7 @@ impl BinaryOperator {
                 Equals => Some(BoolType),
                 NotEquals => Some(BoolType),
                 Is => Some(BoolType),
+                Add if **a == ValueType::CharType => Some(ArrayType(Box::new(CharType))),
                 _ => None,
             },
             (_, _) => None,

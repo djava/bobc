@@ -39,6 +39,8 @@ mod disambiguate_subscript;
 pub use disambiguate_subscript::DisambiguateSubscript;
 mod resolve_width;
 pub use resolve_width::ResolveWidth;
+mod extract_string_ops;
+pub use extract_string_ops::ExtractStringOps;
 
 #[enum_dispatch]
 pub trait ASTPass {
@@ -59,6 +61,7 @@ pub enum ASTtoAST {
     ClosurizeFunctions,
     DeclosurizeCalls,
     DisambiguateSubscript,
+    ExtractStringOps,
 }
 
 #[enum_dispatch]

@@ -24,6 +24,7 @@ pub const FN_GC_COLLECT: &str = "__gc_collect";
 pub const FN_GC_INITIALIZE: &str = "__gc_initialize";
 pub const FN_SUBSCRIPT_ARRAY: &str = "__subscript_array";
 pub const FN_ASSIGN_TO_ARRAY_ELEM: &str = "__assign_to_array_elem";
+pub const FN_STR_CONCAT: &str = "__str_concat";
 
 pub static EXTERNED_FUNCTIONS: LazyLock<Vec<Identifier>> = LazyLock::new(|| {
     [
@@ -35,6 +36,7 @@ pub static EXTERNED_FUNCTIONS: LazyLock<Vec<Identifier>> = LazyLock::new(|| {
         FN_GC_INITIALIZE,
         FN_SUBSCRIPT_ARRAY,
         FN_ASSIGN_TO_ARRAY_ELEM,
+        FN_STR_CONCAT,
     ]
     .into_iter()
     .map(|f| global!(f))
