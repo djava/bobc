@@ -96,10 +96,10 @@ fn patch_block(b: &mut Block) {
                 });
             }
 
-            Instr::cmp(s, d) if matches!(s.value, ArgValue::Immediate(_)) => {
-                // First arg of cmpq can't be an immediate
-                new_instrs.push(Instr::mov(s.clone(), Arg::new_reg(Register::rax)));
-                new_instrs.push(Instr::cmp(Arg::new_reg(Register::rax), d.clone()));
+            Instr::cmp(s, d) if matches!(d.value, ArgValue::Immediate(_)) => {
+                // Second arg of cmpq can't be an immediate
+                new_instrs.push(Instr::mov(d.clone(), Arg::new_reg(Register::rax)));
+                new_instrs.push(Instr::cmp(s.clone(), Arg::new_reg(Register::rax)));
             }
 
             Instr::sar(shift, _) | Instr::sal(shift, _)
