@@ -290,3 +290,138 @@ if x == 1 {
         expected_outputs: VecDeque::from(vec![str_output("no")]),
     });
 }
+
+// ── String concatenation ─────────────────────────────────────────
+
+#[test]
+fn test_string_concat_literals() {
+    execute_test_case(TestCase {
+        input: r#"fn main() -> int { print_str("hello" + " world") }"#,
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![str_output("hello world")]),
+    });
+}
+
+#[test]
+fn test_string_concat_variables() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int {
+a = \"foo\"
+b = \"bar\"
+print_str(a + b)
+}",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![str_output("foobar")]),
+    });
+}
+
+#[test]
+fn test_string_concat_empty_left() {
+    execute_test_case(TestCase {
+        input: r#"fn main() -> int { print_str("" + "hello") }"#,
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![str_output("hello")]),
+    });
+}
+
+#[test]
+fn test_string_concat_empty_right() {
+    execute_test_case(TestCase {
+        input: r#"fn main() -> int { print_str("hello" + "") }"#,
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![str_output("hello")]),
+    });
+}
+
+#[test]
+fn test_string_concat_both_empty() {
+    execute_test_case(TestCase {
+        input: r#"fn main() -> int { print_str("" + "") }"#,
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![str_output("")]),
+    });
+}
+
+#[test]
+fn test_string_concat_chained() {
+    execute_test_case(TestCase {
+        input: r#"fn main() -> int { print_str("a" + "b" + "c") }"#,
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![str_output("abc")]),
+    });
+}
+
+#[test]
+fn test_string_concat_stored_in_variable() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int {
+a = \"hello\"
+b = \" world\"
+c = a + b
+print_str(c)
+}",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![str_output("hello world")]),
+    });
+}
+
+#[test]
+fn test_string_concat_passed_to_function() {
+    execute_test_case(TestCase {
+        input: "fn greet(s: string) {
+    print_str(s)
+}
+fn main() -> int {
+    greet(\"hi\" + \" there\")
+}",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![str_output("hi there")]),
+    });
+}
+
+#[test]
+fn test_string_concat_in_function() {
+    execute_test_case(TestCase {
+        input: "fn join(a: string, b: string) -> string {
+    return a + b
+}
+fn main() -> int {
+    print_str(join(\"hello\", \" world\"))
+}",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![str_output("hello world")]),
+    });
+}
+
+#[test]
+fn test_string_concat_in_if() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int {
+x = 1
+if x == 1 {
+    print_str(\"yes\" + \"!\")
+} else {
+    print_str(\"no\" + \"!\")
+}
+}",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![str_output("yes!")]),
+    });
+}
+
+#[test]
+fn test_string_concat_in_loop() {
+    execute_test_case(TestCase {
+        input: "fn main() -> int {
+s = \"a\"
+i = 0
+while i < 3 {
+    s = s + \"a\"
+    i = i + 1
+}
+print_str(s)
+}",
+        inputs: VecDeque::new(),
+        expected_outputs: VecDeque::from(vec![str_output("aaaa")]),
+    });
+}

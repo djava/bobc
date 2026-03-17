@@ -18,7 +18,7 @@ struct Eflags {
 const HEAP_OFFSET: usize = 0x10000;
 const FUNCTIONS_OFFSET: usize = 0x20000;
 
-const SPECIAL_FUNCTIONS: [&str; 7] = [
+const SPECIAL_FUNCTIONS: [&str; 8] = [
     FN_READ_INT,
     FN_PRINT_INT,
     FN_PRINT_STR,
@@ -26,6 +26,7 @@ const SPECIAL_FUNCTIONS: [&str; 7] = [
     FN_GC_COLLECT,
     FN_SUBSCRIPT_ARRAY,
     FN_ASSIGN_TO_ARRAY_ELEM,
+    FN_STR_CONCAT,
 ];
 
 #[derive(Debug)]
@@ -279,12 +280,14 @@ fn execute_special_functions(
             panic!("Tried to index past end of array");
         }
 
+        let elem_mask = Width::from(tag.elem_size()).mask();
+
         let val = env.read_arg(&Arg::new_deref(
             Register::rdi,
             (POINTER_SIZE + (tag.elem_size() as i64 * idx)) as i32,
             Width::from(tag.elem_size()),
         ));
-        env.write_arg(&Arg::new_reg(Register::rax), val);
+        env.write_arg(&Arg::new_reg(Register::rax), val & elem_mask);
 
         return true;
     } else if label == FN_ASSIGN_TO_ARRAY_ELEM {
@@ -304,6 +307,62 @@ fn execute_special_functions(
             ),
             val,
         );
+
+        return true;
+    } else if label == FN_STR_CONCAT {
+        let ps = POINTER_SIZE as usize;
+
+        // Read string A from rdi
+        let a_tag = ArrayTag::from(env.read_arg(&Arg::new_deref(Register::rdi, 0, Width::Quad)));
+        let mut a_chars: Vec<u8> = Vec::with_capacity(a_tag.length() as usize);
+        for i in 0..a_tag.length() as usize {
+            let c = env.read_arg(&Arg::new_deref(Register::rdi, (ps + i) as _, Width::Byte)) as u8;
+            if c == 0 {
+                break;
+            } // Break on null terminator
+            a_chars.push(c);
+        }
+
+        // Read string B from rsi
+        let b_tag = ArrayTag::from(env.read_arg(&Arg::new_deref(Register::rsi, 0, Width::Quad)));
+        let mut b_chars: Vec<u8> = Vec::with_capacity(b_tag.length() as usize);
+        for i in 0..b_tag.length() as usize {
+            let c = env.read_arg(&Arg::new_deref(Register::rsi, (ps + i) as _, Width::Byte)) as u8;
+            if c == 0 {
+                break;
+            } // Break on null terminator
+            b_chars.push(c);
+        }
+
+        // Concatenate and allocate new string on heap
+        let new_len = a_chars.len() + b_chars.len() + 1; // +1 for null terminator
+        let new_tag = ArrayTag::new()
+            .with_length(new_len as _)
+            .with_elem_size(1)
+            .into_bits();
+
+        let alloc_size = size_of_val(&new_tag) + new_len;
+        let out_ptr = env.gc_free_ptr;
+        env.gc_free_ptr += alloc_size as i64;
+
+        // Write tag bytes to heap
+        let heap_addr = (out_ptr as usize) & !HEAP_OFFSET;
+        for (i, byte) in new_tag.to_le_bytes().iter().enumerate() {
+            env.heap[heap_addr + i] = *byte;
+        }
+        // Write string A chars
+        for (i, &c) in a_chars.iter().enumerate() {
+            env.heap[heap_addr + ps + i] = c;
+        }
+        // Write string B chars
+        for (i, &c) in b_chars.iter().enumerate() {
+            env.heap[heap_addr + ps + a_chars.len() + i] = c;
+        }
+        // Write null terminator
+        env.heap[heap_addr + ps + a_chars.len() + b_chars.len()] = 0;
+
+        // Return pointer in rax
+        env.write_arg(&Arg::new_reg(Register::rax), out_ptr);
 
         return true;
     } else {
