@@ -41,7 +41,7 @@ impl ASTtoIRPass for TranslateASTtoIR {
                 statements: vec![ir::Statement::Goto(exit_id.clone())],
             };
 
-            for s in f.body.iter().rev() {
+            for s in f.body.into_iter().rev() {
                 main_body.statements =
                     generate_for_statement(s, main_body.statements, &mut blocks, &f.types);
             }
@@ -69,26 +69,26 @@ impl ASTtoIRPass for TranslateASTtoIR {
 }
 
 fn generate_for_statement(
-    s: &ast::Statement,
+    s: ast::Statement,
     cont: Vec<ir::Statement>,
     blocks: &mut BlockMap,
     env: &TypeEnv,
 ) -> Vec<ir::Statement> {
     match s {
         ast::Statement::Assign(dest_id, expr, _) => {
-            generate_for_assign(expr, dest_id.clone(), cont, blocks, env)
+            generate_for_assign(expr, dest_id, cont, blocks, env)
         }
         ast::Statement::Expr(expr) => generate_for_effect(expr, cont, blocks, env),
         ast::Statement::Conditional(cond, pos, neg) => {
             let cont_label = new_block(cont, blocks);
 
             let mut pos_ir = vec![ir::Statement::Goto(cont_label.clone())];
-            for i in pos.iter().rev() {
+            for i in pos.into_iter().rev() {
                 pos_ir = generate_for_statement(i, pos_ir, blocks, env);
             }
 
             let mut neg_ir = vec![ir::Statement::Goto(cont_label)];
-            for i in neg.iter().rev() {
+            for i in neg.into_iter().rev() {
                 neg_ir = generate_for_statement(i, neg_ir, blocks, env);
             }
 
@@ -102,7 +102,7 @@ fn generate_for_statement(
             let cond_label = new_block(vec![], blocks);
 
             let mut body_ir = vec![ir::Statement::Goto(cond_label.clone())];
-            for i in body.iter().rev() {
+            for i in body.into_iter().rev() {
                 body_ir = generate_for_statement(i, body_ir, blocks, env);
             }
 
@@ -118,27 +118,28 @@ fn generate_for_statement(
     }
 }
 
-fn generate_for_tail(e: &ast::Expr, blocks: &mut BlockMap, env: &TypeEnv) -> Vec<ir::Statement> {
+fn generate_for_tail(e: ast::Expr, blocks: &mut BlockMap, env: &TypeEnv) -> Vec<ir::Statement> {
     match e {
         ast::Expr::Ternary(cond, pos, neg) => {
             let ret_id = Identifier::new_ephemeral();
 
+            let pos_size = neg.get_type(env).size();
             let pos_ir = generate_for_assign(
-                pos,
+                *pos,
                 AssignDest::Id(ret_id.clone()),
                 vec![ir::Statement::Return(ir::Atom::new_variable(
                     ret_id.clone(),
-                    pos.get_type(env).size(),
+                    pos_size,
                 ))],
                 blocks,
                 env,
             );
+            let neg_size = neg.get_type(env).size();
             let neg_ir = generate_for_assign(
-                neg,
+                *neg,
                 AssignDest::Id(ret_id.clone()),
                 vec![ir::Statement::Return(ir::Atom::new_variable(
-                    ret_id,
-                    neg.get_type(env).size(),
+                    ret_id, neg_size,
                 ))],
                 blocks,
                 env,
@@ -146,12 +147,12 @@ fn generate_for_tail(e: &ast::Expr, blocks: &mut BlockMap, env: &TypeEnv) -> Vec
 
             let pos_label = new_block(pos_ir, blocks);
             let neg_label = new_block(neg_ir, blocks);
-            generate_for_predicate(&*cond, pos_label, neg_label, blocks, env)
+            generate_for_predicate(*cond, pos_label, neg_label, blocks, env)
         }
 
         ast::Expr::StatementBlock(statements, expr) => {
-            let mut ret = vec![ir::Statement::Return(expr_to_atom(expr, env))];
-            for s in statements.iter().rev() {
+            let mut ret = vec![ir::Statement::Return(expr_to_atom(*expr, env))];
+            for s in statements.into_iter().rev() {
                 ret = generate_for_statement(s, ret, blocks, env);
             }
             ret
@@ -159,8 +160,8 @@ fn generate_for_tail(e: &ast::Expr, blocks: &mut BlockMap, env: &TypeEnv) -> Vec
 
         ast::Expr::Call(func, args) => {
             vec![ir::Statement::TailCall(
-                expr_to_atom(&**func, env),
-                args.iter().map(|a| expr_to_atom(a, env)).collect(),
+                expr_to_atom(*func, env),
+                args.into_iter().map(|a| expr_to_atom(a, env)).collect(),
             )]
         }
 
@@ -179,7 +180,7 @@ fn generate_for_tail(e: &ast::Expr, blocks: &mut BlockMap, env: &TypeEnv) -> Vec
 }
 
 fn generate_for_effect(
-    e: &ast::Expr,
+    e: ast::Expr,
     cont: Vec<ir::Statement>,
     blocks: &mut BlockMap,
     env: &TypeEnv,
@@ -189,8 +190,8 @@ fn generate_for_effect(
     match e {
         ast::Expr::Call(func, exprs) => {
             let mut ret = vec![ir::Statement::Expr(ir::Expr::Call(
-                expr_to_atom(&**func, env),
-                exprs.iter().map(|ex| expr_to_atom(ex, env)).collect(),
+                expr_to_atom(*func, env),
+                exprs.into_iter().map(|ex| expr_to_atom(ex, env)).collect(),
             ))];
 
             ret.extend(cont);
@@ -199,21 +200,21 @@ fn generate_for_effect(
         ast::Expr::Ternary(cond, pos, neg) => {
             let cont_label = new_block(cont, blocks);
             let pos_ir = generate_for_effect(
-                pos,
+                *pos,
                 vec![ir::Statement::Goto(cont_label.clone())],
                 blocks,
                 env,
             );
             let neg_ir =
-                generate_for_effect(neg, vec![ir::Statement::Goto(cont_label)], blocks, env);
+                generate_for_effect(*neg, vec![ir::Statement::Goto(cont_label)], blocks, env);
 
             let pos_label = new_block(pos_ir, blocks);
             let neg_label = new_block(neg_ir, blocks);
-            generate_for_predicate(cond, pos_label, neg_label, blocks, env)
+            generate_for_predicate(*cond, pos_label, neg_label, blocks, env)
         }
         ast::Expr::StatementBlock(statements, expr) => {
-            let mut ret = generate_for_effect(expr, cont, blocks, env);
-            for s in statements.iter().rev() {
+            let mut ret = generate_for_effect(*expr, cont, blocks, env);
+            for s in statements.into_iter().rev() {
                 ret = generate_for_statement(s, ret, blocks, env);
             }
 
@@ -244,7 +245,7 @@ fn generate_for_effect(
 }
 
 fn generate_for_assign(
-    e: &ast::Expr,
+    e: ast::Expr,
     dest: AssignDest<ast::Expr>,
     cont: Vec<ir::Statement>,
     blocks: &mut BlockMap,
@@ -255,38 +256,38 @@ fn generate_for_assign(
         ast::Expr::Constant(value) => {
             let mut ret = vec![ir::Statement::Assign(
                 ast_to_ir_assigndest(dest, expr_size),
-                ir::Expr::Atom(ir::Atom::new_constant(value.clone(), expr_size)),
+                ir::Expr::Atom(ir::Atom::new_constant(value, expr_size)),
             )];
             ret.extend(cont);
             ret
         }
         ast::Expr::BinaryOp(left, op, right) => {
-            let l_atom = expr_to_atom(&*left, env);
-            let r_atom = expr_to_atom(&*right, env);
+            let l_atom = expr_to_atom(*left, env);
+            let r_atom = expr_to_atom(*right, env);
 
             let mut ret = vec![ir::Statement::Assign(
                 ast_to_ir_assigndest(dest, expr_size),
-                ir::Expr::BinaryOp(l_atom, *op, r_atom),
+                ir::Expr::BinaryOp(l_atom, op, r_atom),
             )];
             ret.extend(cont);
             ret
         }
         ast::Expr::UnaryOp(op, expr) => {
-            let atom = expr_to_atom(&*expr, env);
+            let atom = expr_to_atom(*expr, env);
 
             let mut ret = vec![ir::Statement::Assign(
                 ast_to_ir_assigndest(dest, expr_size),
-                ir::Expr::UnaryOp(*op, atom),
+                ir::Expr::UnaryOp(op, atom),
             )];
             ret.extend(cont);
             ret
         }
         ast::Expr::Call(func, exprs) => {
-            let args = exprs.iter().map(|ex| expr_to_atom(ex, env)).collect();
+            let args = exprs.into_iter().map(|ex| expr_to_atom(ex, env)).collect();
 
             let mut ret = vec![ir::Statement::Assign(
                 ast_to_ir_assigndest(dest, expr_size),
-                ir::Expr::Call(expr_to_atom(&**func, env), args),
+                ir::Expr::Call(expr_to_atom(*func, env), args),
             )];
             ret.extend(cont);
             ret
@@ -294,7 +295,7 @@ fn generate_for_assign(
         ast::Expr::Id(src_id) => {
             let mut ret = vec![ir::Statement::Assign(
                 ast_to_ir_assigndest(dest, expr_size),
-                ir::Expr::Atom(ir::Atom::new_variable(src_id.clone(), expr_size)),
+                ir::Expr::Atom(ir::Atom::new_variable(src_id, expr_size)),
             )];
             ret.extend(cont);
             ret
@@ -303,14 +304,14 @@ fn generate_for_assign(
             let cont_label = new_block(cont, blocks);
 
             let pos_ir = generate_for_assign(
-                pos,
+                *pos,
                 dest.clone(),
                 vec![ir::Statement::Goto(cont_label.clone())],
                 blocks,
                 env,
             );
             let neg_ir = generate_for_assign(
-                neg,
+                *neg,
                 dest,
                 vec![ir::Statement::Goto(cont_label)],
                 blocks,
@@ -319,18 +320,18 @@ fn generate_for_assign(
 
             let pos_label = new_block(pos_ir, blocks);
             let neg_label = new_block(neg_ir, blocks);
-            generate_for_predicate(&*cond, pos_label, neg_label, blocks, env)
+            generate_for_predicate(*cond, pos_label, neg_label, blocks, env)
         }
         ast::Expr::StatementBlock(statements, expr) => {
-            let mut ret = generate_for_assign(expr, dest, cont, blocks, env);
-            for s in statements.iter().rev() {
+            let mut ret = generate_for_assign(*expr, dest, cont, blocks, env);
+            for s in statements.into_iter().rev() {
                 ret = generate_for_statement(s, ret, blocks, env);
             }
             ret
         }
         ast::Expr::Subscript(lhs, idx) => {
             let idx_i64 = {
-                if let ir::AtomValue::Constant(Value::I64(val)) = expr_to_atom(&*idx, env).value {
+                if let ir::AtomValue::Constant(Value::I64(val)) = expr_to_atom(*idx, env).value {
                     val
                 } else {
                     panic!("Non-i64 index into tuple")
@@ -342,19 +343,23 @@ fn generate_for_assign(
             if let ValueType::TupleType(_) = lhs_type {
                 let mut ret = vec![ir::Statement::Assign(
                     ast_to_ir_assigndest(dest, expr_size),
-                    ir::Expr::TupleSubscript(expr_to_atom(lhs, env), idx_i64),
+                    ir::Expr::TupleSubscript(expr_to_atom(*lhs, env), idx_i64),
                 )];
                 ret.extend(cont);
-    
+
                 ret
             } else if let ValueType::ArrayType(elems) = lhs_type {
                 // Array
                 let mut ret = vec![ir::Statement::Assign(
                     ast_to_ir_assigndest(dest, expr_size),
-                    ir::Expr::ArrayUncheckedSubscript(expr_to_atom(lhs, env), idx_i64, elems.size()),
+                    ir::Expr::ArrayUncheckedSubscript(
+                        expr_to_atom(*lhs, env),
+                        idx_i64,
+                        elems.size(),
+                    ),
                 )];
                 ret.extend(cont);
-    
+
                 ret
             } else {
                 panic!("Subscripted non-array/tuple")
@@ -363,7 +368,7 @@ fn generate_for_assign(
         ast::Expr::Allocate(bytes, value_type) => {
             let mut ret = vec![ir::Statement::Assign(
                 ast_to_ir_assigndest(dest, POINTER_SIZE as _),
-                ir::Expr::Allocate(*bytes, value_type.clone()),
+                ir::Expr::Allocate(bytes, value_type),
             )];
             ret.extend(cont);
             ret
@@ -371,7 +376,7 @@ fn generate_for_assign(
         ast::Expr::GlobalSymbol(name) => {
             let mut ret = vec![ir::Statement::Assign(
                 ast_to_ir_assigndest(dest, expr_size),
-                ir::Expr::Atom(ir::Atom::new_global(name.clone(), expr_size)),
+                ir::Expr::Atom(ir::Atom::new_global(name, expr_size)),
             )];
             ret.extend(cont);
             ret
@@ -384,20 +389,20 @@ fn generate_for_assign(
 }
 
 fn generate_for_predicate(
-    cond: &ast::Expr,
+    cond: ast::Expr,
     pos_label: Identifier,
     neg_label: Identifier,
     blocks: &mut BlockMap,
     env: &TypeEnv,
 ) -> Vec<ir::Statement> {
-    let expr_size = cond.get_type(env).size();
+    let cond_size = cond.get_type(env).size();
     match cond {
         ast::Expr::BinaryOp(left, op, right) => {
-            let l_atom = expr_to_atom(&*left, env);
-            let r_atom = expr_to_atom(&*right, env);
+            let l_atom = expr_to_atom(*left, env);
+            let r_atom = expr_to_atom(*right, env);
 
             vec![ir::Statement::If(
-                ir::Expr::BinaryOp(l_atom, *op, r_atom),
+                ir::Expr::BinaryOp(l_atom, op, r_atom),
                 pos_label,
                 neg_label,
             )]
@@ -411,28 +416,28 @@ fn generate_for_predicate(
         }
         ast::Expr::UnaryOp(op, val) => {
             vec![ir::Statement::If(
-                ir::Expr::UnaryOp(*op, expr_to_atom(&*val, env)),
+                ir::Expr::UnaryOp(op, expr_to_atom(*val, env)),
                 pos_label,
                 neg_label,
             )]
         }
         ast::Expr::Ternary(sub_cond, sub_pos, sub_neg) => {
             let sub_pos_ir =
-                generate_for_predicate(sub_pos, pos_label.clone(), neg_label.clone(), blocks, env);
-            let sub_neg_ir = generate_for_predicate(sub_neg, pos_label, neg_label, blocks, env);
+                generate_for_predicate(*sub_pos, pos_label.clone(), neg_label.clone(), blocks, env);
+            let sub_neg_ir = generate_for_predicate(*sub_neg, pos_label, neg_label, blocks, env);
 
             let sub_pos_label = new_block(sub_pos_ir, blocks);
             let sub_neg_label = new_block(sub_neg_ir, blocks);
-            generate_for_predicate(sub_cond, sub_pos_label, sub_neg_label, blocks, env)
+            generate_for_predicate(*sub_cond, sub_pos_label, sub_neg_label, blocks, env)
         }
         ast::Expr::StatementBlock(statements, expr) => {
             let mut ret = vec![];
-            for s in statements.iter().rev() {
+            for s in statements.into_iter().rev() {
                 ret = generate_for_statement(s, ret, blocks, env);
             }
 
             ret.extend(generate_for_predicate(
-                expr, pos_label, neg_label, blocks, env,
+                *expr, pos_label, neg_label, blocks, env,
             ));
 
             ret
@@ -440,8 +445,8 @@ fn generate_for_predicate(
         ast::Expr::Call(func, args) => {
             vec![ir::Statement::If(
                 ir::Expr::Call(
-                    expr_to_atom(&**func, env),
-                    args.iter().map(|a| expr_to_atom(a, env)).collect(),
+                    expr_to_atom(*func, env),
+                    args.into_iter().map(|a| expr_to_atom(a, env)).collect(),
                 ),
                 pos_label,
                 neg_label,
@@ -449,28 +454,28 @@ fn generate_for_predicate(
         }
         ast::Expr::Id(identifier) => {
             vec![ir::Statement::If(
-                ir::Expr::Atom(ir::Atom::new_variable(identifier.clone(), expr_size)),
+                ir::Expr::Atom(ir::Atom::new_variable(identifier, cond_size)),
                 pos_label,
                 neg_label,
             )]
         }
         ast::Expr::Subscript(tup, idx) => {
             let idx_i64 = {
-                if let ir::AtomValue::Constant(Value::I64(val)) = expr_to_atom(&*idx, env).value {
+                if let ir::AtomValue::Constant(Value::I64(val)) = expr_to_atom(*idx, env).value {
                     val
                 } else {
                     panic!("Non-i64 index into tuple")
                 }
             };
             vec![ir::Statement::If(
-                ir::Expr::TupleSubscript(expr_to_atom(&*tup, env), idx_i64),
+                ir::Expr::TupleSubscript(expr_to_atom(*tup, env), idx_i64),
                 pos_label,
                 neg_label,
             )]
         }
         ast::Expr::GlobalSymbol(name) => {
             vec![ir::Statement::If(
-                ir::Expr::Atom(ir::Atom::new_global(name.clone(), cond.get_type(env).size())),
+                ir::Expr::Atom(ir::Atom::new_global(name, cond_size)),
                 pos_label,
                 neg_label,
             )]
@@ -483,13 +488,12 @@ fn generate_for_predicate(
     }
 }
 
-fn expr_to_atom(e: &ast::Expr, env: &TypeEnv) -> ir::Atom {
+fn expr_to_atom(e: ast::Expr, env: &TypeEnv) -> ir::Atom {
+    let e_size = e.get_type(env).size();
     match e {
-        ast::Expr::Constant(value) => {
-            ir::Atom::new_constant(value.clone(), ValueType::from(value).size())
-        }
-        ast::Expr::Id(id) => ir::Atom::new_variable(id.clone(), e.get_type(env).size()),
-        ast::Expr::GlobalSymbol(name) => ir::Atom::new_global(name.clone(), e.get_type(env).size()),
+        ast::Expr::Constant(value) => ir::Atom::new_constant(value, e_size),
+        ast::Expr::Id(id) => ir::Atom::new_variable(id, e_size),
+        ast::Expr::GlobalSymbol(name) => ir::Atom::new_global(name, e_size),
         _ => panic!("Expr `{e:?}` cannot be converted to atom"),
     }
 }
@@ -518,7 +522,7 @@ fn ast_to_ir_assigndest(dest: AssignDest<ast::Expr>, size: usize) -> SizedAssign
         },
         AssignDest::UncheckedArraySubscript(id, idx, elem_size) => SizedAssignDest {
             value: AssignDest::UncheckedArraySubscript(id, idx, elem_size),
-            size
+            size,
         },
         AssignDest::ComplexSubscript(_) => {
             panic!("Complex subscripts should've been removed by DisambiguateSubscripts")
@@ -940,8 +944,15 @@ mod tests {
                 }],
                 global_types: TypeEnv::new(),
             },
-            inputs: VecDeque::from(vec![Value::I64(10), Value::I64(20), Value::I64(30), Value::I64(40)]),
-            expected_outputs: VecDeque::from(vec![Value::I64(10 + (10 + 20) + (10 + 20 + 30) + 40)]),
+            inputs: VecDeque::from(vec![
+                Value::I64(10),
+                Value::I64(20),
+                Value::I64(30),
+                Value::I64(40),
+            ]),
+            expected_outputs: VecDeque::from(vec![Value::I64(
+                10 + (10 + 20) + (10 + 20 + 30) + 40,
+            )]),
         });
     }
 
@@ -1083,7 +1094,14 @@ mod tests {
                 }],
                 global_types: TypeEnv::new(),
             },
-            inputs: VecDeque::from(vec![Value::I64(1), Value::I64(2), Value::I64(2), Value::I64(8), Value::I64(10), Value::I64(15)]),
+            inputs: VecDeque::from(vec![
+                Value::I64(1),
+                Value::I64(2),
+                Value::I64(2),
+                Value::I64(8),
+                Value::I64(10),
+                Value::I64(15),
+            ]),
             expected_outputs: VecDeque::from(vec![Value::I64(12), Value::I64(25)]),
         });
     }
@@ -1135,7 +1153,13 @@ mod tests {
                 global_types: TypeEnv::new(),
             },
             inputs: VecDeque::new(),
-            expected_outputs: VecDeque::from(vec![Value::I64(5), Value::I64(4), Value::I64(3), Value::I64(2), Value::I64(1)]),
+            expected_outputs: VecDeque::from(vec![
+                Value::I64(5),
+                Value::I64(4),
+                Value::I64(3),
+                Value::I64(2),
+                Value::I64(1),
+            ]),
         });
     }
 
@@ -1329,7 +1353,16 @@ mod tests {
                 global_types: TypeEnv::new(),
             },
             inputs: VecDeque::new(),
-            expected_outputs: VecDeque::from(vec![Value::I64(0), Value::I64(0), Value::I64(0), Value::I64(1), Value::I64(1), Value::I64(0), Value::I64(1), Value::I64(1)]),
+            expected_outputs: VecDeque::from(vec![
+                Value::I64(0),
+                Value::I64(0),
+                Value::I64(0),
+                Value::I64(1),
+                Value::I64(1),
+                Value::I64(0),
+                Value::I64(1),
+                Value::I64(1),
+            ]),
         });
     }
 
@@ -1395,7 +1428,13 @@ mod tests {
                 global_types: TypeEnv::new(),
             },
             inputs: VecDeque::new(),
-            expected_outputs: VecDeque::from(vec![Value::I64(0), Value::I64(1), Value::I64(100), Value::I64(3), Value::I64(4)]),
+            expected_outputs: VecDeque::from(vec![
+                Value::I64(0),
+                Value::I64(1),
+                Value::I64(100),
+                Value::I64(3),
+                Value::I64(4),
+            ]),
         });
     }
 

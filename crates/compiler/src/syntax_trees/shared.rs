@@ -82,7 +82,7 @@ impl ValueType {
     pub fn strip_pointer(self) -> Self {
         match self {
             ValueType::PointerType(t) => *t,
-            t => t
+            t => t,
         }
     }
 }
@@ -93,16 +93,37 @@ impl From<&Value> for ValueType {
             Value::I64(_) => Self::IntType,
             Value::Bool(_) => Self::BoolType,
             Value::Tuple(elems) => Self::TupleType(elems.iter().map(ValueType::from).collect()),
-            Value::Array(elems) => Self::ArrayType(
-                Box::new(
-                    elems
-                        .get(0)
-                        .map(ValueType::from)
-                        .unwrap_or(ValueType::Indeterminate),
-                ),
-            ),
+            Value::Array(elems) => Self::ArrayType(Box::new(
+                elems
+                    .get(0)
+                    .map(ValueType::from)
+                    .unwrap_or(ValueType::Indeterminate),
+            )),
             Value::Function(_, arg_types, ret_type) => {
                 Self::FunctionType(arg_types.clone(), Box::new(ret_type.clone()))
+            }
+            Value::Char(_) => Self::CharType,
+            Value::None => Self::NoneType,
+        }
+    }
+}
+
+impl From<Value> for ValueType {
+    fn from(value: Value) -> Self {
+        match value {
+            Value::I64(_) => Self::IntType,
+            Value::Bool(_) => Self::BoolType,
+            Value::Tuple(elems) => {
+                Self::TupleType(elems.into_iter().map(ValueType::from).collect())
+            }
+            Value::Array(elems) => Self::ArrayType(Box::new(
+                elems
+                    .get(0)
+                    .map(ValueType::from)
+                    .unwrap_or(ValueType::Indeterminate),
+            )),
+            Value::Function(_, arg_types, ret_type) => {
+                Self::FunctionType(arg_types, Box::new(ret_type))
             }
             Value::Char(_) => Self::CharType,
             Value::None => Self::NoneType,
@@ -313,13 +334,13 @@ pub enum AssignDest<E> {
     Id(Identifier),
     Subscript(Identifier, i64),
     UncheckedArraySubscript(Identifier, i64, usize),
-    ComplexSubscript(ComplexSubscript<E>)
+    ComplexSubscript(ComplexSubscript<E>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SizedAssignDest<E> {
     pub value: AssignDest<E>,
-    pub size: usize
+    pub size: usize,
 }
 
 #[bitfield(u64, order = Lsb)]
