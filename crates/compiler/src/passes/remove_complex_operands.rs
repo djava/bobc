@@ -27,53 +27,56 @@ struct ExprTransformation {
 
 impl ASTPass for RemoveComplexOperands {
     fn run_pass(self, mut m: Program) -> Program {
-        let mut new_functions = vec![];
-        for mut f in m.functions {
-            let mut new_body = vec![];
+        let old_functions = std::mem::replace(&mut m.functions, vec![]);
+        m.functions.reserve(old_functions.len());
 
-            for s in f.body {
-                rco_statement(&s, &mut new_body);
+        for mut f in old_functions {
+            let old_body = std::mem::replace(&mut f.body, vec![]);
+            f.body.reserve(old_body.len() * 2);
+
+            for s in old_body {
+                rco_statement(s, &mut f.body);
             }
 
-            f.body = new_body;
-            new_functions.push(f);
+            m.functions.push(f);
         }
 
-        m.functions = new_functions;
         m
     }
 }
 
-fn rco_statement(s: &Statement, new_body: &mut Vec<Statement>) {
+fn rco_statement(s: Statement, new_body: &mut Vec<Statement>) {
     match s {
         Statement::Assign(dest, expr, _) => {
-            let transform = rco_expr(&expr, false);
+            let transform = rco_expr(expr, false);
 
             // Take all the ephemeral transforms that happen
             // inside the expression and add them before this
             // statement
-            let ephemeral_assign_stmts = transform.ephemeral_assigns.iter().map(|(id, expr)| {
-                Statement::Assign(AssignDest::Id(id.clone()), expr.clone(), None)
-            });
+            let ephemeral_assign_stmts = transform
+                .ephemeral_assigns
+                .into_iter()
+                .map(|(id, expr)| Statement::Assign(AssignDest::Id(id), expr, None));
             new_body.extend(ephemeral_assign_stmts);
 
             // Add the updated version of this statement with
             // the new expression to the body
-            new_body.push(Statement::Assign(dest.clone(), transform.new_expr, None));
+            new_body.push(Statement::Assign(dest, transform.new_expr, None));
         }
         Statement::Expr(expr) => {
             // The expression statement itself doesn't need to
             // be atomic, because its not actually  being used
             // by anything, so theres no dependence on what
             // happens with the output
-            let transform = rco_expr(&expr, false);
+            let transform = rco_expr(expr, false);
 
             // Take all the ephemeral transforms that happen
             // inside the expression and add them before this
             // statement
-            let ephemeral_assign_stmts = transform.ephemeral_assigns.iter().map(|(id, expr)| {
-                Statement::Assign(AssignDest::Id(id.clone()), expr.clone(), None)
-            });
+            let ephemeral_assign_stmts = transform
+                .ephemeral_assigns
+                .into_iter()
+                .map(|(id, expr)| Statement::Assign(AssignDest::Id(id), expr, None));
             new_body.extend(ephemeral_assign_stmts);
 
             // Add the updated version of this statement with
@@ -84,17 +87,19 @@ fn rco_statement(s: &Statement, new_body: &mut Vec<Statement>) {
             // Condition must be non-atomic to enable good codegen
             let cond_transform = rco_expr(cond, false);
 
-            let ephemeral_assign_stmts =
-                cond_transform.ephemeral_assigns.iter().map(|(id, expr)| {
-                    Statement::Assign(AssignDest::Id(id.clone()), expr.clone(), None)
-                });
+            let ephemeral_assign_stmts = cond_transform
+                .ephemeral_assigns
+                .into_iter()
+                .map(|(id, expr)| Statement::Assign(AssignDest::Id(id), expr, None));
             new_body.extend(ephemeral_assign_stmts);
 
-            let mut pos_new_body = Vec::new();
-            pos.iter().for_each(|s| rco_statement(s, &mut pos_new_body));
+            let mut pos_new_body = Vec::with_capacity(pos.len() * 2);
+            pos.into_iter()
+                .for_each(|s| rco_statement(s, &mut pos_new_body));
 
-            let mut neg_new_body = Vec::new();
-            neg.iter().for_each(|s| rco_statement(s, &mut neg_new_body));
+            let mut neg_new_body = Vec::with_capacity(neg.len() * 2);
+            neg.into_iter()
+                .for_each(|s| rco_statement(s, &mut neg_new_body));
 
             new_body.push(Statement::Conditional(
                 cond_transform.new_expr,
@@ -108,32 +113,33 @@ fn rco_statement(s: &Statement, new_body: &mut Vec<Statement>) {
 
             // Put cond in a statement block so that it recalculates it
             // every iteration
-            let ephemeral_assign_stmts =
-                cond_transform.ephemeral_assigns.iter().map(|(id, expr)| {
-                    Statement::Assign(AssignDest::Id(id.clone()), expr.clone(), None)
-                });
+            let ephemeral_assign_stmts = cond_transform
+                .ephemeral_assigns
+                .into_iter()
+                .map(|(id, expr)| Statement::Assign(AssignDest::Id(id), expr, None));
             let cond_statement_block = Expr::StatementBlock(
                 ephemeral_assign_stmts.collect(),
                 Box::new(cond_transform.new_expr),
             );
 
-            let mut new_loop_body = Vec::new();
+            let mut new_loop_body = Vec::with_capacity(loop_body.len() * 2);
             loop_body
-                .iter()
+                .into_iter()
                 .for_each(|s| rco_statement(s, &mut new_loop_body));
 
             new_body.push(Statement::WhileLoop(cond_statement_block, new_loop_body));
         }
         Statement::Return(expr) => {
             // The returned value needs to be atomic
-            let transform = rco_expr(&expr, false);
+            let transform = rco_expr(expr, false);
 
             // Take all the ephemeral transforms that happen
             // inside the expression and add them before this
             // statement
-            let ephemeral_assign_stmts = transform.ephemeral_assigns.iter().map(|(id, expr)| {
-                Statement::Assign(AssignDest::Id(id.clone()), expr.clone(), None)
-            });
+            let ephemeral_assign_stmts = transform
+                .ephemeral_assigns
+                .into_iter()
+                .map(|(id, expr)| Statement::Assign(AssignDest::Id(id), expr, None));
             new_body.extend(ephemeral_assign_stmts);
 
             // Add the updated version of this statement with
@@ -143,12 +149,12 @@ fn rco_statement(s: &Statement, new_body: &mut Vec<Statement>) {
     }
 }
 
-fn rco_expr(e: &Expr, needs_atomicity: bool) -> ExprTransformation {
+fn rco_expr(e: Expr, needs_atomicity: bool) -> ExprTransformation {
     match e {
         Expr::BinaryOp(left, op, right) => {
             // Get the transformed versions of the operands first
-            let left_transform = rco_expr(&*left, true);
-            let right_transform = rco_expr(&*right, true);
+            let left_transform = rco_expr(*left, true);
+            let right_transform = rco_expr(*right, true);
 
             // The ephermal assigns first need to include the ones for
             // the left and right operands, in that order
@@ -159,7 +165,7 @@ fn rco_expr(e: &Expr, needs_atomicity: bool) -> ExprTransformation {
             // This same operation, but with the transformed operands
             let transformed_op = Expr::BinaryOp(
                 Box::new(left_transform.new_expr),
-                *op,
+                op,
                 Box::new(right_transform.new_expr),
             );
 
@@ -179,13 +185,13 @@ fn rco_expr(e: &Expr, needs_atomicity: bool) -> ExprTransformation {
             }
         }
         Expr::UnaryOp(op, val) => {
-            let val_transform = rco_expr(&*val, true);
+            let val_transform = rco_expr(*val, true);
 
             // The ephermal assigns first need to include the ones for
             // the operand
             let mut ephemeral_assigns = val_transform.ephemeral_assigns;
 
-            let transformed_op = Expr::UnaryOp(*op, Box::new(val_transform.new_expr));
+            let transformed_op = Expr::UnaryOp(op, Box::new(val_transform.new_expr));
 
             // If *this* expression needs to be atomic, extract it into an
             // assignment and an id-expr. Otherwise, just use it directly.
@@ -205,15 +211,15 @@ fn rco_expr(e: &Expr, needs_atomicity: bool) -> ExprTransformation {
         Expr::Call(func, args) => {
             let mut ephemeral_assigns = vec![];
             let mut new_args = vec![];
-            // Each arg must be transformed, and all the ephermal
+            // Each arg must be transformed, and all the ephemeral
             // assignments must be inserted before this call happens
             for arg in args {
-                let arg_transform = rco_expr(&*arg, true);
+                let arg_transform = rco_expr(arg, true);
                 ephemeral_assigns.extend(arg_transform.ephemeral_assigns);
                 new_args.push(arg_transform.new_expr);
             }
 
-            let func_transform = rco_expr(&**func, true);
+            let func_transform = rco_expr(*func, true);
             ephemeral_assigns.extend(func_transform.ephemeral_assigns);
 
             let transformed_call = Expr::Call(Box::new(func_transform.new_expr), new_args);
@@ -235,9 +241,9 @@ fn rco_expr(e: &Expr, needs_atomicity: bool) -> ExprTransformation {
             let mut ephemeral_assigns = vec![];
 
             // Condition must be non-atomic to enable good codegen
-            let transformed_cond = rco_expr(cond, false);
-            let transformed_pos = rco_expr(pos, true);
-            let transformed_neg = rco_expr(neg, true);
+            let transformed_cond = rco_expr(*cond, false);
+            let transformed_pos = rco_expr(*pos, true);
+            let transformed_neg = rco_expr(*neg, true);
 
             ephemeral_assigns.extend(transformed_cond.ephemeral_assigns);
             let new_pos = if transformed_pos.ephemeral_assigns.is_empty() {
@@ -287,10 +293,10 @@ fn rco_expr(e: &Expr, needs_atomicity: bool) -> ExprTransformation {
         Expr::StatementBlock(statements, expr) => {
             let mut new_body = vec![];
             statements
-                .iter()
+                .into_iter()
                 .for_each(|s| rco_statement(s, &mut new_body));
 
-            let transformed_expr = rco_expr(expr, true);
+            let transformed_expr = rco_expr(*expr, true);
 
             let ephemeral_assigns = transformed_expr.ephemeral_assigns;
             let transformed_block =
@@ -318,7 +324,7 @@ fn rco_expr(e: &Expr, needs_atomicity: bool) -> ExprTransformation {
             // Each arg must be transformed, and all the ephermal
             // assignments must be inserted before this call happens
             for elem in elems {
-                let elem_transform = rco_expr(&*elem, true);
+                let elem_transform = rco_expr(elem, true);
                 ephemeral_assigns.extend(elem_transform.ephemeral_assigns);
                 new_elems.push(elem_transform.new_expr);
             }
@@ -343,7 +349,7 @@ fn rco_expr(e: &Expr, needs_atomicity: bool) -> ExprTransformation {
             // Each arg must be transformed, and all the ephermal
             // assignments must be inserted before this call happens
             for elem in elems {
-                let elem_transform = rco_expr(&*elem, true);
+                let elem_transform = rco_expr(elem, true);
                 ephemeral_assigns.extend(elem_transform.ephemeral_assigns);
                 new_elems.push(elem_transform.new_expr);
             }
@@ -360,15 +366,14 @@ fn rco_expr(e: &Expr, needs_atomicity: bool) -> ExprTransformation {
                 new_expr,
                 ephemeral_assigns,
             }
-        },
+        }
         Expr::Subscript(tup, index_val) => {
             let mut ephemeral_assigns = vec![];
 
-            let tup_transform = rco_expr(&*tup, true);
+            let tup_transform = rco_expr(*tup, true);
             ephemeral_assigns.extend(tup_transform.ephemeral_assigns);
 
-            let new_subscript =
-                Expr::Subscript(Box::new(tup_transform.new_expr), index_val.clone());
+            let new_subscript = Expr::Subscript(Box::new(tup_transform.new_expr), index_val);
 
             let new_expr = if needs_atomicity {
                 let id = Identifier::new_ephemeral();
@@ -389,18 +394,18 @@ fn rco_expr(e: &Expr, needs_atomicity: bool) -> ExprTransformation {
                 let eph_id = Identifier::new_ephemeral();
                 ExprTransformation {
                     new_expr: Expr::Id(eph_id.clone()),
-                    ephemeral_assigns: vec![(eph_id, e.clone())],
+                    ephemeral_assigns: vec![(eph_id, e)],
                 }
             } else {
                 ExprTransformation {
-                    new_expr: e.clone(),
+                    new_expr: e,
                     ephemeral_assigns: vec![],
                 }
             }
         }
 
         Expr::Constant(_) | Expr::Id(_) | Expr::GlobalSymbol(_) => ExprTransformation {
-            new_expr: e.clone(),
+            new_expr: e,
             ephemeral_assigns: vec![],
         },
         Expr::Allocate(_, _) => {
@@ -486,7 +491,11 @@ mod tests {
                     check_statement_invariants(s);
                 }
             }
-            Expr::Constant(_) | Expr::Id(_) | Expr::GlobalSymbol(_) | Expr::Allocate(_, _) | Expr::Closure(..) => {}
+            Expr::Constant(_)
+            | Expr::Id(_)
+            | Expr::GlobalSymbol(_)
+            | Expr::Allocate(_, _)
+            | Expr::Closure(..) => {}
         }
     }
 
@@ -905,8 +914,15 @@ mod tests {
                 }],
                 global_types: TypeEnv::new(),
             },
-            inputs: VecDeque::from(vec![Value::I64(10), Value::I64(20), Value::I64(30), Value::I64(40)]),
-            expected_outputs: VecDeque::from(vec![Value::I64(10 + (10 + 20) + (10 + 20 + 30) + 40)]),
+            inputs: VecDeque::from(vec![
+                Value::I64(10),
+                Value::I64(20),
+                Value::I64(30),
+                Value::I64(40),
+            ]),
+            expected_outputs: VecDeque::from(vec![Value::I64(
+                10 + (10 + 20) + (10 + 20 + 30) + 40,
+            )]),
         });
     }
 
@@ -957,7 +973,13 @@ mod tests {
                 global_types: TypeEnv::new(),
             },
             inputs: VecDeque::new(),
-            expected_outputs: VecDeque::from(vec![Value::I64(5), Value::I64(4), Value::I64(3), Value::I64(2), Value::I64(1)]),
+            expected_outputs: VecDeque::from(vec![
+                Value::I64(5),
+                Value::I64(4),
+                Value::I64(3),
+                Value::I64(2),
+                Value::I64(1),
+            ]),
         });
     }
 
@@ -1013,7 +1035,13 @@ mod tests {
                 global_types: TypeEnv::new(),
             },
             inputs: VecDeque::new(),
-            expected_outputs: VecDeque::from(vec![Value::I64(10), Value::I64(9), Value::I64(8), Value::I64(7), Value::I64(6)]),
+            expected_outputs: VecDeque::from(vec![
+                Value::I64(10),
+                Value::I64(9),
+                Value::I64(8),
+                Value::I64(7),
+                Value::I64(6),
+            ]),
         });
     }
 
@@ -1079,7 +1107,11 @@ mod tests {
                 global_types: TypeEnv::new(),
             },
             inputs: VecDeque::from(vec![Value::I64(1), Value::I64(2), Value::I64(3)]),
-            expected_outputs: VecDeque::from(vec![Value::I64(1 + 10 + 15), Value::I64(2 + 10 + 15), Value::I64(3 + 10 + 15)]),
+            expected_outputs: VecDeque::from(vec![
+                Value::I64(1 + 10 + 15),
+                Value::I64(2 + 10 + 15),
+                Value::I64(3 + 10 + 15),
+            ]),
         });
     }
 
