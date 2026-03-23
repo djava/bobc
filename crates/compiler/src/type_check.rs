@@ -4,6 +4,10 @@ use crate::{
     utils::global,
 };
 
+// The return statements in a function are checked against this ID,
+// which is populated in populate_globals.
+const RETURN_TYPE_ID: &str = "__BOB__RETURN_TYPE";
+
 impl ast::Expr {
     pub fn type_check(
         &mut self,
@@ -432,7 +436,16 @@ impl ast::Statement {
                 }
             }
             Return(expr) => {
-                expr.type_check(env, &None);
+                let return_type = env.get(&global!(RETURN_TYPE_ID)).cloned();
+                let typ = expr.type_check(env, &return_type);
+                let return_type_unwrapped = return_type.unwrap();
+                assert_eq!(
+                    return_type_unwrapped,
+                    typ,
+                    "Incorrect return type: Expected `{:?}`, got `{:?}`",
+                    &return_type_unwrapped,
+                    typ
+                );
             }
         }
     }
@@ -440,19 +453,15 @@ impl ast::Statement {
 
 impl ast::Function {
     pub fn type_check(&mut self) {
-        for s in self.body.iter_mut() {
-            // Allow type-checker to recognize params
-            for (n, t) in self.params.iter() {
-                self.types.insert(n.clone(), t.clone());
-            }
-
-            s.type_check(&mut self.types);
+        self.types
+            .insert(global!(RETURN_TYPE_ID), self.return_type.clone());
+        // Allow type-checker to recognize params
+        for (n, t) in self.params.iter() {
+            self.types.insert(n.clone(), t.clone());
         }
-    }
 
-    pub fn set_param_types(&mut self, param_types: Vec<ValueType>) {
-        for ((_, type_field), real_type) in self.params.iter_mut().zip(param_types) {
-            *type_field = real_type;
+        for s in self.body.iter_mut() {
+            s.type_check(&mut self.types);
         }
     }
 }

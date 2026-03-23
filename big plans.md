@@ -1,5 +1,4 @@
 TODO:
-- type-check returns
 - combinator parse tree
 - Error messages
 - Rewrite GC for non-quad-aligned data
