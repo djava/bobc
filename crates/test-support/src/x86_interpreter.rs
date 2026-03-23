@@ -18,8 +18,9 @@ struct Eflags {
 const HEAP_OFFSET: usize = 0x10000;
 const FUNCTIONS_OFFSET: usize = 0x20000;
 
-const SPECIAL_FUNCTIONS: [&str; 8] = [
+const SPECIAL_FUNCTIONS: [&str; 9] = [
     FN_READ_INT,
+    FN_READ_STR,
     FN_PRINT_INT,
     FN_PRINT_STR,
     FN_GC_INITIALIZE,
@@ -264,6 +265,46 @@ fn execute_special_functions(
             env.write_arg(&Arg::new_reg(Register::rax), int);
         } else {
             panic!("Expected int input, got {input:?}")
+        }
+        return true;
+    } else if label == FN_READ_STR {
+        let input = inputs.pop_front().expect("Overflowed input values");
+        if let Value::Array(elems) = &input
+            && elems.iter().all(|e| matches!(e, Value::Char(_)))
+        {
+            let ps = POINTER_SIZE as usize;
+
+            let chars = elems.iter().map(|e| {
+                if let Value::Char(c) = e {
+                    *c as u8
+                } else {
+                    unreachable!()
+                }
+            });
+            // Concatenate and allocate new string on heap
+            let new_tag = ArrayTag::new()
+                .with_length(elems.len() as _)
+                .with_elem_size(1)
+                .into_bits();
+
+            let alloc_size = size_of_val(&new_tag) + elems.len();
+            let out_ptr = env.gc_free_ptr;
+            env.gc_free_ptr += alloc_size as i64;
+
+            // Write tag bytes to heap
+            let heap_addr = (out_ptr as usize) & !HEAP_OFFSET;
+            for (i, byte) in new_tag.to_le_bytes().iter().enumerate() {
+                env.heap[heap_addr + i] = *byte;
+            }
+            // Write string A chars
+            for (i, c) in chars.enumerate() {
+                env.heap[heap_addr + ps + i] = c;
+            }
+
+            // Return pointer in rax
+            env.write_arg(&Arg::new_reg(Register::rax), out_ptr);
+        } else {
+            panic!("Expected string input, got {input:?}")
         }
         return true;
     } else if label == FN_GC_INITIALIZE {

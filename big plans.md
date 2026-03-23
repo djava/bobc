@@ -1,5 +1,4 @@
 TODO:
-- String input
 - type-check returns
 - combinator parse tree
 - Error messages

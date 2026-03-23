@@ -1,6 +1,6 @@
 use crate::{ValueEnv, interpreter_utils::*};
 use compiler::{
-    constants::{FN_PRINT_INT, FN_PRINT_STR, FN_READ_INT, LABEL_MAIN},
+    constants::{FN_PRINT_INT, FN_PRINT_STR, FN_READ_INT, FN_READ_STR, LABEL_MAIN},
     syntax_trees::{ast::*, shared::*},
 };
 use std::collections::VecDeque;
@@ -35,7 +35,17 @@ fn interpret_expr(
         Call(func, args) => {
             if **func == GlobalSymbol(global!(FN_READ_INT)) && args.is_empty() {
                 let input = inputs.pop_front().expect("Ran out of inputs");
-                assert!(matches!(input, Value::I64(..)), "Expected int input, got {input:?}");
+                assert!(
+                    matches!(input, Value::I64(..)),
+                    "Expected int input, got {input:?}"
+                );
+                Some(input)
+            } else if **func == GlobalSymbol(global!(FN_READ_STR)) && args.is_empty() {
+                let input = inputs.pop_front().expect("Ran out of inputs");
+                assert!(
+                    matches!(&input, Value::Array(elems) if elems.iter().all(|e| matches!(e, Value::Char(_)))),
+                    "Expected string input, got {input:?}"
+                );
                 Some(input)
             } else if **func == GlobalSymbol(global!(FN_PRINT_INT)) && args.len() == 1 {
                 let val = interpret_expr(&args[0], inputs, outputs, val_env, func_env).expect_int();

@@ -425,3 +425,16 @@ print_str(s)
         expected_outputs: VecDeque::from(vec![str_output("aaaa")]),
     });
 }
+
+#[test]
+fn test_string_input() {
+    execute_test_case(TestCase {
+        input: "fn main() {
+    s = read_str()
+    print_str(s)
+}
+",
+        inputs: VecDeque::from([str_output("abc")]),
+        expected_outputs: VecDeque::from([str_output("abc")])
+    });
+}

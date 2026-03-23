@@ -48,3 +48,7 @@ void print_str(int64_t *ptr);
 int64_t len(int64_t* ptr);
 int64_t __subscript_array(int64_t *ptr, int64_t idx);
 void __assign_to_array_elem(int64_t *ptr, int64_t idx, int64_t value);
+
+int64_t* __str_concat(int64_t* a, int64_t* b);
+
+int64_t* read_string(void);

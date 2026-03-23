@@ -520,13 +520,14 @@ impl ast::Program {
             (
                 global!(FN_STR_CONCAT),
                 ValueType::FunctionType(
-                    vec![
-                        ValueType::string(),
-                        ValueType::string(),
-                    ],
-                    Box::new(ValueType::string())
-                )
-            )
+                    vec![ValueType::string(), ValueType::string()],
+                    Box::new(ValueType::string()),
+                ),
+            ),
+            (
+                global!(FN_READ_STR),
+                ValueType::FunctionType(vec![], Box::new(ValueType::string())),
+            ),
         ];
 
         self.global_types = {

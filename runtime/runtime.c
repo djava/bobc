@@ -862,21 +862,14 @@ void print_str(int64_t *ptr) {
   printf("%.*s\n", string_length, str);
 }
 
+int64_t *__make_string(char *str, size_t max_len) {
+  size_t len = strnlen(str, max_len) + 1;
 
-int64_t *__str_concat(int64_t *a, int64_t *b) {
-  char *a_str = (char*)(a + 1);
-  size_t a_len = strnlen(a_str, len(a));
+  const int64_t tag = ((len & ARRAY_LENGTH_TAG_MASK) << ARRAY_LENGTH_TAG_SHIFT)
+                      | ((sizeof(char) & ARRAY_ELEM_SIZE_TAG_MASK) << ARRAY_ELEM_SIZE_TAG_SHIFT)
+                      | ((1ULL & TAG_IS_ARRAY_MASK) << TAG_IS_ARRAY_SHIFT);
   
-  char *b_str = (char* )(b + 1);
-  size_t b_len = strnlen(b_str, len(b));
-
-  size_t new_len = a_len + b_len + 1;
-  
-  int64_t tag = ((new_len & ARRAY_LENGTH_TAG_MASK) << ARRAY_LENGTH_TAG_SHIFT)
-  | ((sizeof(char) & ARRAY_ELEM_SIZE_TAG_MASK) << ARRAY_ELEM_SIZE_TAG_SHIFT)
-  | ((1ULL & TAG_IS_ARRAY_MASK) << TAG_IS_ARRAY_SHIFT);
-  
-  size_t byte_allocation = new_len + sizeof(tag);
+  const size_t byte_allocation = len + sizeof(tag);
   int64_t *out_ptr;
   __asm__ volatile (
       "movq %1, %%r11\n\t"  // Load GC free ptr into r11
@@ -888,9 +881,38 @@ int64_t *__str_concat(int64_t *a, int64_t *b) {
       : "r11", "cc", "memory"
   );
 
+  
   char* new_str = (char*)(out_ptr + 1);
-  strncpy(new_str, a_str, a_len);
-  strncat(new_str, b_str, b_len);
+  strncpy(new_str, str, len);
+
+  return out_ptr;
+}
+
+
+int64_t *__str_concat(int64_t *a, int64_t *b) {
+  char *a_str = (char*)(a + 1);
+  size_t a_len = strnlen(a_str, len(a));
+  
+  char *b_str = (char* )(b + 1);
+  size_t b_len = strnlen(b_str, len(b));
+
+  size_t new_len = a_len + b_len + 1;
+  char* concat_str = malloc(new_len);
+  strncpy(concat_str, a_str, a_len);
+  strncat(concat_str, b_str, b_len);
+
+  int64_t* out_ptr = __make_string(concat_str, new_len);
+  free(concat_str);
+  return out_ptr;
+}
+
+int64_t* read_str(void) {
+  const size_t MAX_SIZE = 1024;
+  char *input = malloc(MAX_SIZE * sizeof(char));
+  scanf("%1024s", input);
+
+  int64_t* out_ptr = __make_string(input, MAX_SIZE);
+  free(input);
 
   return out_ptr;
 }
