@@ -47,7 +47,7 @@ pub(super) fn reg_to_color(r: &Register) -> i32 {
         Register::r12 => 9,
         Register::r13 => 10,
         Register::r14 => 11,
-        _ => unreachable!("No non-64-bit registers should be assigned as locations")
+        _ => unreachable!("No non-64-bit registers should be assigned as locations"),
     }
 }
 

@@ -67,11 +67,8 @@ fn shortcircuit_expr(e: &mut Expr) {
         Expr::Subscript(tup, _idx) => {
             shortcircuit_expr(tup);
         }
-        Expr::Allocate(_, _)
-        | Expr::Constant(_)
-        | Expr::Id(_) => {}
-        | Expr::GlobalSymbol(_)
-        | Expr::Closure(..) => {}
+        Expr::Allocate(_, _) | Expr::Constant(_) | Expr::Id(_) => {}
+        Expr::GlobalSymbol(_) | Expr::Closure(..) => {}
         Expr::Lambda(_) => panic!("Should've been removed already"),
     }
 

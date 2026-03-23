@@ -407,7 +407,10 @@ fn update_constant_map_for_assign(
     e: &Expr,
     constant_map: &mut HashMap<Identifier, Option<Value>>,
 ) {
-    if let Expr::Constant(v) = e && should_extract_value(v) && !constant_map.contains_key(id) {
+    if let Expr::Constant(v) = e
+        && should_extract_value(v)
+        && !constant_map.contains_key(id)
+    {
         constant_map.insert(id.clone(), Some(v.clone()));
     } else {
         // If this ID is written to multiple times, or written to with a

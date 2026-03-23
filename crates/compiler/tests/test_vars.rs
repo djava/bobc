@@ -460,7 +460,13 @@ print_int(a + b + c + d + e)
 print_int(a)
 print_int(e)
 }",
-        inputs: VecDeque::from(vec![Value::I64(1), Value::I64(2), Value::I64(3), Value::I64(4), Value::I64(5)]),
+        inputs: VecDeque::from(vec![
+            Value::I64(1),
+            Value::I64(2),
+            Value::I64(3),
+            Value::I64(4),
+            Value::I64(5),
+        ]),
         expected_outputs: VecDeque::from(vec![Value::I64(15), Value::I64(1), Value::I64(5)]),
     });
 }
@@ -480,6 +486,12 @@ e = d + 1
 print_int(e)
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![Value::I64(1), Value::I64(2), Value::I64(3), Value::I64(4), Value::I64(5)]),
+        expected_outputs: VecDeque::from(vec![
+            Value::I64(1),
+            Value::I64(2),
+            Value::I64(3),
+            Value::I64(4),
+            Value::I64(5),
+        ]),
     });
 }

@@ -21,7 +21,7 @@ pub enum Operator {
     LeftShift,
     RightShift,
     Divide,
-    Modulo
+    Modulo,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -52,7 +52,12 @@ pub enum Statement<'a> {
     Else(Vec<Statement<'a>>),
     While(Expr<'a>, Vec<Statement<'a>>),
     Return(Option<Expr<'a>>),
-    For(Box<Statement<'a>>, Expr<'a>, Box<Statement<'a>>, Vec<Statement<'a>>),
+    For(
+        Box<Statement<'a>>,
+        Expr<'a>,
+        Box<Statement<'a>>,
+        Vec<Statement<'a>>,
+    ),
 }
 
 #[derive(Debug, Clone, PartialEq)]

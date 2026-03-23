@@ -277,13 +277,11 @@ impl ast::Expr {
             ast::Expr::Tuple(exprs) => {
                 ValueType::TupleType(exprs.iter().map(|e| e.get_type(env)).collect())
             }
-            ast::Expr::Array(exprs) => ValueType::ArrayType(
-                Box::new(
-                    exprs
-                        .get(0)
-                        .map_or(ValueType::Indeterminate, |e| e.get_type(env)),
-                ),
-            ),
+            ast::Expr::Array(exprs) => ValueType::ArrayType(Box::new(
+                exprs
+                    .get(0)
+                    .map_or(ValueType::Indeterminate, |e| e.get_type(env)),
+            )),
             ast::Expr::Subscript(expr, idx) => match expr.get_type(env).strip_pointer() {
                 ValueType::TupleType(mut elems) => {
                     if let ast::Expr::Constant(Value::I64(idx_val)) = **idx {

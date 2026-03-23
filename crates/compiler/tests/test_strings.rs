@@ -2,7 +2,12 @@ mod utils;
 use utils::*;
 
 fn str_output(s: &str) -> Value {
-    Value::Array(s.chars().chain(std::iter::once('\0')).map(Value::Char).collect())
+    Value::Array(
+        s.chars()
+            .chain(std::iter::once('\0'))
+            .map(Value::Char)
+            .collect(),
+    )
 }
 
 fn char_output(c: char) -> Value {
@@ -435,6 +440,6 @@ fn test_string_input() {
 }
 ",
         inputs: VecDeque::from([str_output("abc")]),
-        expected_outputs: VecDeque::from([str_output("abc")])
+        expected_outputs: VecDeque::from([str_output("abc")]),
     });
 }

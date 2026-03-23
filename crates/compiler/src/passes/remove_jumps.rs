@@ -12,7 +12,7 @@ use crate::{
 /// another and that target has exactly one incoming edge. Eliminates
 /// the redundant jump by inlining the target's instructions into the
 /// source block.
-/// 
+///
 /// Optional optimization pass, does not affect functionality
 ///
 /// Pre-conditions: None
@@ -67,8 +67,7 @@ fn perform_operation(blocks: &mut Vec<Block>, func_exit_block_id: &mut Identifie
                     into_block.instrs.pop();
                     into_block.instrs.extend(from_block.instrs);
 
-                    if &from_block.label == func_exit_block_id
-                    {
+                    if &from_block.label == func_exit_block_id {
                         // The block we just removed was the exit block,
                         // so we have to update the reference
                         *func_exit_block_id = into_block.label.clone();

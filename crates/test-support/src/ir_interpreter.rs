@@ -263,7 +263,11 @@ pub fn interpret_func(
     Value::None
 }
 
-pub fn interpret_irprogram(p: &IRProgram, inputs: &mut VecDeque<Value>, outputs: &mut VecDeque<Value>) {
+pub fn interpret_irprogram(
+    p: &IRProgram,
+    inputs: &mut VecDeque<Value>,
+    outputs: &mut VecDeque<Value>,
+) {
     let main_func = p
         .functions
         .iter()

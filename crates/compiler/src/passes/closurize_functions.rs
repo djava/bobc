@@ -1,4 +1,3 @@
-
 use crate::{
     constants::EXTERNED_FUNCTIONS,
     passes::ASTPass,
@@ -21,7 +20,7 @@ use crate::{
 /// Note: All operations exclude extern'ed functions
 ///
 /// It is mandatory to run this pass
-/// 
+///
 /// Pre-conditions:
 /// - `TypeCheck` (`global_types` must be populated),
 ///

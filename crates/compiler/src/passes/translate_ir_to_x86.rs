@@ -325,9 +325,8 @@ fn make_tuple_tag(tuple_type: ValueType) -> u64 {
     }
 }
 
-
 fn make_array_tag(value_type: ValueType, len: usize) -> u64 {
-     if let ValueType::ArrayType(elems) = value_type {
+    if let ValueType::ArrayType(elems) = value_type {
         let pointer_mask = matches!(*elems, ValueType::PointerType(_));
 
         ArrayTag::new()

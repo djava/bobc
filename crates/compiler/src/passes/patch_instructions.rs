@@ -138,7 +138,8 @@ fn patch_block(b: &mut Block) {
 
             Instr::lea(s, d) if !matches!(d.value, ArgValue::Reg(_)) => {
                 let patch_reg = Arg::new_reg(Register::rax.convert_width(d.width));
-                b.instrs.extend([Instr::lea(s, patch_reg.clone()), Instr::mov(patch_reg, d)]);
+                b.instrs
+                    .extend([Instr::lea(s, patch_reg.clone()), Instr::mov(patch_reg, d)]);
             }
 
             _ => b.instrs.push(i),

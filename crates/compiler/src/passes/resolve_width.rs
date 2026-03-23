@@ -1,7 +1,4 @@
-use crate::{
-    passes::X86Pass,
-    syntax_trees::{x86::*},
-};
+use crate::{passes::X86Pass, syntax_trees::x86::*};
 
 /// `ResolveWidth` Pass
 ///
@@ -41,25 +38,21 @@ impl X86Pass for ResolveWidth {
 }
 
 macro_rules! binary_instr {
-    ($instr:expr, $ext:expr, $s:expr, $d:expr, $new_instrs:expr) => {
-        {
-            let final_width = std::cmp::max($s.width, $d.width);
-            let s_converted = convert_arg_width($s, final_width, $ext, $new_instrs);
-            let d_converted = convert_arg_width($d, final_width, $ext, $new_instrs);
-    
-            $new_instrs.push($instr(s_converted, d_converted));
-        }
-    }
+    ($instr:expr, $ext:expr, $s:expr, $d:expr, $new_instrs:expr) => {{
+        let final_width = std::cmp::max($s.width, $d.width);
+        let s_converted = convert_arg_width($s, final_width, $ext, $new_instrs);
+        let d_converted = convert_arg_width($d, final_width, $ext, $new_instrs);
+
+        $new_instrs.push($instr(s_converted, d_converted));
+    }};
 }
 
 macro_rules! unary_instr {
-    ($instr:expr, $arg:expr, $new_instrs:expr) => {
-        {
-            let width = $arg.width;
-            let arg_converted = convert_arg_width($arg, width, Extension::None, $new_instrs);
-            $new_instrs.push($instr(arg_converted));
-        }
-    };
+    ($instr:expr, $arg:expr, $new_instrs:expr) => {{
+        let width = $arg.width;
+        let arg_converted = convert_arg_width($arg, width, Extension::None, $new_instrs);
+        $new_instrs.push($instr(arg_converted));
+    }};
 }
 
 fn resolve_instr_width(i: Instr, new_instrs: &mut Vec<Instr>) {
@@ -78,7 +71,7 @@ fn resolve_instr_width(i: Instr, new_instrs: &mut Vec<Instr>) {
         Instr::imul(s, d) => binary_instr!(Instr::imul, Extension::Signed, s, d, new_instrs),
         Instr::lea(s, d) => binary_instr!(Instr::lea, Extension::Signed, s, d, new_instrs),
         Instr::idiv(arg) => unary_instr!(Instr::idiv, arg, new_instrs),
-        
+
         Instr::call(arg, arity) => {
             let width = arg.width;
             let arg_converted = convert_arg_width(arg, width, Extension::None, new_instrs);
@@ -92,30 +85,38 @@ fn resolve_instr_width(i: Instr, new_instrs: &mut Vec<Instr>) {
         Instr::set(comparison, arg) => {
             let arg_converted = convert_arg_width(arg, Width::Byte, Extension::None, new_instrs);
             new_instrs.push(Instr::set(comparison, arg_converted));
-        },
+        }
         Instr::movsx(s, d) => {
             // Both args are not the same width
             let s_width = s.width;
             let s_converted = convert_arg_width(s, s_width, Extension::None, new_instrs);
             let d_width = d.width;
             let d_converted = convert_arg_width(d, d_width, Extension::None, new_instrs);
-    
+
             new_instrs.push(Instr::movsx(s_converted, d_converted));
-        },
+        }
         Instr::movzx(s, d) => {
             // Both args are not the same width
             let s_width = s.width;
             let s_converted = convert_arg_width(s, s_width, Extension::None, new_instrs);
             let d_width = d.width;
             let d_converted = convert_arg_width(d, d_width, Extension::None, new_instrs);
-    
+
             new_instrs.push(Instr::movzx(s_converted, d_converted));
-        },
-        Instr::cqto => {new_instrs.push(Instr::cqto)},  // TODO: width in cqto?
-        Instr::ret => { new_instrs.push(i); },
-        Instr::jmp(_) => { new_instrs.push(i); },
-        Instr::jmpcc(_, _) =>  { new_instrs.push(i); },
-        Instr::jmp_tail(_, _) =>  { new_instrs.push(i); },
+        }
+        Instr::cqto => new_instrs.push(Instr::cqto), // TODO: width in cqto?
+        Instr::ret => {
+            new_instrs.push(i);
+        }
+        Instr::jmp(_) => {
+            new_instrs.push(i);
+        }
+        Instr::jmpcc(_, _) => {
+            new_instrs.push(i);
+        }
+        Instr::jmp_tail(_, _) => {
+            new_instrs.push(i);
+        }
     }
 }
 

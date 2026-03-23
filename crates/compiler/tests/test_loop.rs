@@ -13,7 +13,13 @@ while x > 0 {
 }
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![Value::I64(5), Value::I64(4), Value::I64(3), Value::I64(2), Value::I64(1)]),
+        expected_outputs: VecDeque::from(vec![
+            Value::I64(5),
+            Value::I64(4),
+            Value::I64(3),
+            Value::I64(2),
+            Value::I64(1),
+        ]),
     });
 }
 
@@ -254,7 +260,12 @@ print_int(i)
 }",
         inputs: VecDeque::new(),
         // i is 3 after the loop exits
-        expected_outputs: VecDeque::from(vec![Value::I64(0), Value::I64(1), Value::I64(2), Value::I64(3)]),
+        expected_outputs: VecDeque::from(vec![
+            Value::I64(0),
+            Value::I64(1),
+            Value::I64(2),
+            Value::I64(3),
+        ]),
     });
 }
 

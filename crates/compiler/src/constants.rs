@@ -1,6 +1,9 @@
 use std::sync::LazyLock;
 
-use crate::{syntax_trees::{Identifier, x86::Register}, utils::global};
+use crate::{
+    syntax_trees::{Identifier, x86::Register},
+    utils::global,
+};
 
 // Block labels
 pub const LABEL_USER_ENTRY: &str = "user_entry";
@@ -38,7 +41,7 @@ pub static EXTERNED_FUNCTIONS: LazyLock<Vec<Identifier>> = LazyLock::new(|| {
         FN_SUBSCRIPT_ARRAY,
         FN_ASSIGN_TO_ARRAY_ELEM,
         FN_STR_CONCAT,
-        FN_READ_STR
+        FN_READ_STR,
     ]
     .into_iter()
     .map(|f| global!(f))

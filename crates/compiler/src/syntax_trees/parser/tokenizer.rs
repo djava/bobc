@@ -59,7 +59,7 @@ pub enum TokenValue<'a> {
     Divide,
     StringLiteral(&'a str),
     CharLiteral(char),
-    Percent
+    Percent,
 }
 
 #[derive(Debug)]
@@ -212,33 +212,26 @@ fn string_literal_parser(rem: LocatedSpan<&'_ str>) -> IResult<LocatedSpan<&'_ s
     let (rem, string_literal_span) =
         recognize((tag("\""), many0(is_not("\"")), tag("\""))).parse(rem)?;
 
-    let (_open, (_rem, contents)) =
-        (tag("\""), take_until("\"")).parse(string_literal_span)?;
+    let (_open, (_rem, contents)) = (tag("\""), take_until("\"")).parse(string_literal_span)?;
 
     Ok((
         rem,
         Token {
-            token: TokenValue::StringLiteral(
-                contents.into_fragment(),
-            ),
+            token: TokenValue::StringLiteral(contents.into_fragment()),
             span: string_literal_span,
         },
     ))
 }
 
 fn char_literal_parser(rem: LocatedSpan<&'_ str>) -> IResult<LocatedSpan<&'_ str>, Token<'_>> {
-    let (rem, char_literal_span) =
-        recognize((tag("'"), is_not("'"), tag("'"))).parse(rem)?;
+    let (rem, char_literal_span) = recognize((tag("'"), is_not("'"), tag("'"))).parse(rem)?;
 
-    let (_open, (_rem, contents)) =
-        (tag("'"), take(1usize)).parse(char_literal_span)?;
+    let (_open, (_rem, contents)) = (tag("'"), take(1usize)).parse(char_literal_span)?;
 
     Ok((
         rem,
         Token {
-            token: TokenValue::CharLiteral(
-                contents.into_fragment().chars().nth(0).unwrap(),
-            ),
+            token: TokenValue::CharLiteral(contents.into_fragment().chars().nth(0).unwrap()),
             span: char_literal_span,
         },
     ))

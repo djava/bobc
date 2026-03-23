@@ -1,7 +1,7 @@
 use crate::{passes::ASTPass, syntax_trees::ast::Program};
 
 /// `TypeCheck` Pass
-/// 
+///
 /// Runs the type checker, ensures that the types of every expression is
 /// correct, and populates the type of every identifier into the type
 /// envs, for the locals of each function in the program and also in
@@ -13,7 +13,7 @@ use crate::{passes::ASTPass, syntax_trees::ast::Program};
 ///
 /// Pre-conditions:
 /// - `GlobalizeIdentifiers`
-/// 
+///
 /// Post-conditions:
 /// - All the `TypeEnv` members within the `Program` have been populated
 /// - The `Program` is guaranteed to be type-correct

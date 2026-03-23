@@ -101,8 +101,14 @@ fn generate_prelude(f: &mut Function) -> Vec<Instr> {
     if f.name == global!(LABEL_MAIN) {
         // In main, we also have to initialize GC Stack/Heap
         prelude_instrs.extend([
-            Instr::mov(Arg::new_imm(GC_STACK_SIZE, Width::Quad), Arg::new_reg(Register::rdi)),
-            Instr::mov(Arg::new_imm(GC_HEAP_SIZE, Width::Quad), Arg::new_reg(Register::rsi)),
+            Instr::mov(
+                Arg::new_imm(GC_STACK_SIZE, Width::Quad),
+                Arg::new_reg(Register::rdi),
+            ),
+            Instr::mov(
+                Arg::new_imm(GC_HEAP_SIZE, Width::Quad),
+                Arg::new_reg(Register::rsi),
+            ),
             Instr::call(Arg::new_global(global!(FN_GC_INITIALIZE), Width::Quad), 2),
             Instr::mov(
                 Arg::new_global(global!(GC_ROOTSTACK_BEGIN), Width::Quad),
@@ -120,12 +126,14 @@ fn generate_prelude(f: &mut Function) -> Vec<Instr> {
     }
 
     // Zero out GC Stack
-    prelude_instrs.extend((0..(f.gc_stack_size / POINTER_SIZE as usize) as _).map(|i| {
-        Instr::mov(
-            Arg::new_imm(0, Width::Quad),
-            Arg::new_deref(Register::r15, (POINTER_SIZE * i) as i32, Width::Quad),
-        )
-    }));
+    prelude_instrs.extend(
+        (0..(f.gc_stack_size / POINTER_SIZE as usize) as _).map(|i| {
+            Instr::mov(
+                Arg::new_imm(0, Width::Quad),
+                Arg::new_deref(Register::r15, (POINTER_SIZE * i) as i32, Width::Quad),
+            )
+        }),
+    );
 
     // Jump to function entry point
     prelude_instrs.push(Instr::jmp(f.entry_block.clone()));

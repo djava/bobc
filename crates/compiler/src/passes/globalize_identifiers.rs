@@ -1,4 +1,3 @@
-
 use crate::{
     passes::ASTPass,
     syntax_trees::{ast::*, shared::*},

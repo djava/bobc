@@ -106,14 +106,12 @@ fn replace_tuples_in_expr(expr: &mut Expr, type_env: &mut TypeEnv) {
             *expr = get_initialize_allocation_expr(elems, tup_type, type_env);
         }
         Expr::Array(elems) => {
-            let arr_type = ValueType::ArrayType(
-                Box::new(
-                    elems
-                        .get_mut(0)
-                        .map(|e| e.type_check(type_env, &None))
-                        .unwrap_or(ValueType::Indeterminate),
-                ),
-            );
+            let arr_type = ValueType::ArrayType(Box::new(
+                elems
+                    .get_mut(0)
+                    .map(|e| e.type_check(type_env, &None))
+                    .unwrap_or(ValueType::Indeterminate),
+            ));
             *expr = get_initialize_allocation_expr(elems, arr_type, type_env);
         }
         Expr::Closure(id, captures) => {

@@ -11,7 +11,7 @@ pub enum AtomValue {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Atom {
     pub value: AtomValue,
-    pub size: usize
+    pub size: usize,
 }
 
 impl Atom {
@@ -25,14 +25,14 @@ impl Atom {
     pub fn new_variable(id: Identifier, size: usize) -> Self {
         Self {
             value: AtomValue::Variable(id),
-            size
+            size,
         }
     }
 
     pub fn new_global(id: Identifier, size: usize) -> Self {
         Self {
             value: AtomValue::GlobalSymbol(id),
-            size
+            size,
         }
     }
 }

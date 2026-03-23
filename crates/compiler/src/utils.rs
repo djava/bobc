@@ -1,12 +1,15 @@
 use std::collections::HashMap;
 
-use crate::syntax_trees::{ValueType, x86::{Block, Instr}};
+use crate::syntax_trees::{
+    ValueType,
+    x86::{Block, Instr},
+};
 use petgraph::graph::DiGraph;
 
 #[derive(Debug, Clone, Copy, PartialEq, Hash)]
 pub enum JumpType {
     Conditional,
-    Unconditional
+    Unconditional,
 }
 
 pub fn x86_block_adj_graph<'a>(blocks: &'a [Block]) -> DiGraph<&'a Block, JumpType> {

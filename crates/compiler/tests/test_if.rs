@@ -146,7 +146,14 @@ if a >= b { print_int(1) } else { print_int(0) }
 }",
         inputs: VecDeque::new(),
         // a<b T, a>b F, a==b F, a!=b T, a<=b T, a>=b F
-        expected_outputs: VecDeque::from(vec![Value::I64(1), Value::I64(0), Value::I64(0), Value::I64(1), Value::I64(1), Value::I64(0)]),
+        expected_outputs: VecDeque::from(vec![
+            Value::I64(1),
+            Value::I64(0),
+            Value::I64(0),
+            Value::I64(1),
+            Value::I64(1),
+            Value::I64(0),
+        ]),
     });
 }
 
@@ -162,7 +169,12 @@ if a >= b { print_int(1) } else { print_int(0) }
 }",
         inputs: VecDeque::new(),
         // ==T, !=F, <=T, >=T
-        expected_outputs: VecDeque::from(vec![Value::I64(1), Value::I64(0), Value::I64(1), Value::I64(1)]),
+        expected_outputs: VecDeque::from(vec![
+            Value::I64(1),
+            Value::I64(0),
+            Value::I64(1),
+            Value::I64(1),
+        ]),
     });
 }
 

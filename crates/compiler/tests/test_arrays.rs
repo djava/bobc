@@ -621,7 +621,13 @@ print_int(a[3])
 print_int(a[4])
 }",
         inputs: VecDeque::new(),
-        expected_outputs: VecDeque::from(vec![Value::I64(10), Value::I64(20), Value::I64(30), Value::I64(40), Value::I64(50)]),
+        expected_outputs: VecDeque::from(vec![
+            Value::I64(10),
+            Value::I64(20),
+            Value::I64(30),
+            Value::I64(40),
+            Value::I64(50),
+        ]),
     });
 }
 

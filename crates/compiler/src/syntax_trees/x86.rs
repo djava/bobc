@@ -244,7 +244,7 @@ impl From<usize> for Width {
             2 => Width::Word,
             4 => Width::Double,
             8 => Width::Quad,
-            _ => panic!("Invalid size to width: {size}")
+            _ => panic!("Invalid size to width: {size}"),
         }
     }
 }
@@ -268,7 +268,7 @@ impl Arg {
     pub fn new_imm(n: i64, width: Width) -> Self {
         Self {
             value: ArgValue::Immediate(n),
-            width
+            width,
         }
     }
 
@@ -282,21 +282,21 @@ impl Arg {
     pub fn new_deref(r: Register, offset: i32, width: Width) -> Self {
         Self {
             value: ArgValue::Deref(r, offset),
-            width
+            width,
         }
     }
 
     pub fn new_variable(id: Identifier, width: Width) -> Self {
         Self {
             value: ArgValue::Variable(id),
-            width
+            width,
         }
     }
 
     pub fn new_global(id: Identifier, width: Width) -> Self {
         Self {
             value: ArgValue::Global(id),
-            width
+            width,
         }
     }
 }

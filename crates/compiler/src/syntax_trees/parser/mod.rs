@@ -4960,11 +4960,7 @@ x[0] = 42
                     name: "echo",
                     params: vec![("s", ValueType::ArrayType(Box::new(ValueType::CharType)))],
                     return_type: ValueType::ArrayType(Box::new(ValueType::CharType)),
-                    statements: vec![pt::Statement::Assign(
-                        "s",
-                        pt::Expr::Id("s"),
-                        None,
-                    )],
+                    statements: vec![pt::Statement::Assign("s", pt::Expr::Id("s"), None)],
                 }],
             },
             expected_ast: ast::Program {
