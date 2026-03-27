@@ -385,7 +385,7 @@ impl ast::Statement {
                         }
                     }
                     AssignDest::Subscript(id, idx)
-                    | AssignDest::UncheckedArraySubscript(id, idx, _) => {
+                    | AssignDest::SubscriptForInit(id, idx, _) => {
                         let inner_type = env.get(id).map(|t| t.clone().strip_pointer());
                         if let Some(ValueType::TupleType(elems)) = inner_type {
                             assert!(

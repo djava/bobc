@@ -163,7 +163,7 @@ fn interpret_statement_chain<'a>(
                     val_env.insert(id.clone(), result);
                 }
                 AssignDest::Subscript(id, index)
-                | AssignDest::UncheckedArraySubscript(id, index, _) => {
+                | AssignDest::SubscriptForInit(id, index, _) => {
                     if let Some(Value::Tuple(elems)) = val_env.get_mut(id) {
                         elems[*index as usize] = result;
                     } else {

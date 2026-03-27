@@ -1,7 +1,7 @@
 use crate::{
     constants::*,
     passes::ASTPass,
-    syntax_trees::{ast::*, shared::*},
+    syntax_trees::{ast::*, shared::*, x86::Width},
     utils::global,
 };
 
@@ -197,7 +197,7 @@ fn get_initialize_allocation_expr(
         // Tuple
         statements.extend(elems.iter().enumerate().map(|(idx, e)| {
             Statement::Assign(
-                AssignDest::UncheckedArraySubscript(
+                AssignDest::SubscriptForInit(
                     out_ephemeral.clone(),
                     idx as i64,
                     elem_type.size(),
@@ -210,7 +210,8 @@ fn get_initialize_allocation_expr(
         // Tuple
         statements.extend(elems.iter().enumerate().map(|(idx, e)| {
             Statement::Assign(
-                AssignDest::Subscript(out_ephemeral.clone(), idx as i64),
+                // Tuple elements are always quad size
+                AssignDest::SubscriptForInit(out_ephemeral.clone(), idx as i64, Width::Quad.bytes()),
                 e.clone(),
                 None,
             )

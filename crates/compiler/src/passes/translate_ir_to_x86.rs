@@ -936,7 +936,7 @@ fn assigndest_to_arg(dest: SizedAssignDest<()>) -> x86::Arg {
                 Width::from(dest.size),
             )
         }
-        AssignDest::UncheckedArraySubscript(_, offset, elem_size) => {
+        AssignDest::SubscriptForInit(_, offset, elem_size) => {
             // Assumes that the id-ptr has already been moved into r11,
             // as is convention
             x86::Arg::new_deref(

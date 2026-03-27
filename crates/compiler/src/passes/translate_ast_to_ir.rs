@@ -520,8 +520,8 @@ fn ast_to_ir_assigndest(dest: AssignDest<ast::Expr>, size: usize) -> SizedAssign
             value: AssignDest::Subscript(id, idx),
             size,
         },
-        AssignDest::UncheckedArraySubscript(id, idx, elem_size) => SizedAssignDest {
-            value: AssignDest::UncheckedArraySubscript(id, idx, elem_size),
+        AssignDest::SubscriptForInit(id, idx, elem_size) => SizedAssignDest {
+            value: AssignDest::SubscriptForInit(id, idx, elem_size),
             size,
         },
         AssignDest::ComplexSubscript(_) => {

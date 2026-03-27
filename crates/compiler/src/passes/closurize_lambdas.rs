@@ -171,7 +171,7 @@ fn find_and_disambiguate_captures_for_statement(
             match assign_dest {
                 AssignDest::Id(id)
                 | AssignDest::Subscript(id, _)
-                | AssignDest::UncheckedArraySubscript(id, _, _) => {
+                | AssignDest::SubscriptForInit(id, _, _) => {
                     if let Some(new_id) = is_id_in_parent(id, this_env) {
                         *id = new_id.clone();
                         captures.push(new_id);
@@ -343,7 +343,7 @@ fn replace_captures_with_tup_reference_for_statement(
                         captures,
                     );
                 }
-                AssignDest::UncheckedArraySubscript(..) => {
+                AssignDest::SubscriptForInit(..) => {
                     panic!("UncheckedArraySubscript shouldn't exist yet")
                 }
             }

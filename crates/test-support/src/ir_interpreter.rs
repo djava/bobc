@@ -149,7 +149,7 @@ fn interpret_statement(
                     val_env.insert(identifier.clone(), value);
                 }
                 AssignDest::Subscript(identifier, index)
-                | AssignDest::UncheckedArraySubscript(identifier, index, _) => {
+                | AssignDest::SubscriptForInit(identifier, index, _) => {
                     if let Some(Value::Tuple(elems)) = val_env.get_mut(identifier) {
                         elems[*index as usize] = value;
                     } else {
