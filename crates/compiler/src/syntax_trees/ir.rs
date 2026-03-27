@@ -56,6 +56,7 @@ pub enum Statement {
     Goto(Identifier),
     If(Expr, Identifier, Identifier),
     TailCall(Atom, Vec<Atom>),
+    DataBlockAssign{dest: SizedAssignDest<()>, vals: Vec<Value>, is_tuple: bool}
 }
 
 #[derive(Debug, Clone)]

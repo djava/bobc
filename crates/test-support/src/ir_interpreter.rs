@@ -182,6 +182,7 @@ fn interpret_statement(
             );
             Continuation::Return(ret_val)
         }
+        Statement::DataBlockAssign { .. } => todo!()
     }
 }
 

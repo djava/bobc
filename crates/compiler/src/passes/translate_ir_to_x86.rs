@@ -142,6 +142,9 @@ fn translate_statement(s: ir::Statement, exit_block: &Identifier) -> Vec<Instr> 
                 ir::AtomValue::Constant(_) => panic!("func was Atom::Constant??"),
             }
             instrs
+        },
+        ir::Statement::DataBlockAssign{..} => {
+            todo!()
         }
     }
 }

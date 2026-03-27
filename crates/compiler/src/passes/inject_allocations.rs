@@ -193,30 +193,57 @@ fn get_initialize_allocation_expr(
         ),
     ];
 
-    if let ValueType::ArrayType(elem_type) = &tup_type {
-        // Tuple
-        statements.extend(elems.iter().enumerate().map(|(idx, e)| {
-            Statement::Assign(
-                AssignDest::SubscriptForInit(
-                    out_ephemeral.clone(),
-                    idx as i64,
-                    elem_type.size(),
-                ),
-                e.clone(),
-                None,
-            )
-        }));
+    let elem_size = if let ValueType::ArrayType(e) = &tup_type {
+        e.size()
     } else {
-        // Tuple
-        statements.extend(elems.iter().enumerate().map(|(idx, e)| {
-            Statement::Assign(
-                // Tuple elements are always quad size
-                AssignDest::SubscriptForInit(out_ephemeral.clone(), idx as i64, Width::Quad.bytes()),
-                e.clone(),
-                None,
-            )
-        }));
+        // Tuple elements are always quad size
+        Width::Quad.bytes()
     };
 
+    if let Some(elem_vals) = get_primitive_constants(elems) {
+        // If an array/tuple is all primitive constants then we will
+        // want to generate a data block for it instead of going elem by
+        // elem. This enables that by passing it as a single constant
+        // array value whose elements are all constant primitive values
+        let const_compound_val = if let ValueType::TupleType(_) = tup_type {
+            Value::Tuple(elem_vals)
+        } else {
+            Value::Array(elem_vals)
+        };
+
+        statements.push(Statement::Assign(
+            AssignDest::Id(out_ephemeral.clone()),
+            Expr::Constant(const_compound_val),
+            None,
+        ));
+    } else {
+        statements.extend(elems.iter().enumerate().map(|(idx, e)| {
+            Statement::Assign(
+                AssignDest::SubscriptForInit(out_ephemeral.clone(), idx as i64, elem_size),
+                e.clone(),
+                None,
+            )
+        }));
+    }
+
     Expr::StatementBlock(statements, Box::new(Expr::Id(out_ephemeral)))
+}
+
+
+fn get_primitive_constants(elems: &Vec<Expr>) -> Option<Vec<Value>> {
+    let is_primitive_const_data = elems
+        .iter()
+        .all(|e| matches!(e, Expr::Constant(val) if !val.is_compound()));
+
+    if is_primitive_const_data {
+        Some(elems.iter().map(|e| {
+            if let Expr::Constant(val) = e {
+                val.clone()
+            } else {
+                unreachable!()
+            }
+        }).collect())
+    } else {
+        None
+    }
 }

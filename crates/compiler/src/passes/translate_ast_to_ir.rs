@@ -253,7 +253,28 @@ fn generate_for_assign(
 ) -> Vec<ir::Statement> {
     let expr_size = e.get_type(env).size();
     match e {
+        ast::Expr::Constant(value) if value.is_compound() => {
+            let is_tuple = matches!(&value, Value::Tuple(_));
+            let vals = match value {
+                Value::Array(e) | Value::Tuple(e) => e,
+                _ => panic!("value.is_compound() true but not array or tuple"),
+            };
+
+            assert!(
+                vals.iter().all(|e| !e.is_compound()),
+                "Non-primitive array/tuple passed as constant, bug in InjectAllocation"
+            );
+
+            let mut ret = vec![ir::Statement::DataBlockAssign {
+                dest: ast_to_ir_assigndest(dest, expr_size),
+                vals,
+                is_tuple,
+            }];
+            ret.extend(cont);
+            ret
+        }
         ast::Expr::Constant(value) => {
+            // Non-compound constant (just a mov)
             let mut ret = vec![ir::Statement::Assign(
                 ast_to_ir_assigndest(dest, expr_size),
                 ir::Expr::Atom(ir::Atom::new_constant(value, expr_size)),

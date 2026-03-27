@@ -175,6 +175,12 @@ pub enum Value {
     None,
 }
 
+impl Value {
+    pub fn is_compound(&self) -> bool {
+        matches!(self, Self::Tuple(_) | Self::Array(_))
+    }
+}
+
 impl Into<i64> for Value {
     fn into(self) -> i64 {
         match self {
