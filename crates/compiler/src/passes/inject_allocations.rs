@@ -200,7 +200,9 @@ fn get_initialize_allocation_expr(
         Width::Quad.bytes()
     };
 
-    if let Some(elem_vals) = get_primitive_constants(elems) {
+    if let Some(elem_vals) = get_primitive_constants(elems)
+        && elems.len() >= MIN_ELEMS_FOR_DATA_BLOCK
+    {
         // If an array/tuple is all primitive constants then we will
         // want to generate a data block for it instead of going elem by
         // elem. This enables that by passing it as a single constant
@@ -229,20 +231,24 @@ fn get_initialize_allocation_expr(
     Expr::StatementBlock(statements, Box::new(Expr::Id(out_ephemeral)))
 }
 
-
 fn get_primitive_constants(elems: &Vec<Expr>) -> Option<Vec<Value>> {
     let is_primitive_const_data = elems
         .iter()
         .all(|e| matches!(e, Expr::Constant(val) if !val.is_compound()));
 
     if is_primitive_const_data {
-        Some(elems.iter().map(|e| {
-            if let Expr::Constant(val) = e {
-                val.clone()
-            } else {
-                unreachable!()
-            }
-        }).collect())
+        Some(
+            elems
+                .iter()
+                .map(|e| {
+                    if let Expr::Constant(val) = e {
+                        val.clone()
+                    } else {
+                        unreachable!()
+                    }
+                })
+                .collect(),
+        )
     } else {
         None
     }

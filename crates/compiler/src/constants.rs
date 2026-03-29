@@ -122,3 +122,8 @@ pub const CALL_ARG_REGISTERS: [Register; MAX_REGISTER_ARGS] = [
 // As per the calling convention, functions will return values through
 // this register
 pub const CALL_RETURN_REGISTER: Register = Register::rax;
+
+// How many elements an array/tuple initializer has to be before the
+// compiler will generate a data block + memcpy instead of just copying
+// the data in directly
+pub const MIN_ELEMS_FOR_DATA_BLOCK: usize = 4;
