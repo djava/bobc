@@ -368,7 +368,15 @@ pub struct Function {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct DataBlock {
+    pub name: Identifier,
+    pub values: Vec<Value>,
+    pub spacing: Width,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct X86Program {
     pub header: Vec<Directive>,
     pub functions: Vec<Function>,
+    pub data_blocks: Vec<DataBlock>
 }

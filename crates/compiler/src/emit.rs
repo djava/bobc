@@ -27,7 +27,7 @@ impl Display for Arg {
             },
             ArgValue::Global(id) => match id {
                 Identifier::Global(name) => write!(f, "{name}(%rip)"),
-                Identifier::Ephemeral(id) => write!(f, "__EE_{id}(%rip)"),
+                Identifier::Ephemeral(id) => write!(f, ".EE_{id}(%rip)"),
                 Identifier::Local(..) => panic!("A local cannot be a global"),
             },
         }
@@ -192,11 +192,91 @@ impl Display for Directive {
     }
 }
 
+impl Display for DataBlock {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{}:", fmt_label(&self.name))?;
+        if self.spacing == Width::Byte
+            && matches!(self.values[0], Value::Char(_))
+            && self.values.last() == Some(&Value::Char('\0'))
+        {
+            // Must be a string!
+            let mut string: String = self
+                .values
+                .iter()
+                .map(|v| {
+                    if let Value::Char(c) = v {
+                        c
+                    } else {
+                        panic!("String heuristic isnt good enough")
+                    }
+                })
+                .collect();
+            string.remove(string.len() - 1); // Remove null terminator
+
+            writeln!(f, "\t.string \"{string}\"")?;
+        } else {
+            match self.spacing {
+                Width::Byte => {
+                    for b in &self.values {
+                        let val_str = match b {
+                            Value::I64(v) => format!("{}", i8::try_from(*v).expect("int too big to convert to byte")),
+                            Value::Bool(v) => format!("{}", *v as u8),
+                            Value::Char(c) => format!("'{c}'"),
+                            Value::Tuple(..) | Value::Array(..) | Value::Function(..) | Value::None => unreachable!(),
+                        };
+
+                        writeln!(f, "\t.byte {val_str}")?;
+                    }
+                },
+                Width::Word => {
+                    for w in &self.values {
+                        let val_str = match w {
+                            Value::I64(v) => format!("{}", i8::try_from(*v).expect("int too big to convert to word")),
+                            Value::Bool(v) => format!("{}", *v as u16),
+                            Value::Char(c) => format!("'{c}'"),
+                            Value::Tuple(..) | Value::Array(..) | Value::Function(..) | Value::None => unreachable!(),
+                        };
+
+                        writeln!(f, "\t.word {val_str}")?;
+                    }
+                },
+                Width::Double => {
+                    for w in &self.values {
+                        let val_str = match w {
+                            Value::I64(v) => format!("{}", i32::try_from(*v).expect("int too big to convert to double")),
+                            Value::Bool(v) => format!("{}", *v as u32),
+                            Value::Char(c) => format!("'{c}'"),
+                            Value::Tuple(..) | Value::Array(..) | Value::Function(..) | Value::None => unreachable!(),
+                        };
+    
+                        writeln!(f, "\t.double {val_str}")?;
+                    }
+                },
+                Width::Quad => {
+                    for w in &self.values {
+                        let val_str = match w {
+                            Value::I64(v) => format!("{}", i64::try_from(*v).expect("int too big to convert to quad")),
+                            Value::Bool(v) => format!("{}", *v as u64),
+                            Value::Char(c) => format!("'{c}'"),
+                            Value::Tuple(..) | Value::Array(..) | Value::Function(..) | Value::None => unreachable!(),
+                        };
+    
+                        writeln!(f, "\t.quad {val_str}")?;
+                    }
+                },
+            }
+        }
+
+        Ok(())
+    }
+}
+
 impl Display for X86Program {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for dir in &self.header {
             writeln!(f, "{dir}")?;
         }
+        writeln!(f, "\t.text\n")?;
         for func in &self.functions {
             for dir in &func.header {
                 writeln!(f, "{dir}")?;
@@ -208,6 +288,10 @@ impl Display for X86Program {
                 }
             }
             writeln!(f)?;
+        }
+        writeln!(f, "\t.data")?;
+        for b in &self.data_blocks {
+            writeln!(f, "{}", b)?;
         }
         writeln!(f, "\t.section .note.GNU-stack,\"\",@progbits")?;
         Ok(())

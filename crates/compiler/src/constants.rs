@@ -29,6 +29,7 @@ pub const FN_SUBSCRIPT_ARRAY: &str = "__subscript_array";
 pub const FN_ASSIGN_TO_ARRAY_ELEM: &str = "__assign_to_array_elem";
 pub const FN_STR_CONCAT: &str = "__str_concat";
 pub const FN_READ_STR: &str = "read_str";
+pub const FN_MEMCPY: &str = "memcpy";
 
 pub static EXTERNED_FUNCTIONS: LazyLock<Vec<Identifier>> = LazyLock::new(|| {
     [
@@ -42,6 +43,7 @@ pub static EXTERNED_FUNCTIONS: LazyLock<Vec<Identifier>> = LazyLock::new(|| {
         FN_ASSIGN_TO_ARRAY_ELEM,
         FN_STR_CONCAT,
         FN_READ_STR,
+        FN_MEMCPY,
     ]
     .into_iter()
     .map(|f| global!(f))

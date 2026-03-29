@@ -17,8 +17,10 @@ struct Eflags {
 
 const HEAP_OFFSET: usize = 0x10000;
 const FUNCTIONS_OFFSET: usize = 0x20000;
+const DATA_BLOCKS_OFFSET: usize = 0x40000;
+const DATA_BLOCKS_STEP_SIZE: usize = 0x1000;
 
-const SPECIAL_FUNCTIONS: [&str; 9] = [
+const SPECIAL_FUNCTIONS: [&str; 10] = [
     FN_READ_INT,
     FN_READ_STR,
     FN_PRINT_INT,
@@ -28,10 +30,11 @@ const SPECIAL_FUNCTIONS: [&str; 9] = [
     FN_SUBSCRIPT_ARRAY,
     FN_ASSIGN_TO_ARRAY_ELEM,
     FN_STR_CONCAT,
+    FN_MEMCPY,
 ];
 
 #[derive(Debug)]
-struct X86Env {
+struct X86Env<'a> {
     vars: ValueEnv,
     regs: [i64; 16],
     stack: [u8; 0x1000],
@@ -40,10 +43,11 @@ struct X86Env {
     gc_free_ptr: i64,
     functions: Vec<Identifier>,
     special_function_offset: usize,
+    data_blocks: &'a Vec<DataBlock>,
 }
 
-impl X86Env {
-    fn new(mut functions: Vec<Identifier>) -> Self {
+impl<'a> X86Env<'a> {
+    fn new(mut functions: Vec<Identifier>, data_blocks: &'a Vec<DataBlock>) -> Self {
         let special_function_offset = functions.len();
         functions.extend(SPECIAL_FUNCTIONS.map(|f| global!(f)));
 
@@ -64,6 +68,7 @@ impl X86Env {
             gc_free_ptr: HEAP_OFFSET as i64,
             functions,
             special_function_offset,
+            data_blocks
         };
 
         ret.regs[Register::rsp as usize] = ret.stack.len() as i64;
@@ -110,6 +115,9 @@ impl X86Env {
 
                 if (addr & FUNCTIONS_OFFSET) != 0 {
                     panic!("Tried to write to function memory")
+                }
+                if (addr & DATA_BLOCKS_OFFSET) != 0 {
+                    panic!("Tried to write to data block memory")
                 }
 
                 let memory = if addr & HEAP_OFFSET != 0 {
@@ -160,20 +168,36 @@ impl X86Env {
                 let base = self.regs[*reg as usize];
                 let mut addr: usize = (base + (*offset as i64)).try_into().unwrap();
 
-                let mut bytes = [0u8; 8];
-                let memory = if addr & HEAP_OFFSET != 0 {
-                    self.heap.as_slice()
+                if addr & DATA_BLOCKS_OFFSET != 0 {
+                    let block_idx = (addr & !DATA_BLOCKS_OFFSET) / DATA_BLOCKS_STEP_SIZE;
+                    let mem_idx_into_block = addr % DATA_BLOCKS_STEP_SIZE;
+                    
+                    let block = &self.data_blocks[block_idx];
+                    let elem_idx_into_block = mem_idx_into_block / block.spacing.bytes();
+
+                    let elem: i64 = block.values[elem_idx_into_block].clone().into();
+                    let byte_idx_into_elem = mem_idx_into_block % block.spacing.bytes();
+                    if arg.width != Width::Byte {
+                        assert_eq!(0, byte_idx_into_elem, "Misaligned access to data block")
+                    }
+
+                    (elem >> (8 * byte_idx_into_elem)) & arg.width.mask()
                 } else {
-                    self.stack.as_slice()
-                };
-
-                addr &= !HEAP_OFFSET;
-
-                for (idx, byte) in bytes.iter_mut().enumerate().take(arg.width.bytes()) {
-                    *byte = memory[addr + idx];
+                    let mut bytes = [0u8; 8];
+                    let memory = if addr & HEAP_OFFSET != 0 {
+                        self.heap.as_slice()
+                    } else {
+                        self.stack.as_slice()
+                    };
+    
+                    addr &= !HEAP_OFFSET;
+    
+                    for (idx, byte) in bytes.iter_mut().enumerate().take(arg.width.bytes()) {
+                        *byte = memory[addr + idx];
+                    }
+    
+                    i64::from_le_bytes(bytes)
                 }
-
-                i64::from_le_bytes(bytes)
             }
             ArgValue::Immediate(val) => *val & arg.width.mask(),
             ArgValue::Global(name) => {
@@ -192,6 +216,11 @@ impl X86Env {
                     0
                 } else if let Some(func_idx) = self.functions.iter().position(|f| f == name) {
                     (func_idx | FUNCTIONS_OFFSET) as i64
+                } else if let Some(data_block) = self.data_blocks.iter().position(|b| &b.name == name) {
+                    // Use steps of 0x1000 between each data block, so
+                    // stuff will break if there is a data block bigger
+                    // than that. Or more than 32(?) data blocks I guess
+                    ((data_block * 0x1000) | DATA_BLOCKS_OFFSET) as i64
                 } else {
                     unimplemented!("Unknown global symbol: `{name:?}`")
                 }
@@ -406,6 +435,15 @@ fn execute_special_functions(
         env.write_arg(&Arg::new_reg(Register::rax), out_ptr);
 
         return true;
+    } else if label == FN_MEMCPY {
+        let size = env.read_arg(&Arg::new_reg(Register::rdx)) as i32;
+
+        for i in 0..size {
+            let byte = env.read_arg(&Arg::new_deref(Register::rsi, i, Width::Byte));
+            env.write_arg(&Arg::new_deref(Register::rdi, i, Width::Byte), byte);
+        }
+
+        return true;
     } else {
         // No match found, must be another call
         return false;
@@ -571,7 +609,7 @@ fn run_instr(
 
 pub fn interpret_x86(m: &X86Program, inputs: &mut VecDeque<Value>, outputs: &mut VecDeque<Value>) {
     let funcs = m.functions.iter().map(|f| f.name.clone()).collect();
-    let mut env = X86Env::new(funcs);
+    let mut env = X86Env::new(funcs, &m.data_blocks);
 
     let mut curr_func = m
         .functions

@@ -170,6 +170,7 @@ mod tests {
                 types: TypeEnv::new(),
                 callee_saved_used: vec![],
             }],
+            data_blocks: vec![],
         });
 
         assert_eq!(
@@ -231,6 +232,7 @@ mod tests {
                 types: TypeEnv::new(),
                 callee_saved_used: vec![],
             }],
+            data_blocks: vec![],
         });
 
         // Expected order: 1 -> 2 -> 3 -> 4
@@ -310,6 +312,7 @@ mod tests {
                 types: TypeEnv::new(),
                 callee_saved_used: vec![],
             }],
+            data_blocks: vec![],
         });
 
         // Expected order: 1 -> 2 -> 3 -> 4 -> 6 -> 5
@@ -397,6 +400,7 @@ mod tests {
                 types: TypeEnv::new(),
                 callee_saved_used: vec![],
             }],
+            data_blocks: vec![],
         });
 
         // Expected order: 1 -> 2 -> 3 -> 4 -> 6 -> 5
@@ -473,6 +477,7 @@ mod tests {
                 types: TypeEnv::new(),
                 callee_saved_used: vec![],
             }],
+            data_blocks: vec![],
         });
 
         assert_eq!(

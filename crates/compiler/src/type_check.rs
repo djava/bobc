@@ -379,7 +379,7 @@ impl ast::Statement {
                 match dest {
                     AssignDest::Id(id) => {
                         if env.contains_key(id) {
-                            assert_eq!(env[id], t);
+                            assert_eq!(env[id].clone().strip_pointer(), t);
                         } else {
                             env.insert(id.clone(), t);
                         }

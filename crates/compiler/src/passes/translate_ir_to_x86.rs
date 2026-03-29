@@ -6,7 +6,7 @@ use crate::{
     syntax_trees::{
         ir,
         shared::*,
-        x86::{self, Instr, Register, Width, X86Program},
+        x86::{self, Arg, Instr, Register, Width, X86Program},
     },
     utils::global,
 };
@@ -34,6 +34,7 @@ pub struct TranslateIRtoX86;
 impl IRtoX86Pass for TranslateIRtoX86 {
     fn run_pass(self, m: ir::IRProgram) -> X86Program {
         let mut x86_functions = vec![];
+        let mut data_blocks = vec![];
         for f in m.functions {
             let mut x86_blocks = vec![];
 
@@ -48,7 +49,7 @@ impl IRtoX86Pass for TranslateIRtoX86 {
             };
 
             for (id, block) in f.blocks {
-                x86_blocks.push(translate_block(id, block, &f.exit_block));
+                x86_blocks.push(translate_block(id, block, &f.exit_block, &mut data_blocks));
             }
 
             x86_functions.push(x86::Function {
@@ -66,21 +67,31 @@ impl IRtoX86Pass for TranslateIRtoX86 {
         X86Program {
             header: vec![],
             functions: x86_functions,
+            data_blocks,
         }
     }
 }
 
-fn translate_block(label: Identifier, b: ir::Block, exit_block: &Identifier) -> x86::Block {
+fn translate_block(
+    label: Identifier,
+    b: ir::Block,
+    exit_block: &Identifier,
+    data_blocks: &mut Vec<x86::DataBlock>,
+) -> x86::Block {
     let mut instrs = vec![];
 
     for s in b.statements {
-        instrs.extend(translate_statement(s, exit_block));
+        instrs.extend(translate_statement(s, exit_block, data_blocks));
     }
 
     x86::Block { label, instrs }
 }
 
-fn translate_statement(s: ir::Statement, exit_block: &Identifier) -> Vec<Instr> {
+fn translate_statement(
+    s: ir::Statement,
+    exit_block: &Identifier,
+    data_blocks: &mut Vec<x86::DataBlock>,
+) -> Vec<Instr> {
     match s {
         ir::Statement::Expr(expr) => {
             match expr {
@@ -142,9 +153,52 @@ fn translate_statement(s: ir::Statement, exit_block: &Identifier) -> Vec<Instr> 
                 ir::AtomValue::Constant(_) => panic!("func was Atom::Constant??"),
             }
             instrs
-        },
-        ir::Statement::DataBlockAssign{..} => {
-            todo!()
+        }
+        ir::Statement::DataBlockAssign {
+            dest,
+            vals,
+            is_tuple,
+        } => {
+            let data_block_id = Identifier::new_ephemeral();
+
+            let block_elem_size = if is_tuple {
+                Width::Quad.bytes()
+            } else {
+                ValueType::from(&vals[0]).size()
+            };
+            let data_block_size = block_elem_size * vals.len();
+
+            data_blocks.push(x86::DataBlock {
+                name: data_block_id.clone(),
+                values: vals,
+                spacing: Width::from(block_elem_size),
+            });
+
+            let mut instrs = vec![];
+            if let AssignDest::Subscript(id, _idx) = &dest.value {
+                instrs.push(Instr::mov(
+                    x86::Arg::new_variable(id.clone(), Width::from(POINTER_SIZE as usize)),
+                    x86::Arg::new_reg(x86::Register::r11),
+                ));
+            }
+            instrs.extend([
+                Instr::mov(assigndest_to_arg(dest), Arg::new_reg(CALL_ARG_REGISTERS[0])),
+                Instr::add(
+                    Arg::new_imm(size_of::<ArrayTag>() as _, Width::Quad),
+                    Arg::new_reg(CALL_ARG_REGISTERS[0]),
+                ),
+                Instr::lea(
+                    Arg::new_global(data_block_id, Width::Quad),
+                    Arg::new_reg(CALL_ARG_REGISTERS[1]),
+                ),
+                Instr::mov(
+                    Arg::new_imm(data_block_size as i64, Width::Quad),
+                    Arg::new_reg(CALL_ARG_REGISTERS[2]),
+                ),
+                Instr::call(Arg::new_global(global!(FN_MEMCPY), Width::Quad), 3),
+            ]);
+
+            instrs
         }
     }
 }
