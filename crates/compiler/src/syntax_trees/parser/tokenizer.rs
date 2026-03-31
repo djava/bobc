@@ -1,5 +1,4 @@
-use peg::*;
-
+use super::token::*;
 use nom::{
     IResult, Parser,
     branch::alt,
@@ -10,63 +9,8 @@ use nom::{
 };
 use nom_locate::LocatedSpan;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum TokenValue<'a> {
-    Identifier(&'a str),
-    Int(i64),
-    Bool(bool),
-    OpenParen,
-    CloseParen,
-    Equals,
-    Plus,
-    Minus,
-    Comma,
-    Newline,
-    DoubleEquals,
-    NotEquals,
-    Greater,
-    GreaterEquals,
-    Less,
-    LessEquals,
-    Not,
-    And,
-    Or,
-    If,
-    Else,
-    OpenCurly,
-    CloseCurly,
-    QuestionMark,
-    Colon,
-    While,
-    Is,
-    OpenBracket,
-    CloseBracket,
-    Asterisk,
-    Fn,
-    IntType,
-    BoolType,
-    TupleType,
-    ArrayType,
-    CallableType,
-    StringType,
-    CharType,
-    NoneType,
-    RightArrow,
-    Return,
-    Lambda,
-    For,
-    Semicolon,
-    Divide,
-    StringLiteral(&'a str),
-    CharLiteral(char),
-    Percent,
-}
-
-#[derive(Debug)]
-pub struct Token<'a> {
-    pub token: TokenValue<'a>,
-    pub span: LocatedSpan<&'a str>,
-}
+type Span<'a> = LocatedSpan<&'a str>;
+type TokResult<'a> = IResult<Span<'a>, Token<'a>>;
 
 const ID_START_CHARS: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_";
 const WORD_CHARS: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_";
@@ -77,11 +21,11 @@ macro_rules! token_map {
     };
 }
 
-fn word_delimiter(rem: LocatedSpan<&str>) -> IResult<LocatedSpan<&str>, ()> {
+fn word_delimiter(rem: Span) -> IResult<Span, ()> {
     peek(is_not(WORD_CHARS)).map(|_| ()).parse(rem)
 }
 
-fn newline<'a>(rem: LocatedSpan<&'a str>) -> IResult<LocatedSpan<&'a str>, Token<'a>> {
+fn newline<'a>(rem: Span<'a>) -> TokResult<'a> {
     let (rem, span) = is_a("\r\n").parse(rem)?;
 
     Ok((
@@ -93,11 +37,11 @@ fn newline<'a>(rem: LocatedSpan<&'a str>) -> IResult<LocatedSpan<&'a str>, Token
     ))
 }
 
-fn whitespace(input: LocatedSpan<&str>) -> IResult<LocatedSpan<&str>, ()> {
+fn whitespace(input: Span) -> IResult<Span, ()> {
     alt((tag(" "), tag("\t"))).map(|_| ()).parse(input)
 }
 
-fn keyword_parser<'a>(rem: LocatedSpan<&'a str>) -> IResult<LocatedSpan<&'a str>, Token<'a>> {
+fn keyword_parser<'a>(rem: Span<'a>) -> TokResult<'a> {
     use TokenValue::*;
 
     let (rem, (span, token)) = terminated(
@@ -131,7 +75,7 @@ fn keyword_parser<'a>(rem: LocatedSpan<&'a str>) -> IResult<LocatedSpan<&'a str>
     Ok((rem, Token { token, span }))
 }
 
-fn punctuation_parser<'a>(rem: LocatedSpan<&'a str>) -> IResult<LocatedSpan<&'a str>, Token<'a>> {
+fn punctuation_parser<'a>(rem: Span<'a>) -> TokResult<'a> {
     use TokenValue::*;
 
     // let (rem, _) = position(input)?;
@@ -172,7 +116,7 @@ fn punctuation_parser<'a>(rem: LocatedSpan<&'a str>) -> IResult<LocatedSpan<&'a 
     Ok((rem, Token { token, span }))
 }
 
-fn int_parser(rem: LocatedSpan<&'_ str>) -> IResult<LocatedSpan<&'_ str>, Token<'_>> {
+fn int_parser(rem: LocatedSpan<&'_ str>) -> TokResult<'_> {
     let (rem, token_span) =
         recognize(terminated(nom::character::complete::i64, word_delimiter)).parse(rem)?;
 
@@ -192,7 +136,7 @@ fn int_parser(rem: LocatedSpan<&'_ str>) -> IResult<LocatedSpan<&'_ str>, Token<
     ))
 }
 
-fn id_parser(rem: LocatedSpan<&'_ str>) -> IResult<LocatedSpan<&'_ str>, Token<'_>> {
+fn id_parser(rem: LocatedSpan<&'_ str>) -> TokResult<'_> {
     let (rem, id_span) =
         terminated(take_while(|c| WORD_CHARS.contains(c)), word_delimiter).parse(rem)?;
 
@@ -208,7 +152,7 @@ fn id_parser(rem: LocatedSpan<&'_ str>) -> IResult<LocatedSpan<&'_ str>, Token<'
     ))
 }
 
-fn string_literal_parser(rem: LocatedSpan<&'_ str>) -> IResult<LocatedSpan<&'_ str>, Token<'_>> {
+fn string_literal_parser(rem: LocatedSpan<&'_ str>) -> TokResult<'_> {
     let (rem, string_literal_span) =
         recognize((tag("\""), many0(is_not("\"")), tag("\""))).parse(rem)?;
 
@@ -223,7 +167,7 @@ fn string_literal_parser(rem: LocatedSpan<&'_ str>) -> IResult<LocatedSpan<&'_ s
     ))
 }
 
-fn char_literal_parser(rem: LocatedSpan<&'_ str>) -> IResult<LocatedSpan<&'_ str>, Token<'_>> {
+fn char_literal_parser(rem: LocatedSpan<&'_ str>) -> TokResult<'_> {
     let (rem, char_literal_span) = recognize((tag("'"), is_not("'"), tag("'"))).parse(rem)?;
 
     let (_open, (_rem, contents)) = (tag("'"), take(1usize)).parse(char_literal_span)?;
@@ -237,7 +181,7 @@ fn char_literal_parser(rem: LocatedSpan<&'_ str>) -> IResult<LocatedSpan<&'_ str
     ))
 }
 
-fn token_parser(rem: LocatedSpan<&'_ str>) -> IResult<LocatedSpan<&'_ str>, Token<'_>> {
+fn token_parser(rem: LocatedSpan<&'_ str>) -> TokResult<'_> {
     let (rem, _) = many0(whitespace).parse(rem)?;
 
     let tok = alt((
@@ -254,9 +198,7 @@ fn token_parser(rem: LocatedSpan<&'_ str>) -> IResult<LocatedSpan<&'_ str>, Toke
     tok
 }
 
-pub fn tokenize(
-    input: &'_ str,
-) -> Result<Vec<Token<'_>>, nom::Err<nom::error::Error<LocatedSpan<&'_ str>>>> {
+pub fn tokenize(input: &'_ str) -> Result<Vec<Token<'_>>, nom::Err<nom::error::Error<Span<'_>>>> {
     let res = all_consuming((many0(token_parser), eof)).parse(LocatedSpan::new(input));
 
     if let Ok((rem, (tokens, _))) = res {

@@ -1,22 +1,24 @@
 use super::ast;
 use nom_locate::LocatedSpan;
-use peg::error::ParseError;
 
 pub mod parse_tree;
 pub mod to_ast;
+mod token;
 mod tokenizer;
 
-pub use tokenizer::{TokenValue, tokenize};
+pub use token::{TokenValue, Tokens};
+pub use tokenizer::tokenize;
 
 #[derive(Debug, Clone)]
 pub enum ParserError<'a> {
     Tokenizer(nom::Err<nom::error::Error<LocatedSpan<&'a str>>>),
-    ParseTree(ParseError<usize>, TokenValue<'a>),
+    ParseTree(String),
 }
 
 pub fn parse<'a>(input: &'a str) -> Result<ast::Program, ParserError<'a>> {
     let tokens = tokenizer::tokenize(input).map_err(|e| ParserError::Tokenizer(e))?;
-    let parse_tree = parse_tree::parse_tokens(&tokens.iter().map(|t| t.token).collect::<Vec<_>>())?;
+    let parse_tree = parse_tree::parse_tokens(Tokens::new(&tokens))
+        .map_err(|e| ParserError::ParseTree(e.to_string()))?;
     let ast = to_ast::to_ast(parse_tree);
 
     Ok(ast)
@@ -50,12 +52,10 @@ mod tests {
 
     impl ParserTestCase<'_> {
         pub fn run(self) {
-            let tokens = tokenize(self.input_str)
-                .map(|v| v.iter().map(|t| t.token).collect::<Vec<_>>())
-                .unwrap();
+            let tokens = tokenize(self.input_str).unwrap();
             assert_eq!(tokens, self.expected_tokens);
 
-            let parse_tree = parse_tree::parse_tokens(&tokens).unwrap();
+            let parse_tree = parse_tree::parse_tokens(Tokens::new(&tokens)).unwrap();
             assert_eq!(parse_tree, self.expected_parse_tree);
 
             let ast = to_ast::to_ast(parse_tree);
@@ -4103,9 +4103,7 @@ x[0] = 42
         // lambda x: x + 1
         let input_str = r"fn main() -> int { lambda x: x + 1 }";
 
-        let tokens = tokenize(input_str)
-            .map(|v| v.iter().map(|t| t.token).collect::<Vec<_>>())
-            .unwrap();
+        let tokens = tokenize(input_str).unwrap();
         assert_eq!(
             tokens,
             vec![
@@ -4126,7 +4124,7 @@ x[0] = 42
             ]
         );
 
-        let parse_tree = parse_tree::parse_tokens(&tokens).unwrap();
+        let parse_tree = parse_tree::parse_tokens(Tokens::new(&tokens)).unwrap();
         assert_eq!(
             parse_tree,
             pt::Module {
@@ -4167,9 +4165,7 @@ x[0] = 42
         // lambda x, y: x + y
         let input_str = r"fn main() -> int { lambda x, y: x + y }";
 
-        let tokens = tokenize(input_str)
-            .map(|v| v.iter().map(|t| t.token).collect::<Vec<_>>())
-            .unwrap();
+        let tokens = tokenize(input_str).unwrap();
         assert_eq!(
             tokens,
             vec![
@@ -4192,7 +4188,7 @@ x[0] = 42
             ]
         );
 
-        let parse_tree = parse_tree::parse_tokens(&tokens).unwrap();
+        let parse_tree = parse_tree::parse_tokens(Tokens::new(&tokens)).unwrap();
         assert_eq!(
             parse_tree,
             pt::Module {
@@ -4229,9 +4225,7 @@ x[0] = 42
         // lambda: 42
         let input_str = r"fn main() -> int { lambda: 42 }";
 
-        let tokens = tokenize(input_str)
-            .map(|v| v.iter().map(|t| t.token).collect::<Vec<_>>())
-            .unwrap();
+        let tokens = tokenize(input_str).unwrap();
         assert_eq!(
             tokens,
             vec![
@@ -4249,7 +4243,7 @@ x[0] = 42
             ]
         );
 
-        let parse_tree = parse_tree::parse_tokens(&tokens).unwrap();
+        let parse_tree = parse_tree::parse_tokens(Tokens::new(&tokens)).unwrap();
         assert_eq!(
             parse_tree,
             pt::Module {
@@ -4281,9 +4275,7 @@ x[0] = 42
         // (lambda x: x)(5)
         let input_str = r"fn main() -> int { (lambda x: x)(5) }";
 
-        let tokens = tokenize(input_str)
-            .map(|v| v.iter().map(|t| t.token).collect::<Vec<_>>())
-            .unwrap();
+        let tokens = tokenize(input_str).unwrap();
         assert_eq!(
             tokens,
             vec![
@@ -4307,7 +4299,7 @@ x[0] = 42
             ]
         );
 
-        let parse_tree = parse_tree::parse_tokens(&tokens).unwrap();
+        let parse_tree = parse_tree::parse_tokens(Tokens::new(&tokens)).unwrap();
         // Should parse as Call(Lambda(...), [Int(5)])
         match &parse_tree.functions[0].statements[0] {
             pt::Statement::Expr(pt::Expr::Call(callee, args)) => {
@@ -4331,9 +4323,7 @@ x[0] = 42
         // foo(lambda x: x + 1)
         let input_str = r"fn main() -> int { foo(lambda x: x + 1) }";
 
-        let tokens = tokenize(input_str)
-            .map(|v| v.iter().map(|t| t.token).collect::<Vec<_>>())
-            .unwrap();
+        let tokens = tokenize(input_str).unwrap();
         assert_eq!(
             tokens,
             vec![
@@ -4357,7 +4347,7 @@ x[0] = 42
             ]
         );
 
-        let parse_tree = parse_tree::parse_tokens(&tokens).unwrap();
+        let parse_tree = parse_tree::parse_tokens(Tokens::new(&tokens)).unwrap();
         match &parse_tree.functions[0].statements[0] {
             pt::Statement::Expr(pt::Expr::Call(callee, args)) => {
                 match callee.as_ref() {
@@ -4382,9 +4372,7 @@ x[0] = 42
         // f = lambda x: x
         let input_str = r"fn main() -> int { f = lambda x: x }";
 
-        let tokens = tokenize(input_str)
-            .map(|v| v.iter().map(|t| t.token).collect::<Vec<_>>())
-            .unwrap();
+        let tokens = tokenize(input_str).unwrap();
         assert_eq!(
             tokens,
             vec![
@@ -4405,7 +4393,7 @@ x[0] = 42
             ]
         );
 
-        let parse_tree = parse_tree::parse_tokens(&tokens).unwrap();
+        let parse_tree = parse_tree::parse_tokens(Tokens::new(&tokens)).unwrap();
         match &parse_tree.functions[0].statements[0] {
             pt::Statement::Assign("f", pt::Expr::Lambda(params, body), _) => {
                 assert_eq!(*params, vec!["x"]);
@@ -4420,9 +4408,7 @@ x[0] = 42
         // (lambda x: x, lambda y: y)
         let input_str = r"fn main() -> int { (lambda x: x, lambda y: y) }";
 
-        let tokens = tokenize(input_str)
-            .map(|v| v.iter().map(|t| t.token).collect::<Vec<_>>())
-            .unwrap();
+        let tokens = tokenize(input_str).unwrap();
         assert_eq!(
             tokens,
             vec![
@@ -4448,7 +4434,7 @@ x[0] = 42
             ]
         );
 
-        let parse_tree = parse_tree::parse_tokens(&tokens).unwrap();
+        let parse_tree = parse_tree::parse_tokens(Tokens::new(&tokens)).unwrap();
         match &parse_tree.functions[0].statements[0] {
             pt::Statement::Expr(pt::Expr::Tuple(elems)) => {
                 assert_eq!(elems.len(), 2);
@@ -4470,9 +4456,7 @@ x[0] = 42
         // true ? lambda x: x : lambda y: y
         let input_str = r"fn main() -> int { true ? lambda x: x : lambda y: y }";
 
-        let tokens = tokenize(input_str)
-            .map(|v| v.iter().map(|t| t.token).collect::<Vec<_>>())
-            .unwrap();
+        let tokens = tokenize(input_str).unwrap();
         assert_eq!(
             tokens,
             vec![
@@ -4498,7 +4482,7 @@ x[0] = 42
             ]
         );
 
-        let parse_tree = parse_tree::parse_tokens(&tokens).unwrap();
+        let parse_tree = parse_tree::parse_tokens(Tokens::new(&tokens)).unwrap();
         match &parse_tree.functions[0].statements[0] {
             pt::Statement::Expr(pt::Expr::Ternary(cond, pos, neg)) => {
                 match cond.as_ref() {
@@ -4523,9 +4507,7 @@ x[0] = 42
         // apply(lambda x, y: x + y, 1, 2)
         let input_str = r"fn main() -> int { apply(lambda x, y: x + y, 1, 2) }";
 
-        let tokens = tokenize(input_str)
-            .map(|v| v.iter().map(|t| t.token).collect::<Vec<_>>())
-            .unwrap();
+        let tokens = tokenize(input_str).unwrap();
         assert_eq!(
             tokens,
             vec![
@@ -4555,7 +4537,7 @@ x[0] = 42
             ]
         );
 
-        let parse_tree = parse_tree::parse_tokens(&tokens).unwrap();
+        let parse_tree = parse_tree::parse_tokens(Tokens::new(&tokens)).unwrap();
         match &parse_tree.functions[0].statements[0] {
             pt::Statement::Expr(pt::Expr::Call(callee, args)) => {
                 match callee.as_ref() {
@@ -4798,10 +4780,8 @@ x[0] = 42
         // for (i = 0; i < 2; i = i + 1) { for (j = 0; j < 2; j = j + 1) { print_int(j) } }
         // Just verify the parse tree structure — two nested For nodes
         let input_str = r"fn main() -> int { for (i = 0; i < 2; i = i + 1) { for (j = 0; j < 2; j = j + 1) { print_int(j) } } }";
-        let tokens = tokenize(input_str)
-            .map(|v| v.iter().map(|t| t.token).collect::<Vec<_>>())
-            .unwrap();
-        let parse_tree = parse_tree::parse_tokens(&tokens).unwrap();
+        let tokens = tokenize(input_str).unwrap();
+        let parse_tree = parse_tree::parse_tokens(Tokens::new(&tokens)).unwrap();
         match &parse_tree.functions[0].statements[0] {
             pt::Statement::For(init, _cond, _incr, body) => {
                 assert_eq!(**init, pt::Statement::Assign("i", pt::Expr::Int(0), None));
